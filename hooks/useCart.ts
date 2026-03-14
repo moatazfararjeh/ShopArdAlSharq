@@ -65,12 +65,27 @@ export function useCart() {
     onMutate: () => clearCart(),
   });
 
+  const updateQuantityMutation = useMutation({
+    mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) => {
+      if (session) {
+        if (quantity <= 0) return cartService.removeCartItem(session.user.id, productId);
+        return cartService.upsertCartItem(session.user.id, productId, quantity);
+      }
+      return Promise.resolve();
+    },
+    onMutate: ({ productId, quantity }) => updateQuantity(productId, quantity),
+    onSuccess: () => {
+      if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) });
+    },
+  });
+
   return {
     items,
     summary,
     addItem: addMutation.mutate,
     removeItem: removeMutation.mutate,
-    updateQuantity,
+    updateQuantity: (productId: string, quantity: number) =>
+      updateQuantityMutation.mutate({ productId, quantity }),
     clearCart: clearMutation.mutate,
   };
 }
