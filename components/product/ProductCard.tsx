@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '@/hooks/useCart';
+import { useCartStore } from '@/stores/cartStore';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
 import { Product } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
@@ -18,7 +19,9 @@ const CARD_BG_COLORS = ['#ede8e1', '#e8e3db', '#f0ece6', '#e5e0d8'];
 
 export function ProductCard({ product, onPress }: ProductCardProps) {
   const locale = getCurrentLocale();
-  const { addItem } = useCart();
+  const { addItem, updateQuantity } = useCart();
+  const cartItems = useCartStore((s) => s.items);
+  const cartQty = cartItems.find((i) => i.product_id === product.id)?.quantity ?? 0;
   const { data: favoriteIds = [] } = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
   const liked = favoriteIds.includes(product.id);
@@ -135,19 +138,45 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
             }
           </View>
 
-          {/* Add to cart */}
+          {/* Add to cart / quantity stepper */}
           {!outOfStock && (
-            <TouchableOpacity
-              onPress={handleAddToCart}
-              activeOpacity={0.8}
-              style={{
-                width: 30, height: 30, borderRadius: 15,
-                backgroundColor: '#e36523',
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="bag-outline" size={14} color="#fff" />
-            </TouchableOpacity>
+            cartQty > 0 ? (
+              <View style={{
+                flexDirection: 'row', alignItems: 'center',
+                borderRadius: 15, overflow: 'hidden',
+                borderWidth: 1.5, borderColor: '#e36523',
+              }}>
+                <TouchableOpacity
+                  onPress={() => updateQuantity(product.id, cartQty - 1)}
+                  activeOpacity={0.7}
+                  style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: '#fff0eb' }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523', lineHeight: 18 }}>−</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#1c1917', minWidth: 18, textAlign: 'center' }}>
+                  {cartQty}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => updateQuantity(product.id, cartQty + 1)}
+                  activeOpacity={0.7}
+                  style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: '#e36523' }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', lineHeight: 18 }}>+</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleAddToCart}
+                activeOpacity={0.8}
+                style={{
+                  width: 30, height: 30, borderRadius: 15,
+                  backgroundColor: '#e36523',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="bag-outline" size={14} color="#fff" />
+              </TouchableOpacity>
+            )
           )}
         </View>
       </View>
