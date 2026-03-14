@@ -30,6 +30,7 @@
     "password": "Password",
     "confirmPassword": "Confirm Password",
     "fullName": "Full Name",
+    "phone": "Mobile Number",
     "forgotPassword": "Forgot Password?",
     "resetPassword": "Reset Password",
     "sendResetLink": "Send Reset Link",

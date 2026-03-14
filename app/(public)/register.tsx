@@ -20,7 +20,7 @@ export default function RegisterScreen() {
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: '', email: '', password: '', confirmPassword: '' },
+    defaultValues: { fullName: '', phone: '', email: '', password: '', confirmPassword: '' },
   });
 
   async function onSubmit(values: RegisterFormValues) {
@@ -64,6 +64,22 @@ export default function RegisterScreen() {
                 onBlur={onBlur}
                 error={errors.fullName?.message}
                 autoComplete="name"
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input
+                label={t('auth.phone')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={errors.phone?.message}
+                keyboardType="phone-pad"
+                autoComplete="tel"
               />
             )}
           />

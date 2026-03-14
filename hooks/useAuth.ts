@@ -39,7 +39,7 @@ export function useLogin() {
 export function useRegister() {
   return useMutation({
     mutationFn: (values: RegisterFormValues) =>
-      authService.signUp(values.email, values.password, values.fullName),
+      authService.signUp(values.email, values.password, values.fullName, values.phone),
   });
 }
 
