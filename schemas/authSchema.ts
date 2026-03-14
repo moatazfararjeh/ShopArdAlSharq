@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Jordanian mobile: 07x-xxxx-xxxx or +9627xxxxxxxx
+const jordanianPhoneRegex = /^(\+9627|007|07)\d{8}$/;
+
 export const loginSchema = z.object({
   email: z
     .string()
@@ -17,7 +20,7 @@ export const registerSchema = z
     phone: z
       .string()
       .min(1, 'رقم الجوال مطلوب')
-      .regex(/^[+0-9]{7,15}$/, 'يرجى إدخال رقم جوال صحيح'),
+      .regex(jordanianPhoneRegex, 'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)'),
     email: z
       .string()
       .min(1, 'البريد الإلكتروني مطلوب')
