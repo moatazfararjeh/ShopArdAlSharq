@@ -57,8 +57,6 @@ export default function AddBannerScreen() {
   );
 }
 
-
-function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
     <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>
       {label}{required ? <Text style={{ color: '#ef4444' }}> *</Text> : null}
