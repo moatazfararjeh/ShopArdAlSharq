@@ -1,0 +1,57 @@
+import '../global.css';
+import '../i18n';
+import { useEffect } from 'react';
+import { I18nManager } from 'react-native';
+import { Stack } from 'expo-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { StatusBar } from 'expo-status-bar';
+import { queryClient } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
+import { useCartSync } from '@/hooks/useCart';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import i18n from '@/i18n';
+
+function AuthInitializer() {
+  useAuth();
+  return null;
+}
+
+function CartInitializer() {
+  useCartSync();
+  return null;
+}
+
+function PushInitializer() {
+  usePushNotifications();
+  return null;
+}
+
+export default function RootLayout() {
+  useEffect(() => {
+    // Force RTL on for Arabic at startup
+    if (!I18nManager.isRTL) {
+      I18nManager.forceRTL(true);
+    }
+
+    // Re-apply RTL whenever language changes
+    const handler = (lng: string) => {
+      const shouldBeRTL = lng !== 'en';
+      if (I18nManager.isRTL !== shouldBeRTL) {
+        I18nManager.forceRTL(shouldBeRTL);
+      }
+    };
+    i18n.on('languageChanged', handler);
+    return () => { i18n.off('languageChanged', handler); };
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthInitializer />
+      <CartInitializer />
+      <PushInitializer />
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }} />
+    </QueryClientProvider>
+  );
+}
+
