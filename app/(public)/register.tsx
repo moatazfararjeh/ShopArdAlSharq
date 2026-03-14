@@ -25,8 +25,13 @@ export default function RegisterScreen() {
 
   async function onSubmit(values: RegisterFormValues) {
     try {
-      await registerMutation.mutateAsync(values);
-      router.replace('/(customer)/home');
+      const result = await registerMutation.mutateAsync(values);
+      if ((result as any)?.needsConfirmation) {
+        // Server requires email confirmation — go to login with a notice
+        router.replace('/(public)/login?confirmed=1' as any);
+      } else {
+        router.replace('/(customer)/home');
+      }
     } catch {
       // Error displayed via mutation state
     }

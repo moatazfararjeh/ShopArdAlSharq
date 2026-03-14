@@ -8,6 +8,7 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
+/** Returns `{ session, needsConfirmation: true }` when the server requires email verification. */
 export async function signUp(email: string, password: string, fullName: string, phone: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -16,19 +17,12 @@ export async function signUp(email: string, password: string, fullName: string, 
   });
   if (error) throw parseSupabaseError(error);
 
-  // If email confirmation is disabled in Supabase, signUp returns a session immediately.
-  // If it returned no session (e.g. confirmation still enabled), sign in explicitly so the
-  // user is logged in right away without needing to verify their email.
-  if (!data.session) {
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) throw parseSupabaseError(signInError);
-    return signInData;
-  }
+  // Email confirmation is disabled → session is returned immediately.
+  if (data.session) return { ...data, needsConfirmation: false };
 
-  return data;
+  // No session means the server still requires email confirmation.
+  // Don't attempt signInWithPassword — it will fail with email_not_confirmed.
+  return { ...data, needsConfirmation: true };
 }
 
 export async function signOut() {

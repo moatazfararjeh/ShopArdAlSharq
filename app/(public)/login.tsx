@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,8 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const loginMutation = useLogin();
+  const params = useLocalSearchParams<{ confirmed?: string }>();
+  const showConfirmNotice = params.confirmed === '1';
 
   const {
     control,
@@ -44,6 +46,14 @@ export default function LoginScreen() {
         >
           <Image source={require('@/assets/logo.png')} style={{ width: 280, height: 110, marginBottom: 24, alignSelf: 'center' }} resizeMode="contain" />
           <Text className="mb-2 text-3xl font-bold text-gray-900">{t('auth.login')}</Text>
+
+          {showConfirmNotice && (
+            <View className="mb-4 rounded-xl bg-green-50 px-4 py-3">
+              <Text className="text-sm text-green-700">
+                تم إنشاء الحساب بنجاح. يرجى تأكيد بريدك الإلكتروني ثم تسجيل الدخول.
+              </Text>
+            </View>
+          )}
 
           {loginMutation.error && (
             <View className="mb-4 rounded-xl bg-red-50 px-4 py-3">
