@@ -49,7 +49,25 @@ export type BannerPayload = Pick<
   | 'bg_color'
   | 'is_active'
   | 'sort_order'
+  | 'link_type'
+  | 'link_value'
 >;
+
+export async function uploadBannerImage(uri: string, bannerId: string): Promise<string> {
+  // Fetch the file and convert to ArrayBuffer
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const ext = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
+  const path = `banners/${bannerId}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('product-images')
+    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+  if (error) throw parseSupabaseError(error);
+
+  const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl;
+}
 
 export async function createBanner(payload: BannerPayload): Promise<Banner> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,3 +94,4 @@ export async function deleteBanner(id: string): Promise<void> {
   const { error } = await supabase.from('banners').delete().eq('id', id);
   if (error) throw parseSupabaseError(error);
 }
+

@@ -1,10 +1,62 @@
-import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useCreateBanner } from '@/hooks/useBanners';
+import BannerForm, { BannerFormValues } from '@/components/admin/BannerForm';
+import { uploadBannerImage } from '@/services/bannerService';
 
-const BG_PRESETS = ['#1e1a17', '#7c3aed', '#0f766e', '#b45309', '#be185d', '#1d4ed8'];
+export default function AddBannerScreen() {
+  const router = useRouter();
+  const createMutation = useCreateBanner();
+
+  async function handleSubmit(values: BannerFormValues) {
+    try {
+      // Create banner first to get an ID, then upload image if needed
+      const tempId = `temp-${Date.now()}`;
+      let imageUrl: string | null = null;
+
+      const banner = await createMutation.mutateAsync({
+        title_ar: values.titleAr.trim(),
+        title_en: values.titleEn.trim() || null,
+        subtitle_ar: values.subtitleAr.trim() || null,
+        subtitle_en: null,
+        label_ar: values.labelAr.trim() || null,
+        label_en: null,
+        button_text_ar: values.buttonTextAr.trim() || null,
+        button_text_en: null,
+        emoji: values.emoji.trim() || null,
+        image_url: null,
+        bg_color: values.bgColor,
+        is_active: values.isActive,
+        sort_order: parseInt(values.sortOrder) || 0,
+        link_type: values.linkType,
+        link_value: values.linkValue,
+      });
+
+      // Upload image if one was picked
+      if (values.imageUri && !values.imageUri.startsWith('http')) {
+        imageUrl = await uploadBannerImage(values.imageUri, banner.id);
+        const { updateBanner } = await import('@/services/bannerService');
+        await updateBanner(banner.id, { image_url: imageUrl });
+      }
+
+      router.back();
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+    }
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+      <BannerForm
+        onSubmit={handleSubmit}
+        submitLabel="إضافة البانر"
+        isLoading={createMutation.isPending}
+      />
+    </SafeAreaView>
+  );
+}
+
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (

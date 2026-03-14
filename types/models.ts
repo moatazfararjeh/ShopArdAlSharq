@@ -58,6 +58,10 @@ export interface Banner {
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  /** 'product' → navigate to product detail, 'category' → filter by category */
+  link_type: 'product' | 'category' | null;
+  /** product_id or category_id */
+  link_value: string | null;
 }
 
 export function getBannerTitle(banner: Banner, locale: SupportedLocale): string {

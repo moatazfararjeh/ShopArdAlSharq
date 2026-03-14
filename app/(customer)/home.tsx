@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, FlatList as RNFlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -33,23 +33,33 @@ const FALLBACK_BANNER: Banner = {
   is_active: true,
   sort_order: 0,
   created_at: '',
+  link_type: null,
+  link_value: null,
 };
 
-function HeroBannerCard({ banner, locale }: { banner: Banner; locale: string }) {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_WIDTH = SCREEN_WIDTH - 32; // 16px margin each side
+
+function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: string; onPress?: () => void }) {
   const label = getBannerLabel(banner, locale as any);
   const title = getBannerTitle(banner, locale as any);
   const buttonText = getBannerButtonText(banner, locale as any);
   const bg = banner.bg_color ?? '#8B7355';
   const hasImage = !!banner.image_url;
+  const hasLink = !!(banner.link_type && banner.link_value);
 
   return (
-    <View style={{
-      marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-      borderRadius: 20, overflow: 'hidden',
-      backgroundColor: bg,
-      height: 180,
-    }}>
-      {/* Background image if available */}
+    <TouchableOpacity
+      activeOpacity={hasLink ? 0.88 : 1}
+      onPress={hasLink ? onPress : undefined}
+      style={{
+        width: BANNER_WIDTH,
+        marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+        borderRadius: 20, overflow: 'hidden',
+        backgroundColor: bg,
+        height: 180,
+      }}
+    >
       {hasImage && (
         <Image
           source={{ uri: banner.image_url! }}
@@ -57,13 +67,10 @@ function HeroBannerCard({ banner, locale }: { banner: Banner; locale: string }) 
           contentFit="cover"
         />
       )}
-      {/* Gradient-like dark left overlay for text readability */}
       <View style={{
         position: 'absolute', top: 0, left: 0, bottom: 0, width: hasImage ? '65%' : '100%',
         backgroundColor: hasImage ? 'rgba(0,0,0,0.42)' : bg,
       }} />
-
-      {/* Content */}
       <View style={{ flex: 1, padding: 22, justifyContent: 'center' }}>
         {label ? (
           <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
@@ -74,35 +81,81 @@ function HeroBannerCard({ banner, locale }: { banner: Banner; locale: string }) 
           {title}
         </Text>
         {buttonText ? (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 24,
-              paddingHorizontal: 20,
-              paddingVertical: 8,
-              alignSelf: 'flex-start',
-            }}
-          >
+          <View style={{ backgroundColor: '#ffffff', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8, alignSelf: 'flex-start' }}>
             <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>{buttonText}</Text>
-          </TouchableOpacity>
+          </View>
         ) : null}
       </View>
-
-      {/* Emoji — only when no image */}
       {!hasImage && banner.emoji ? (
         <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center' }}>
           <Text style={{ fontSize: 64, lineHeight: 80 }}>{banner.emoji}</Text>
         </View>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }
 
 function HeroBanner({ locale }: { locale: string }) {
+  const router = useRouter();
   const { data: banners } = useBanners(true);
-  const activeBanner = banners && banners.length > 0 ? banners[0] : FALLBACK_BANNER;
-  return <HeroBannerCard banner={activeBanner} locale={locale} />;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatRef = useRef<RNFlatList>(null);
+
+  const list: Banner[] = banners && banners.length > 0 ? banners : [FALLBACK_BANNER];
+
+  function handleBannerPress(banner: Banner) {
+    if (!banner.link_type || !banner.link_value) return;
+    if (banner.link_type === 'product') {
+      router.push(`/(public)/products/${banner.link_value}` as any);
+    } else if (banner.link_type === 'category') {
+      // Signal home to filter by this category — use a query param approach via navigation
+      router.push({ pathname: '/(customer)/home', params: { categoryId: banner.link_value } } as any);
+    }
+  }
+
+  if (list.length === 1) {
+    return <HeroBannerCard banner={list[0]} locale={locale} onPress={() => handleBannerPress(list[0])} />;
+  }
+
+  return (
+    <View style={{ marginTop: 12, marginBottom: 4 }}>
+      <RNFlatList
+        ref={flatRef}
+        data={list}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={BANNER_WIDTH + 32}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: 0 }}
+        keyExtractor={(b) => b.id}
+        renderItem={({ item }) => (
+          <HeroBannerCard banner={item} locale={locale} onPress={() => handleBannerPress(item)} />
+        )}
+        onMomentumScrollEnd={(e) => {
+          const idx = Math.round(e.nativeEvent.contentOffset.x / (BANNER_WIDTH + 32));
+          setActiveIndex(idx);
+        }}
+      />
+      {/* Dots indicator */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+        {list.map((_, i) => (
+          <TouchableOpacity
+            key={i}
+            onPress={() => {
+              flatRef.current?.scrollToIndex({ index: i, animated: true });
+              setActiveIndex(i);
+            }}
+            style={{
+              width: i === activeIndex ? 18 : 6,
+              height: 6, borderRadius: 3,
+              backgroundColor: i === activeIndex ? '#e36523' : '#d1c9bf',
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
 }
 
 export default function HomeScreen() {
