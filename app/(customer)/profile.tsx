@@ -197,7 +197,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Admin panel — visible to all, role shown for debugging */}
+        {/* Admin panel — only visible to admins */}
+        {isAdmin && (
         <View style={{
           backgroundColor: '#fff7ed', marginHorizontal: 20, borderRadius: 22,
           overflow: 'hidden',
@@ -205,12 +206,8 @@ export default function ProfileScreen() {
           marginBottom: 16,
         }}>
           <NavRow icon="⚙️" label="لوحة الإدارة" onPress={() => router.push('/(admin)/dashboard')} />
-          <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
-            <Text style={{ fontSize: 11, color: '#857d78' }}>
-              Role: {profile?.role ?? 'loading...'}
-            </Text>
-          </View>
         </View>
+        )}
 
         {/* Logout */}
         <View style={{
