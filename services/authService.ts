@@ -15,6 +15,19 @@ export async function signUp(email: string, password: string, fullName: string, 
     options: { data: { full_name: fullName, phone } },
   });
   if (error) throw parseSupabaseError(error);
+
+  // If email confirmation is disabled in Supabase, signUp returns a session immediately.
+  // If it returned no session (e.g. confirmation still enabled), sign in explicitly so the
+  // user is logged in right away without needing to verify their email.
+  if (!data.session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) throw parseSupabaseError(signInError);
+    return signInData;
+  }
+
   return data;
 }
 
