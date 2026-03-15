@@ -1,0 +1,31 @@
+{
+  "cli": {
+    "version": ">= 18.0.0"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://supabasemobile.ardalsharq.com",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzI2OTI4MCwiZXhwIjo0OTI4OTQyODgwLCJyb2xlIjoiYW5vbiJ9.veK9gm5UJT-0cLAIyzY_-AEhclyOwMzQXrWkNDbWUxA",
+        "EXPO_PUBLIC_APP_NAME": "ArdAlsharq",
+        "EXPO_PUBLIC_DEFAULT_LOCALE": "ar",
+        "EXPO_PUBLIC_CURRENCY": "SAR",
+        "EXPO_PUBLIC_CURRENCY_SYMBOL": "د.أ",
+        "EXPO_PUBLIC_ENABLE_PAYMENTS": "false",
+        "EXPO_PUBLIC_ENABLE_SOCIAL_LOGIN": "false",
+        "EXPO_PUBLIC_ENABLE_REVIEWS": "false"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
