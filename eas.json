@@ -7,6 +7,7 @@
       "android": {
         "buildType": "apk"
       },
+      "environment": "preview",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://supabasemobile.ardalsharq.com",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzI2OTI4MCwiZXhwIjo0OTI4OTQyODgwLCJyb2xlIjoiYW5vbiJ9.veK9gm5UJT-0cLAIyzY_-AEhclyOwMzQXrWkNDbWUxA",
