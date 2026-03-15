@@ -62,7 +62,7 @@
     "weight": "الوزن",
     "images": "الصور",
     "details": "التفاصيل",
-    "search": "دور على اللي بدكياه...",
+    "search": "بحث عن المنتجات...",
     "filterByCategory": "تصفية حسب الفئة",
     "sortBy": "ترتيب حسب",
     "sortNewest": "الأحدث",
@@ -72,14 +72,14 @@
   },
   "categories": {
     "title": "الفئات",
-    "allCategories": "كل اشي",
+    "allCategories": "جميع الفئات",
     "noCategories": "لا توجد فئات"
   },
   "cart": {
     "title": "سلة المشتريات",
-    "emptyCart": "لسى ما اشتريت يا زلمة !!",
-    "emptyCartDesc": "عنا احسن الاسعار",
-    "continueShopping": "تعال نشتري",
+    "emptyCart": "سلتك فارغة ",
+    "emptyCartDesc": "أضف بعض المنتجات إلى سلتك",
+    "continueShopping": "متابعة التسوق",
     "itemCount_one": "{{count}} منتج",
     "itemCount_two": "{{count}} منتجان",
     "itemCount_few": "{{count}} منتجات",
