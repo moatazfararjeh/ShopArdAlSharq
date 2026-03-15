@@ -46,7 +46,7 @@ export default function ProductDetailScreen() {
   const name = getProductName(product, locale);
   const description = getProductDescription(product, locale);
   const discounted = hasDiscount(product);
-  const images = product.images ?? [];
+  const images = product.images?.length ? product.images : (product.product_images ?? []);
   const currentImage = images[activeImageIndex]?.url;
   const outOfStock = product.stock_quantity === 0;
 
