@@ -67,17 +67,16 @@ function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: s
           contentFit="cover"
         />
       )}
-      <View style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0, width: hasImage ? '65%' : '100%',
-        backgroundColor: hasImage ? 'rgba(0,0,0,0.42)' : bg,
-      }} />
+      {hasImage ? null : (
+        <View style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, backgroundColor: bg }} />
+      )}
       <View style={{ flex: 1, padding: 22, justifyContent: 'center' }}>
         {label ? (
-          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
             {label}
           </Text>
         ) : null}
-        <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', lineHeight: 28, marginBottom: 12 }}>
+        <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', lineHeight: 28, marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
           {title}
         </Text>
         {buttonText ? (
