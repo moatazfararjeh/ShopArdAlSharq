@@ -12,17 +12,17 @@ export default function AddBannerScreen() {
   async function handleSubmit(values: BannerFormValues) {
     try {
       const banner = await createMutation.mutateAsync({
-        title_ar: values.titleAr.trim(),
-        title_en: values.titleEn.trim() || null,
-        subtitle_ar: values.subtitleAr.trim() || null,
+        title_ar: '',
+        title_en: null,
+        subtitle_ar: null,
         subtitle_en: null,
-        label_ar: values.labelAr.trim() || null,
+        label_ar: null,
         label_en: null,
         button_text_ar: values.buttonTextAr.trim() || null,
         button_text_en: null,
-        emoji: values.emoji.trim() || null,
+        emoji: null,
         image_url: null,
-        bg_color: values.bgColor,
+        bg_color: '#1e1a17',
         is_active: values.isActive,
         sort_order: parseInt(values.sortOrder) || 0,
         link_type: values.linkType,

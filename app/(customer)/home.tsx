@@ -12,7 +12,7 @@ import { useUnreadCount } from '@/hooks/useNotifications';
 import { ProductCard } from '@/components/product/ProductCard';
 import { GetProductsParams } from '@/services/productService';
 import { getCurrentLocale } from '@/i18n';
-import { getCategoryName, getBannerTitle, getBannerLabel, getBannerButtonText } from '@/types/models';
+import { getCategoryName, getBannerButtonText } from '@/types/models';
 import { Product, Banner } from '@/types/models';
 import { Image } from 'expo-image';
 
@@ -41,8 +41,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - 32; // 16px margin each side
 
 function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: string; onPress?: () => void }) {
-  const label = getBannerLabel(banner, locale as any);
-  const title = getBannerTitle(banner, locale as any);
   const buttonText = getBannerButtonText(banner, locale as any);
   const bg = banner.bg_color ?? '#8B7355';
   const hasImage = !!banner.image_url;
@@ -67,27 +65,11 @@ function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: s
           contentFit="cover"
         />
       )}
-      {hasImage ? null : (
-        <View style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, backgroundColor: bg }} />
-      )}
-      <View style={{ flex: 1, padding: 22, justifyContent: 'center' }}>
-        {label ? (
-          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
-            {label}
-          </Text>
-        ) : null}
-        <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', lineHeight: 28, marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
-          {title}
-        </Text>
-        {buttonText ? (
-          <View style={{ backgroundColor: '#ffffff', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8, alignSelf: 'flex-start' }}>
+      {buttonText ? (
+        <View style={{ position: 'absolute', bottom: 16, left: 22 }}>
+          <View style={{ backgroundColor: '#ffffff', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8 }}>
             <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>{buttonText}</Text>
           </View>
-        ) : null}
-      </View>
-      {!hasImage && banner.emoji ? (
-        <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center' }}>
-          <Text style={{ fontSize: 64, lineHeight: 80 }}>{banner.emoji}</Text>
         </View>
       ) : null}
     </TouchableOpacity>

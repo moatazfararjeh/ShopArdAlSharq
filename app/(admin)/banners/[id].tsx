@@ -28,17 +28,17 @@ export default function EditBannerScreen() {
       }
 
       await updateMutation.mutateAsync({
-        title_ar: values.titleAr.trim(),
-        title_en: values.titleEn.trim() || null,
-        subtitle_ar: values.subtitleAr.trim() || null,
+        title_ar: '',
+        title_en: null,
+        subtitle_ar: null,
         subtitle_en: null,
-        label_ar: values.labelAr.trim() || null,
+        label_ar: null,
         label_en: null,
         button_text_ar: values.buttonTextAr.trim() || null,
         button_text_en: null,
-        emoji: values.emoji.trim() || null,
+        emoji: null,
         image_url: imageUrl ?? null,
-        bg_color: values.bgColor,
+        bg_color: '#1e1a17',
         is_active: values.isActive,
         sort_order: parseInt(values.sortOrder) || 0,
         link_type: values.linkType,
@@ -56,13 +56,7 @@ export default function EditBannerScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
       <BannerForm
         initial={{
-          titleAr: banner.title_ar,
-          titleEn: banner.title_en ?? '',
-          subtitleAr: banner.subtitle_ar ?? '',
-          labelAr: banner.label_ar ?? '',
           buttonTextAr: banner.button_text_ar ?? 'تسوق الآن',
-          emoji: banner.emoji ?? '',
-          bgColor: banner.bg_color,
           sortOrder: String(banner.sort_order),
           isActive: banner.is_active,
           imageUri: banner.image_url ?? null,
