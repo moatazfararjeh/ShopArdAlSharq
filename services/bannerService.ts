@@ -54,10 +54,18 @@ export type BannerPayload = Pick<
 >;
 
 export async function uploadBannerImage(uri: string, bannerId: string): Promise<string> {
+  // Only allow local file / content URIs to prevent fetching arbitrary remote URLs.
+  if (!uri.startsWith('file://') && !uri.startsWith('content://') && !uri.startsWith('ph://')) {
+    throw new Error('Invalid image URI: only local file URIs are permitted.');
+  }
   // Fetch the file and convert to ArrayBuffer
   const response = await fetch(uri);
   const blob = await response.blob();
-  const ext = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
+  // Derive extension only from path segment before any query string,
+  // then whitelist to safe image extensions to prevent extension spoofing.
+  const rawExt = (uri.split('?')[0].split('.').pop() ?? 'jpg').toLowerCase();
+  const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : 'jpg';
   const path = `banners/${bannerId}.${ext}`;
 
   const { error } = await supabase.storage

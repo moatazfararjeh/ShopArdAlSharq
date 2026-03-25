@@ -71,7 +71,10 @@ export async function sendOrderStatusNotification(
     .single();
 
   const token = (profile as { expo_push_token?: string | null } | null)?.expo_push_token;
-  if (!token) return;
+  // Validate token format — Expo push tokens must match ExponentPushToken[...]
+  // This prevents forwarding arbitrary strings stored by a user to the Expo push API.
+  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+  if (!token || !EXPO_TOKEN_RE.test(token)) return;
 
   await sendExpoPushNotification([
     {

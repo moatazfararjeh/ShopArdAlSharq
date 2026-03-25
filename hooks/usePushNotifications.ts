@@ -82,7 +82,10 @@ export function usePushNotifications() {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data as Record<string, unknown>;
-        if (data?.orderId) {
+        // Validate orderId is a well-formed UUID before embedding it in a route to
+        // prevent path injection via a crafted or compromised push payload.
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (typeof data?.orderId === 'string' && UUID_RE.test(data.orderId)) {
           router.push(`/(customer)/orders/${data.orderId}` as any);
         }
       },

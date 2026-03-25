@@ -55,7 +55,7 @@ export function useMarkRead() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.session?.user?.id);
   return useMutation({
-    mutationFn: (id: string) => markNotificationRead(id),
+    mutationFn: (id: string) => markNotificationRead(id, userId!),
     onSuccess: () => qc.invalidateQueries({ queryKey: notificationKeys.list(userId ?? '') }),
   });
 }

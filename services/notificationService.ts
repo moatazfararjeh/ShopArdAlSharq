@@ -14,12 +14,15 @@ export async function getNotifications(userId: string): Promise<Notification[]> 
   return (data ?? []) as Notification[];
 }
 
-export async function markNotificationRead(notificationId: string): Promise<void> {
+export async function markNotificationRead(notificationId: string, userId: string): Promise<void> {
+  // Include user_id filter as defense-in-depth alongside the RLS policy.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
+  const { error } = await (supabase as any)
     .from('notifications')
     .update({ is_read: true })
-    .eq('id', notificationId);
+    .eq('id', notificationId)
+    .eq('user_id', userId);
+  if (error) throw error;
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {

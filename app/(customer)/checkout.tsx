@@ -100,12 +100,13 @@ export default function CheckoutScreen() {
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
 
       let finalAddressId: string;
+      let tempAddressId: string | null = null;
 
       if (selectedAddressId) {
         // Use existing saved address
         finalAddressId = selectedAddressId;
       } else {
-        // New address — insert it
+        // New address — insert it temporarily to obtain an id for the order snapshot
         const addr = values.new_address!;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: addrRow, error: addrError } = await (supabase as any)
@@ -129,24 +130,31 @@ export default function CheckoutScreen() {
 
         if (addrError) { setSubmitError(addrError.message); return; }
         finalAddressId = addrRow.id;
-
-        // If user chose NOT to save, delete this address after we note its id
-        // (we inserted first to get the id for the order, then delete if unwanted)
-        if (!saveThisAddress) {
-          // Delete happens after order is placed below — we store id in closure
-        }
+        // Track it so we can clean up if the user chose not to save AND if
+        // the order placement fails for any reason.
+        if (!saveThisAddress) tempAddressId = finalAddressId;
       }
 
-      const result = await placeOrder.mutateAsync({
-        address_id: finalAddressId,
-        payment_method: 'cash_on_delivery',
-        notes: values.notes ?? null,
-      });
+      let result;
+      try {
+        result = await placeOrder.mutateAsync({
+          address_id: finalAddressId,
+          payment_method: values.payment_method,
+          notes: values.notes ?? null,
+        });
+      } catch (orderErr) {
+        // If a throwaway address was inserted, delete it now to avoid orphans
+        if (tempAddressId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
+        }
+        throw orderErr;
+      }
 
-      // Delete address if user said don't save
-      if (!selectedAddressId && !saveThisAddress) {
+      // Order succeeded — delete address if the user chose not to save it
+      if (tempAddressId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('addresses').delete().eq('id', finalAddressId);
+        await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
       }
 
       clearCart();

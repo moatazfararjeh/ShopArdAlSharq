@@ -22,6 +22,8 @@ export function parseSupabaseError(error: { message: string; code?: string }): A
     case '42501':
       return new AppError('FORBIDDEN', 'You do not have permission to perform this action.', 403);
     default:
-      return new AppError('UNKNOWN', error.message);
+      // Do not forward raw DB / PostgREST error messages to the client —
+      // they can reveal schema details. Use a generic message instead.
+      return new AppError('UNKNOWN', 'An unexpected error occurred. Please try again.');
   }
 }

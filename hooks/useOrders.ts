@@ -4,6 +4,7 @@ import { GetOrdersParams } from '@/services/orderService';
 import { CheckoutPayload } from '@/types/models';
 import { OrderStatus } from '@/types/database.types';
 import { sendOrderStatusNotification } from '@/services/pushNotificationService';
+import { useAuthStore } from '@/stores/authStore';
 
 export const orderKeys = {
   all: ['orders'] as const,
@@ -21,9 +22,11 @@ export function useOrders(params: GetOrdersParams = {}) {
 }
 
 export function useAdminOrders(params: Omit<GetOrdersParams, 'userId'> = {}) {
+  const { isAdmin } = useAuthStore();
   return useQuery({
     queryKey: orderKeys.list(params),
     queryFn: () => getOrders(params),
+    enabled: isAdmin,
   });
 }
 
