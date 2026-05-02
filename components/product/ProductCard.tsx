@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '@/hooks/useCart';
 import { useCartStore } from '@/stores/cartStore';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
+import { useToastStore } from '@/stores/toastStore';
 import { Product } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, hasDiscount } from '@/types/models';
@@ -24,6 +25,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const cartQty = cartItems.find((i) => i.product_id === product.id)?.quantity ?? 0;
   const { data: favoriteIds = [] } = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
+  const showToast = useToastStore((s) => s.show);
   const liked = favoriteIds.includes(product.id);
   const name = getProductName(product, locale);
   const mainImage = (product.images?.[0] ?? product.product_images?.[0])?.url;
@@ -34,6 +36,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   function handleAddToCart() {
     if (outOfStock) return;
     addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, selected_unit: null, product });
+    showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
   return (
@@ -107,9 +110,14 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           {name.split(' ')[0] ?? 'منتج'}
         </Text>
 
-        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '500', color: '#1c1917', lineHeight: 18, marginBottom: 6 }}>
+        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '500', color: '#1c1917', lineHeight: 18, marginBottom: 2 }}>
           {name}
         </Text>
+        {product.weight != null && (
+          <Text style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4 }}>
+            ⚖️ {product.weight} {product.weight_unit ?? 'كغ'}
+          </Text>
+        )}
 
         {/* Price row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -131,7 +139,9 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
               .map((u) => (
                 <View key={u} style={{ backgroundColor: '#fff0eb', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}>
                   <Text style={{ fontSize: 9, fontWeight: '700', color: '#e36523' }}>
-                    {{ piece: 'حبة', kg: 'كيلو', carton: 'كرتون' }[u]}
+                    {u === 'carton' && product.pieces_per_carton
+                      ? `كرتون (${product.pieces_per_carton} حبة)`
+                      : { piece: 'حبة', kg: 'كيلو', carton: 'كرتون' }[u]}
                   </Text>
                 </View>
               ))

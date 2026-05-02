@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -21,6 +21,12 @@ export default function AdminProductsScreen() {
   const products: Product[] = data?.pages.flatMap((p) => p.data) ?? [];
 
   function confirmDelete(id: string, name: string) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) {
+        deleteMutation.mutate(id);
+      }
+      return;
+    }
     Alert.alert(t('admin.confirmDelete'), name, [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -51,6 +57,11 @@ export default function AdminProductsScreen() {
               <Text className="font-semibold text-gray-900" numberOfLines={1}>
                 {getProductName(item, locale)}
               </Text>
+              {item.categories && (
+                <Text className="text-xs text-gray-400" numberOfLines={1}>
+                  {locale === 'ar' ? item.categories.name_ar : (item.categories.name_en ?? item.categories.name_ar)}
+                </Text>
+              )}
               <Text className="text-sm text-primary-500">{formatPrice(item.price)}</Text>
               <Text className={['text-xs', item.is_available ? 'text-green-500' : 'text-red-400'].join(' ')}>
                 {item.is_available ? 'متوفر' : 'غير متوفر'}

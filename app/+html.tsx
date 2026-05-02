@@ -32,6 +32,16 @@ export default function Root({ children }: PropsWithChildren) {
               margin: 0;
               padding: 0;
             }
+            @media print {
+              html, body, #root {
+                height: auto !important;
+                overflow: visible !important;
+              }
+              /* Hide tab bar, header back/print buttons, and timeline */
+              [data-print-hide] { display: none !important; }
+              /* Make scroll views expand fully */
+              * { overflow: visible !important; max-height: none !important; }
+            }
           `,
         }} />
 

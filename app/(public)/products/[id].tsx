@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProduct } from '@/hooks/useProducts';
 import { useCart } from '@/hooks/useCart';
+import { useToastStore } from '@/stores/toastStore';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, getProductDescription, hasDiscount } from '@/types/models';
 import { formatPrice, getDiscountPercent } from '@/utils/formatPrice';
@@ -23,6 +24,7 @@ export default function ProductDetailScreen() {
   }
   const locale = getCurrentLocale();
   const { addItem } = useCart();
+  const showToast = useToastStore((s) => s.show);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedUnit, setSelectedUnit] = useState<'piece' | 'kg' | 'carton' | null>(null);
@@ -92,7 +94,7 @@ export default function ProductDetailScreen() {
       selected_unit: effectiveUnit,
       product: product!,
     });
-    Alert.alert('✓ تمت الإضافة', t('products.addedToCart'));
+    showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
   return (
@@ -217,6 +219,16 @@ export default function ProductDetailScreen() {
               {outOfStock ? t('products.outOfStock') : `متوفر (${product.stock_quantity})`}
             </Text>
           </View>
+
+          {/* Weight */}
+          {product.weight != null && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
+              <Text style={{ fontSize: 12, color: '#9ca3af' }}>⚖️</Text>
+              <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>
+                {product.weight} {product.weight_unit ?? 'كغ'}
+              </Text>
+            </View>
+          )}
 
           <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 16 }} />
 

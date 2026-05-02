@@ -19,6 +19,8 @@ export function parseSupabaseError(error: { message: string; code?: string }): A
       return new AppError('NOT_FOUND', 'Resource not found.', 404);
     case '23505':
       return new AppError('DUPLICATE', 'This record already exists.', 409);
+    case '23503':
+      return new AppError('FK_VIOLATION', 'This record is referenced by other records.', 409);
     case '42501':
       return new AppError('FORBIDDEN', 'You do not have permission to perform this action.', 403);
     default:

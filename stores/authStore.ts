@@ -49,14 +49,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       data: { session },
     } = await supabase.auth.getSession();
 
-    set({
-      session,
-      isAuthenticated: !!session,
-      isInitialized: true,
-      isLoading: false,
-    });
-
-    // If we have a session, fetch the profile
+    // If we have a session, fetch the profile BEFORE marking as initialized
+    // so that isAdmin is correct the first time isInitialized becomes true.
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
@@ -68,6 +62,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         get().setProfile(data as Profile);
       }
     }
+
+    set({
+      session,
+      isAuthenticated: !!session,
+      isInitialized: true,
+      isLoading: false,
+    });
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

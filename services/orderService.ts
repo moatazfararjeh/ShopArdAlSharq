@@ -42,7 +42,7 @@ export async function getOrders(params: GetOrdersParams = {}): Promise<Order[]> 
 export async function getOrderById(orderId: string): Promise<Order> {
   const { data, error } = await supabase
     .from('orders')
-    .select('*, order_items(*, products(*, product_images(*)))')
+    .select('*, profiles(full_name, phone, email, company_name), order_items(*, products(*, product_images(*)))')
     .eq('id', orderId)
     .single();
   if (error) throw parseSupabaseError(error);
@@ -51,6 +51,7 @@ export async function getOrderById(orderId: string): Promise<Order> {
   const d = data as any;
   return {
     ...d,
+    profile: d.profiles ?? null,
     items: (d.order_items ?? []).map((item: any) => ({
       ...item,
       product: item.products ?? null,

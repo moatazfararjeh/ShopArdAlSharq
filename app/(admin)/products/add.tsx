@@ -196,7 +196,23 @@ export default function AddProductScreen() {
           )}
         />
 
-        {/* Unit section — one card per unit type, each independently toggleable */}
+        {/* Weight */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 2 }}>
+            <Controller control={control} name="weight"
+              render={({ field: { onChange, value, onBlur } }) => (
+                <Input label="الوزن" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" placeholder="مثال: 0.5" error={errors.weight?.message} />
+              )}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Controller control={control} name="weight_unit"
+              render={({ field: { onChange, value, onBlur } }) => (
+                <Input label="الوحدة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} placeholder="كغ / غ" error={errors.weight_unit?.message} />
+              )}
+            />
+          </View>
+        </View>
         <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>وحدات البيع</Text>
         {([
           { key: 'price_per_piece' as const,  icon: '🔢', label: 'بالحبة',    priceLabel: 'سعر الحبة (د.أ)' },

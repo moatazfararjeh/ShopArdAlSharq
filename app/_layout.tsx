@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCartSync } from '@/hooks/useCart';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import i18n from '@/i18n';
+import { Toast } from '@/components/ui/Toast';
 
 function AuthInitializer() {
   useAuth();
@@ -51,6 +52,7 @@ export default function RootLayout() {
       <PushInitializer />
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
+      <Toast />
     </QueryClientProvider>
   );
 }

@@ -14,6 +14,9 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   avatar_url: string | null;
+  company_name: string | null;
+  commercial_register_number: string | null;
+  commercial_register_url: string | null;
   role: UserRole;
   expo_push_token: string | null;
   created_at: string;
@@ -201,6 +204,7 @@ export interface Order {
   // Joined relations (optional) — both naming conventions for compatibility
   order_items?: OrderItem[];
   items?: OrderItem[];
+  profile?: { full_name: string | null; phone: string | null; email: string; company_name: string | null } | null;
 }
 
 // ─── Checkout Payload ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,12 @@ export default function AdminCategoriesScreen() {
   const deleteMutation = useDeleteCategory();
 
   function confirmDelete(id: string, name: string) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) {
+        deleteMutation.mutate(id);
+      }
+      return;
+    }
     Alert.alert(t('admin.confirmDelete'), name, [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(id) },

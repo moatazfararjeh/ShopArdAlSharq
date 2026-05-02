@@ -1,18 +1,21 @@
-﻿import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+﻿import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { checkoutSchema, CheckoutFormValues } from '@/schemas/checkoutSchema';
 import { usePlaceOrder } from '@/hooks/useOrders';
 import { useCart } from '@/hooks/useCart';
+import { useCartStore } from '@/stores/cartStore';
+import { upsertCartItem } from '@/services/cartService';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { formatPrice } from '@/utils/formatPrice';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useToastStore } from '@/stores/toastStore';
 
 interface SavedAddress {
   id: string;
@@ -29,8 +32,11 @@ export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { summary, clearCart } = useCart();
+  const cartItems = useCartStore((s) => s.items);
   const placeOrder = usePlaceOrder();
   const { session } = useAuthStore();
+  const { show: showToast } = useToastStore();
+  const scrollRef = useRef<any>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -99,6 +105,20 @@ export default function CheckoutScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
 
+      // Sync local Zustand cart → DB before placing order.
+      // Handles the case where a prior DB write failed silently.
+      if (cartItems.length === 0) {
+        const msg = 'السلة فارغة. يرجى إضافة منتجات أولاً.';
+        setSubmitError(msg);
+        showToast(msg, 'error');
+        return;
+      }
+      await Promise.all(
+        cartItems.map((item) =>
+          upsertCartItem(user.id, item.product_id, item.quantity, item.selected_unit),
+        ),
+      );
+
       let finalAddressId: string;
       let tempAddressId: string | null = null;
 
@@ -163,13 +183,16 @@ export default function CheckoutScreen() {
         params: { orderId: result.order_id, orderNumber: result.order_number },
       });
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'حدث خطأ، يرجى المحاولة مجددًا');
+      const msg = err instanceof Error ? err.message : 'حدث خطأ، يرجى المحاولة مجددًا';
+      setSubmitError(msg);
+      showToast(msg, 'error');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
         <Text style={{ fontSize: 20, fontWeight: '800', color: '#1c1917', marginBottom: 16 }}>{t('checkout.title')}</Text>
 
         {/* Errors */}
@@ -346,7 +369,15 @@ export default function CheckoutScreen() {
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#e6e0d8' }}>
         <Button
           title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmit, (fieldErrors) => {
+            const firstMsg = Object.values(fieldErrors)
+              .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
+              [0] as string | undefined;
+            const msg = firstMsg ?? 'يرجى ملء جميع الحقول المطلوبة';
+            setSubmitError(msg);
+            showToast(msg, 'error');
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+          })}
           isLoading={placeOrder.isPending}
           fullWidth
           size="lg"

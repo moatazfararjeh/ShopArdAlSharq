@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useToastStore } from '@/stores/toastStore';
 import {
   getCategories,
   getCategoryById,
@@ -66,8 +67,19 @@ export function useUpdateCategory(id: string) {
 
 export function useDeleteCategory() {
   const qc = useQueryClient();
+  const { show: showToast } = useToastStore();
   return useMutation({
     mutationFn: deleteCategory,
-    onSuccess: () => qc.invalidateQueries({ queryKey: categoryKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: categoryKeys.all });
+      showToast('تم حذف الفئة بنجاح', 'success');
+    },
+    onError: (err: Error) => {
+      const isFK = (err as any).code === 'FK_VIOLATION' || err.message?.includes('foreign key') || err.message?.includes('violates');
+      const msg = isFK
+        ? 'لا يمكن حذف الفئة لأنها تحتوي على منتجات. احذف المنتجات أولاً.'
+        : 'فشل حذف الفئة: ' + err.message;
+      showToast(msg, 'error');
+    },
   });
 }

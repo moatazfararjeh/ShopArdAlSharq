@@ -17,6 +17,14 @@ export const registerSchema = z
       .string()
       .min(2, 'الاسم يجب أن يكون على الأقل حرفين')
       .max(80, 'الاسم يجب ألا يتجاوز 80 حرفًا'),
+    companyName: z
+      .string()
+      .min(2, 'اسم الشركة مطلوب (حرفان على الأقل)')
+      .max(120, 'اسم الشركة يجب ألا يتجاوز 120 حرفًا'),
+    commercialRegisterNumber: z
+      .string()
+      .min(1, 'رقم السجل التجاري مطلوب')
+      .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا'),
     phone: z
       .string()
       .min(1, 'رقم الجوال مطلوب')
@@ -33,6 +41,17 @@ export const registerSchema = z
         'كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل',
       ),
     confirmPassword: z.string().min(1, 'تأكيد كلمة المرور مطلوب'),
+    companyName: z
+      .string()
+      .min(2, 'اسم الشركة مطلوب (حرفان على الأقل)')
+      .max(120, 'اسم الشركة يجب ألا يتجاوز 120 حرفًا'),
+    commercialRegisterNumber: z
+      .string()
+      .min(1, 'رقم السجل التجاري مطلوب')
+      .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا'),
+    commercialRegisterUri: z.string().optional(),
+    commercialRegisterName: z.string().optional(),
+    commercialRegisterMime: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'كلمات المرور غير متطابقة',

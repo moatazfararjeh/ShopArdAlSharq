@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useAdminOrders } from '@/hooks/useOrders';
 import { formatPrice } from '@/utils/formatPrice';
 
@@ -35,7 +36,16 @@ export default function AdminDashboardScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView contentContainerClassName="p-4 gap-4">
-        <Text className="text-2xl font-bold text-gray-900">{t('admin.dashboard')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text className="text-2xl font-bold text-gray-900">{t('admin.dashboard')}</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(customer)/home' as any)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#fff0eb', borderRadius: 12 }}
+          >
+            <Ionicons name="storefront-outline" size={16} color="#e36523" />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#e36523' }}>التطبيق</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Stats row */}
         <View className="flex-row gap-3">
@@ -53,6 +63,7 @@ export default function AdminDashboardScreen() {
           { label: t('admin.manageCategories'), route: '/(admin)/categories/' as const },
           { label: t('admin.manageOrders'), route: '/(admin)/orders/' as const },
           { label: 'البانرات الإعلانية', route: '/(admin)/banners/' as const },
+          { label: 'إدارة الحسابات', route: '/(admin)/users/' as const },
         ].map((item) => (
           <TouchableOpacity
             key={item.route}

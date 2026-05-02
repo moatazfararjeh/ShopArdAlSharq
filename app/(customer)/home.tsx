@@ -76,7 +76,7 @@ function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: s
   );
 }
 
-function HeroBanner({ locale }: { locale: string }) {
+function HeroBanner({ locale, onCategorySelect }: { locale: string; onCategorySelect: (categoryId: string) => void }) {
   const router = useRouter();
   const { data: banners } = useBanners(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -89,8 +89,7 @@ function HeroBanner({ locale }: { locale: string }) {
     if (banner.link_type === 'product') {
       router.push(`/(public)/products/${banner.link_value}` as any);
     } else if (banner.link_type === 'category') {
-      // Signal home to filter by this category — use a query param approach via navigation
-      router.push({ pathname: '/(customer)/home', params: { categoryId: banner.link_value } } as any);
+      onCategorySelect(banner.link_value);
     }
   }
 
@@ -229,7 +228,7 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             {/* Hero banner */}
-            <HeroBanner locale={locale} />
+            <HeroBanner locale={locale} onCategorySelect={(id) => setSelectedCategory(id)} />
 
             {/* Categories section */}
             {categories && categories.length > 0 && (

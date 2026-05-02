@@ -32,7 +32,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
 
   let query = supabase
     .from('products')
-    .select('*, product_images(*)', { count: 'exact' })
+    .select('*, product_images(*), categories(name_ar, name_en)', { count: 'exact' })
     .range(page * limit, (page + 1) * limit - 1);
 
   if (availableOnly) query = query.eq('is_available', true);
