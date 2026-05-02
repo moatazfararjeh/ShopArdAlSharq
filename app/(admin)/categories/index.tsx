@@ -47,7 +47,7 @@ export default function AdminCategoriesScreen() {
             <View className="flex-row gap-2">
               <TouchableOpacity
                 className="rounded-lg bg-gray-100 px-3 py-1.5"
-                onPress={() => {}}
+                onPress={() => router.push(`/(admin)/categories/${item.id}` as any)}
               >
                 <Text className="text-sm">{t('common.edit')}</Text>
               </TouchableOpacity>
