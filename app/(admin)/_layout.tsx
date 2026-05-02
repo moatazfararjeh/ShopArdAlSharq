@@ -11,7 +11,7 @@ export default function AdminLayout() {
     if (!isAuthenticated) {
       router.replace('/(public)/login');
     } else if (!isAdmin) {
-      router.replace('/(customer)/');
+      router.replace('/(customer)/home');
     }
   }, [isAuthenticated, isAdmin, isInitialized]);
 
