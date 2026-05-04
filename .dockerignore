@@ -2,6 +2,35 @@ node_modules
 .expo
 dist
 .env
+.env.*
 .git
 *.md
 .dockerignore
+
+# Native build artifacts (not needed for web export)
+ios/
+android/
+.kotlin/
+
+# Coolify / EAS / CI config
+eas.json
+.easignore
+
+# Supabase migrations and scripts (not needed at build time)
+supabase/
+
+# Example / design mockups
+Example des/
+
+# Logs and debug files
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo

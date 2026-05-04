@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ---- Build Stage ----
 FROM node:22-slim AS builder
 
@@ -28,7 +29,9 @@ ENV EXPO_PUBLIC_ENABLE_REVIEWS=$EXPO_PUBLIC_ENABLE_REVIEWS
 COPY package.json package-lock.json ./
 
 # Install ALL dependencies (including devDeps needed for expo build)
-RUN npm ci --legacy-peer-deps --ignore-scripts
+# --mount=type=cache persists the npm cache between Coolify deploys, avoiding re-downloading packages
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps --ignore-scripts
 
 # Copy source code
 COPY . .
