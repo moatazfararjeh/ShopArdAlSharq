@@ -182,7 +182,7 @@ export default function AddProductScreen() {
         />
         <Controller control={control} name="price"
           render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="السعر (ريال) *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.price?.message} />
+            <Input label="السعر *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.price?.message} />
           )}
         />
         <Controller control={control} name="discount_price"
