@@ -46,6 +46,7 @@ export default function Root({ children }: PropsWithChildren) {
           `,
         }} />
 
+        <link rel="icon" type="image/png" href="/assets/logo.png" />
         <ScrollViewStyleReset />
       </head>
       <body style={{ height: '100%' }}>
