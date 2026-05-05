@@ -13,7 +13,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   pending:    { bg: '#fff7ed', text: '#ea580c', label: '⏳' },
   confirmed:  { bg: '#eff6ff', text: '#2563eb', label: '✅' },
   preparing:  { bg: '#fefce8', text: '#ca8a04', label: '👨‍🍳' },
-  ready:      { bg: '#f0fdf4', text: '#16a34a', label: '🎉' },
+  shipped:    { bg: '#f5f3ff', text: '#7c3aed', label: '🚚' },
   delivered:  { bg: '#f0fdf4', text: '#15803d', label: '📦' },
   cancelled:  { bg: '#fef2f2', text: '#dc2626', label: '❌' },
 };

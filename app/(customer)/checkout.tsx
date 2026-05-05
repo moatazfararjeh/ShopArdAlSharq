@@ -57,13 +57,13 @@ export default function CheckoutScreen() {
         label: 'المنزل',
         recipient_name: '',
         phone: '',
-        city: '',
+        city: 'عمان' as 'عمان' | 'الزرقاء',
         district: '',
         street: '',
-        building_number: '',
-        floor_number: '',
-        apartment_number: '',
-        notes: '',
+        building_number: undefined,
+        floor_number: undefined,
+        apartment_number: undefined,
+        notes: undefined,
         is_default: false,
       },
     },
@@ -75,6 +75,21 @@ export default function CheckoutScreen() {
     if (id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue('new_address', undefined as any);
+    } else {
+      // Restore default new_address values when switching back to "new"
+      setValue('new_address', {
+        label: 'المنزل',
+        recipient_name: '',
+        phone: '',
+        city: 'عمان',
+        district: '',
+        street: '',
+        building_number: undefined,
+        floor_number: undefined,
+        apartment_number: undefined,
+        notes: undefined,
+        is_default: false,
+      });
     }
   }
 
@@ -290,26 +305,44 @@ export default function CheckoutScreen() {
             <Controller control={control} name="new_address.phone"
               render={({ field: { onChange, value, onBlur } }) => (
                 <Input label="رقم الجوال *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="07xxxxxxxx" keyboardType="phone-pad"
+                  placeholder="07xxxxxxxx" keyboardType="phone-pad" maxLength={10}
                   error={errors.new_address?.phone?.message} />
               )} />
 
             <Controller control={control} name="new_address.city"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="المدينة *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="عمّان" error={errors.new_address?.city?.message} />
+              render={({ field: { onChange, value } }) => (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'right' }}>المدينة *</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {(['الزرقاء', 'عمان'] as const).map((city) => (
+                      <TouchableOpacity
+                        key={city}
+                        onPress={() => onChange(city)}
+                        style={{
+                          flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
+                          backgroundColor: value === city ? '#1c1917' : '#f3f4f6',
+                          borderWidth: 1.5,
+                          borderColor: value === city ? '#1c1917' : '#e5e7eb',
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: value === city ? '#fff' : '#374151' }}>{city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {errors.new_address?.city && <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, textAlign: 'right' }}>{errors.new_address.city.message}</Text>}
+                </View>
               )} />
 
             <Controller control={control} name="new_address.district"
               render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الحي / المنطقة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="اسم الحي (اختياري)" error={errors.new_address?.district?.message} />
+                <Input label="الحي *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                  placeholder="اسم الحي" error={errors.new_address?.district?.message} />
               )} />
 
             <Controller control={control} name="new_address.street"
               render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الشارع" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="اسم الشارع (اختياري)" error={errors.new_address?.street?.message} />
+                <Input label="الشارع *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                  placeholder="اسم الشارع" error={errors.new_address?.street?.message} />
               )} />
 
             {/* Save address toggle */}

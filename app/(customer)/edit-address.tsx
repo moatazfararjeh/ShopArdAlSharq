@@ -24,13 +24,13 @@ export default function EditAddressScreen() {
       label: '',
       recipient_name: '',
       phone: '',
-      city: '',
+      city: 'عمان' as 'عمان' | 'الزرقاء',
       district: '',
       street: '',
-      building_number: '',
-      floor_number: '',
-      apartment_number: '',
-      notes: '',
+      building_number: undefined,
+      floor_number: undefined,
+      apartment_number: undefined,
+      notes: undefined,
       is_default: false,
     },
   });
@@ -43,13 +43,13 @@ export default function EditAddressScreen() {
         label: data.label ?? '',
         recipient_name: data.recipient_name ?? '',
         phone: data.phone ?? '',
-        city: data.city ?? '',
+        city: (data.city === 'عمان' || data.city === 'الزرقاء') ? data.city : 'عمان',
         district: data.district ?? '',
         street: data.street ?? '',
-        building_number: data.building_number ?? '',
-        floor_number: data.floor_number ?? '',
-        apartment_number: data.apartment_number ?? '',
-        notes: data.notes ?? '',
+        building_number: data.building_number ?? undefined,
+        floor_number: data.floor_number ?? undefined,
+        apartment_number: data.apartment_number ?? undefined,
+        notes: data.notes ?? undefined,
         is_default: data.is_default ?? false,
       });
     });
@@ -121,49 +121,46 @@ export default function EditAddressScreen() {
         <Controller control={control} name="phone"
           render={({ field: { onChange, value, onBlur } }) => (
             <Input label="رقم الجوال *" value={value} onChangeText={onChange} onBlur={onBlur}
-              placeholder="07xxxxxxxx" keyboardType="phone-pad" error={errors.phone?.message} />
+              placeholder="07xxxxxxxx" keyboardType="phone-pad" maxLength={10} error={errors.phone?.message} />
           )}
         />
         <Controller control={control} name="city"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="المدينة *" value={value} onChangeText={onChange} onBlur={onBlur}
-              placeholder="عمّان" error={errors.city?.message} />
+          render={({ field: { onChange, value } }) => (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'right' }}>المدينة *</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {(['الزرقاء', 'عمان'] as const).map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    onPress={() => onChange(city)}
+                    style={{
+                      flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
+                      backgroundColor: value === city ? '#1c1917' : '#f3f4f6',
+                      borderWidth: 1.5,
+                      borderColor: value === city ? '#1c1917' : '#e5e7eb',
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: value === city ? '#fff' : '#374151' }}>{city}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.city && <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, textAlign: 'right' }}>{errors.city.message}</Text>}
+            </View>
           )}
         />
         <Controller control={control} name="district"
           render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="الحي / المنطقة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-              placeholder="اسم الحي (اختياري)" />
+            <Input label="الحي *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+              placeholder="اسم الحي" error={errors.district?.message} />
           )}
         />
         <Controller control={control} name="street"
           render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="الشارع" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-              placeholder="اسم الشارع (اختياري)" />
+            <Input label="الشارع *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+              placeholder="اسم الشارع" error={errors.street?.message} />
           )}
         />
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Controller control={control} name="building_number"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="رقم المبنى" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} />
-              )}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Controller control={control} name="floor_number"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="رقم الدور" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" />
-              )}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Controller control={control} name="apartment_number"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="رقم الشقة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} />
-              )}
-            />
-          </View>
         </View>
         <Controller control={control} name="notes"
           render={({ field: { onChange, value, onBlur } }) => (

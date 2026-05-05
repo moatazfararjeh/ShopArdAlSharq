@@ -1,40 +1,34 @@
 import { z } from 'zod';
 
-// Jordanian mobile: 07x-xxxx-xxxx or +9627xxxxxxxx (10 digits starting with 07, or +9627)
-const jordanianPhoneRegex = /^(\+9627|007|07)\d{8}$/;
+// Jordanian mobile: exactly 10 digits starting with 07
+const jordanianPhoneRegex = /^07\d{8}$/;
 
 export const addressSchema = z.object({
   label: z
-    .string()
+    .string({ error: 'تسمية العنوان مطلوبة' })
     .min(1, 'تسمية العنوان مطلوبة')
     .max(50, 'التسمية يجب ألا تتجاوز 50 حرفًا'),
   recipient_name: z
-    .string()
+    .string({ error: 'اسم المستلم مطلوب' })
     .min(2, 'اسم المستلم مطلوب')
     .max(80, 'الاسم يجب ألا يتجاوز 80 حرفًا'),
   phone: z
-    .string()
+    .string({ error: 'رقم الجوال مطلوب' })
     .min(1, 'رقم الجوال مطلوب')
     .regex(jordanianPhoneRegex, 'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)'),
-  city: z.string().min(1, 'المدينة مطلوبة').max(80, 'المدينة يجب ألا تتجاوز 80 حرفًا'),
-  district: z.string().max(80, 'الحي يجب ألا يتجاوز 80 حرفًا').optional().or(z.literal('')),
-  street: z.string().max(150, 'الشارع يجب ألا يتجاوز 150 حرفًا').optional().or(z.literal('')),
-  building_number: z
-    .string()
-    .max(20, 'رقم المبنى يجب ألا يتجاوز 20 حرفًا')
-    .optional()
-    .or(z.literal('')),
-  floor_number: z
-    .string()
-    .max(10, 'رقم الدور يجب ألا يتجاوز 10 أحرف')
-    .optional()
-    .or(z.literal('')),
-  apartment_number: z
-    .string()
-    .max(10, 'رقم الشقة يجب ألا يتجاوز 10 أحرف')
-    .optional()
-    .or(z.literal('')),
-  notes: z.string().max(200, 'الملاحظات يجب ألا تتجاوز 200 حرف').optional().or(z.literal('')),
+  city: z.enum(['عمان', 'الزرقاء'], { error: 'يرجى اختيار المدينة' }),
+  district: z
+    .string({ error: 'الحي مطلوب' })
+    .min(1, 'الحي مطلوب')
+    .max(80, 'الحي يجب ألا يتجاوز 80 حرفًا'),
+  street: z
+    .string({ error: 'الشارع مطلوب' })
+    .min(1, 'الشارع مطلوب')
+    .max(150, 'الشارع يجب ألا يتجاوز 150 حرفًا'),
+  building_number: z.string().max(20).optional(),
+  floor_number: z.string().max(10).optional(),
+  apartment_number: z.string().max(10).optional(),
+  notes: z.string().max(200, 'الملاحظات يجب ألا تتجاوز 200 حرف').optional(),
   is_default: z.boolean(),
 });
 

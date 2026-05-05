@@ -14,7 +14,7 @@ function printOrderWindow(order: Order, locale: string) {
 
   const statusLabelAr: Record<string, string> = {
     pending: 'قيد الانتظار', confirmed: 'تم التأكيد', preparing: 'جارٍ التحضير',
-    ready: 'جاهز للاستلام', delivered: 'تم التسليم', cancelled: 'ملغى',
+    shipped: 'طلبك في الطريق', delivered: 'تم التسليم', cancelled: 'ملغى',
   };
 
   const paymentMethodAr: Record<string, string> = {
@@ -178,19 +178,19 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   pending:    { bg: '#fff7ed', text: '#ea580c', label: '⏳' },
   confirmed:  { bg: '#eff6ff', text: '#2563eb', label: '✅' },
   preparing:  { bg: '#fefce8', text: '#ca8a04', label: '👨‍🍳' },
-  ready:      { bg: '#f0fdf4', text: '#16a34a', label: '🎉' },
+  shipped:    { bg: '#f5f3ff', text: '#7c3aed', label: '🚚' },
   delivered:  { bg: '#f0fdf4', text: '#15803d', label: '📦' },
   cancelled:  { bg: '#fef2f2', text: '#dc2626', label: '❌' },
 };
 
 // Ordered flow — cancelled is handled separately
-const STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'] as const;
+const STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered'] as const;
 
 const STATUS_META: Record<string, { icon: string; labelAr: string }> = {
   pending:   { icon: '⏳', labelAr: 'قيد الانتظار' },
   confirmed: { icon: '✅', labelAr: 'تم التأكيد' },
   preparing: { icon: '👨‍🍳', labelAr: 'جارٍ التحضير' },
-  ready:     { icon: '🎉', labelAr: 'جاهز للاستلام' },
+  shipped:   { icon: '🚚', labelAr: 'طلبك في الطريق' },
   delivered: { icon: '📦', labelAr: 'تم التسليم' },
   cancelled: { icon: '❌', labelAr: 'ملغى' },
 };
