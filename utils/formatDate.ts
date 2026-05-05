@@ -2,7 +2,7 @@
  * Formats an ISO date string for display.
  * Falls back gracefully if the input is invalid.
  */
-export function formatDate(isoString: string, locale: string = 'ar-SA'): string {
+export function formatDate(isoString: string, locale: string = 'ar-JO'): string {
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
   return date.toLocaleDateString(locale, {
@@ -15,7 +15,7 @@ export function formatDate(isoString: string, locale: string = 'ar-SA'): string 
 /**
  * Formats both date and time.
  */
-export function formatDateTime(isoString: string, locale: string = 'ar-SA'): string {
+export function formatDateTime(isoString: string, locale: string = 'ar-JO'): string {
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
   return date.toLocaleString(locale, {

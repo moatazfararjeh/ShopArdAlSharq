@@ -73,12 +73,15 @@ export default function AdminBannersScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
       {/* Header bar */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>البانرات الإعلانية</Text>
         <Button
           title="+ إضافة بانر"
           size="sm"
           onPress={() => router.push('/(admin)/banners/add')}
         />
+        <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>البانرات الإعلانية</Text>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (

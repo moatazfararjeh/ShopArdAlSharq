@@ -95,12 +95,17 @@ function OrderCard({ item }: { item: Order }) {
 
 export default function AdminOrdersScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { data: orders, isLoading } = useAdminOrders();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
-      <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
+      <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e6e0d8', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ width: 36 }} />
         <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>{t('admin.manageOrders')}</Text>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList

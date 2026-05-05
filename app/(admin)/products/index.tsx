@@ -40,12 +40,15 @@ export default function AdminProductsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="flex-row items-center justify-between bg-white px-4 py-3 shadow-sm">
-        <Text className="text-lg font-bold text-gray-900">{t('admin.manageProducts')}</Text>
         <Button
           title={t('admin.addProduct')}
           size="sm"
           onPress={() => router.push('/(admin)/products/add')}
         />
+        <Text className="text-lg font-bold text-gray-900">{t('admin.manageProducts')}</Text>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList

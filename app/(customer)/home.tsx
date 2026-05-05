@@ -171,19 +171,19 @@ export default function HomeScreen() {
             borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, gap: 8,
             borderWidth: 1, borderColor: '#e6e0d8',
           }}>
-            <Ionicons name="search-outline" size={17} color="#9ca3af" />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t('products.search')}
-              style={{ flex: 1, fontSize: 14, color: '#111827' }}
-              placeholderTextColor="#9ca3af"
-            />
             {search.length > 0 ? (
               <TouchableOpacity onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={17} color="#9ca3af" />
               </TouchableOpacity>
             ) : null}
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t('products.search')}
+              style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' }}
+              placeholderTextColor="#9ca3af"
+            />
+            <Ionicons name="search-outline" size={17} color="#9ca3af" />
           </View>
 
           {/* Notification bell */}
@@ -237,20 +237,9 @@ export default function HomeScreen() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+                  style={{ transform: [{ scaleX: -1 }] }}
                 >
-                  {/* All pill */}
-                  <TouchableOpacity
-                    onPress={() => setSelectedCategory(undefined)}
-                    style={{
-                      paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
-                      backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1',
-                      borderWidth: 0,
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: !selectedCategory ? '#fff' : '#857d78' }}>
-                      {t('categories.allCategories')}
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Wrap each item with scaleX:-1 to un-flip content */}
                   {categories.map((cat) => (
                     <TouchableOpacity
                       key={cat.id}
@@ -259,6 +248,7 @@ export default function HomeScreen() {
                         paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
                         backgroundColor: selectedCategory === cat.id ? '#1c1917' : '#ede8e1',
                         borderWidth: 0,
+                        transform: [{ scaleX: -1 }],
                       }}
                     >
                       <Text style={{ fontSize: 13, fontWeight: '600', color: selectedCategory === cat.id ? '#fff' : '#857d78' }}>
@@ -266,17 +256,26 @@ export default function HomeScreen() {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                  {/* All pill — last in JSX = rightmost visually in RTL */}
+                  <TouchableOpacity
+                    onPress={() => setSelectedCategory(undefined)}
+                    style={{
+                      paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
+                      backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1',
+                      borderWidth: 0,
+                      transform: [{ scaleX: -1 }],
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: !selectedCategory ? '#fff' : '#857d78' }}>
+                      {t('categories.allCategories')}
+                    </Text>
+                  </TouchableOpacity>
                 </ScrollView>
               </View>
             )}
 
             {/* Products section header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 22, marginBottom: 6 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>
-                {selectedCategory
-                  ? t('products.categoryProducts', { defaultValue: 'المنتجات' })
-                  : t('products.allProducts')}
-              </Text>
               {products.length > 0 && (
                 <TouchableOpacity>
                   <Text style={{ fontSize: 13, color: '#e36523', fontWeight: '600' }}>
@@ -284,6 +283,11 @@ export default function HomeScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>
+                {selectedCategory
+                  ? t('products.categoryProducts', { defaultValue: 'المنتجات' })
+                  : t('products.allProducts')}
+              </Text>
             </View>
           </>
         }

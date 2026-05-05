@@ -28,12 +28,12 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
   if (!value) return null;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f3f0eb' }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '500', textAlign: 'right' }}>{label}</Text>
+        <Text style={{ fontSize: 14, color: '#1c1917', fontWeight: '600', marginTop: 1, textAlign: 'right' }}>{value}</Text>
+      </View>
       <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#fff0eb', alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name={icon} size={16} color="#e36523" />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '500' }}>{label}</Text>
-        <Text style={{ fontSize: 14, color: '#1c1917', fontWeight: '600', marginTop: 1 }}>{value}</Text>
       </View>
     </View>
   );
@@ -58,15 +58,15 @@ function OrderRow({ order, onPress }: { order: Order; onPress: () => void }) {
       activeOpacity={0.75}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#1c1917' }}>#{order.order_number}</Text>
         <OrderStatusBadge status={order.status} />
+        <Text style={{ fontSize: 14, fontWeight: '800', color: '#1c1917' }}>#{order.order_number}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontSize: 12, color: '#857d78' }}>{formatDate(order.created_at)}</Text>
         <Text style={{ fontSize: 14, fontWeight: '700', color: '#e36523' }}>{formatPrice(order.total_amount)}</Text>
+        <Text style={{ fontSize: 12, color: '#857d78' }}>{formatDate(order.created_at)}</Text>
       </View>
       {order.items && order.items.length > 0 && (
-        <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+        <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, textAlign: 'right' }}>
           {order.items.length} منتج
         </Text>
       )}
@@ -125,15 +125,6 @@ export default function AdminUserDetailScreen() {
         backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14,
         borderBottomWidth: 1, borderBottomColor: '#e6e0d8',
       }}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/users/' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="arrow-back" size={22} color="#1c1917" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917' }} numberOfLines={1}>
-            {user.full_name || 'بدون اسم'}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#857d78' }} numberOfLines={1}>{user.email}</Text>
-        </View>
         <View style={{
           paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
           backgroundColor: user.role === 'admin' ? '#fff0eb' : '#f3f4f6',
@@ -142,6 +133,15 @@ export default function AdminUserDetailScreen() {
             {user.role === 'admin' ? 'مسؤول' : 'عميل'}
           </Text>
         </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', textAlign: 'right' }} numberOfLines={1}>
+            {user.full_name || 'بدون اسم'}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#857d78', textAlign: 'right' }} numberOfLines={1}>{user.email}</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/users/' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="arrow-forward" size={22} color="#1c1917" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -166,8 +166,8 @@ export default function AdminUserDetailScreen() {
                 const cfg = ORDER_STATUS_LABELS[status as any];
                 return (
                   <View key={status} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cfg?.color ?? '#6b7280' }} />
                     <Text style={{ fontSize: 12, color: '#374151' }}>{cfg?.ar ?? status}: {count}</Text>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cfg?.color ?? '#6b7280' }} />
                   </View>
                 );
               })}
@@ -212,12 +212,12 @@ export default function AdminUserDetailScreen() {
                 flexDirection: 'row', alignItems: 'center', gap: 10,
               }}
             >
-              <Ionicons name="document-text" size={24} color="#10b981" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917' }}>عرض السجل التجاري</Text>
-                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>اضغط لفتح المستند</Text>
-              </View>
               <Ionicons name="open-outline" size={18} color="#9ca3af" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917', textAlign: 'right' }}>عرض السجل التجاري</Text>
+                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, textAlign: 'right' }}>اضغط لفتح المستند</Text>
+              </View>
+              <Ionicons name="document-text" size={24} color="#10b981" />
             </TouchableOpacity>
           </>
         ) : (
@@ -228,8 +228,8 @@ export default function AdminUserDetailScreen() {
               borderWidth: 1, borderStyle: 'dashed', borderColor: '#d1d5db',
               flexDirection: 'row', alignItems: 'center', gap: 8,
             }}>
-              <Ionicons name="document-outline" size={20} color="#9ca3af" />
               <Text style={{ fontSize: 13, color: '#9ca3af' }}>لم يتم رفع سجل تجاري</Text>
+              <Ionicons name="document-outline" size={20} color="#9ca3af" />
             </View>
           </>
         )}

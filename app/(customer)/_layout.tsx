@@ -40,24 +40,12 @@ export default function CustomerLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="profile"
         options={{
-          title: 'الرئيسية',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          title: 'حسابي',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="search"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="wishlist"
-        options={{
-          title: 'المفضلة',
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen
         name="cart"
         options={{
@@ -68,13 +56,22 @@ export default function CustomerLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="wishlist"
         options={{
-          title: 'حسابي',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          title: 'المفضلة',
+          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'الرئيسية',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       {/* Hidden screens — not tabs */}
+      <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="orders/index" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
       <Tabs.Screen name="order-success" options={{ href: null }} />
