@@ -227,6 +227,18 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f9f7f5', gap: 10, paddingTop: 10 }}
         ListHeaderComponent={
           <>
+            {/* Delivery coverage notice */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              gap: 6, marginHorizontal: 16, marginTop: 10, marginBottom: 2,
+              backgroundColor: '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
+              borderWidth: 1, borderColor: '#fde0c8',
+            }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#c2410c' }}>
+                🚚 التوصيل يغطي منطقتي عمان و الزرقاء
+              </Text>
+            </View>
+
             {/* Hero banner */}
             <HeroBanner locale={locale} onCategorySelect={(id) => setSelectedCategory(id)} />
 
