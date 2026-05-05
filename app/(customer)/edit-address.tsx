@@ -99,7 +99,7 @@ export default function EditAddressScreen() {
         borderBottomWidth: 1, borderBottomColor: '#e6e0d8',
       }}>
         <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/addresses' as any)}>
-          <Ionicons name="arrow-back" size={22} color="#1c1917" />
+          <Ionicons name="arrow-forward" size={22} color="#1c1917" />
         </TouchableOpacity>
         <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>تعديل العنوان</Text>
         <View style={{ width: 22 }} />

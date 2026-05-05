@@ -38,7 +38,7 @@ function NavRow({ icon, label, onPress, danger }: { icon: string; label: string;
         {label}
       </Text>
       {onPress && !danger && (
-        <Text style={{ color: '#9ca3af', fontSize: 20 }}>›</Text>
+        <Text style={{ color: '#9ca3af', fontSize: 20 }}>‹</Text>
       )}
     </TouchableOpacity>
   );
@@ -359,7 +359,7 @@ export default function ProfileScreen() {
                 {uploadingDoc ? 'جارٍ الرفع...' : (profile as any)?.commercial_register_url ? 'تم الرفع ✓' : 'لم يتم الرفع — اضغط للرفع'}
               </Text>
             </View>
-            <Text style={{ color: '#9ca3af', fontSize: 20 }}>›</Text>
+            <Text style={{ color: '#9ca3af', fontSize: 20 }}>‹</Text>
           </TouchableOpacity>
           {/* Language toggle hidden */}
         </View>

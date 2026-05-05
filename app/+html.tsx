@@ -31,6 +31,7 @@ export default function Root({ children }: PropsWithChildren) {
               overflow: hidden;
               margin: 0;
               padding: 0;
+              direction: rtl;
             }
             @media print {
               html, body, #root {

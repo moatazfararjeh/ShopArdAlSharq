@@ -70,8 +70,8 @@ export default function AdminDashboardScreen() {
             onPress={() => router.push(item.route)}
             className="flex-row items-center justify-between rounded-2xl bg-white p-4 shadow-sm"
           >
+            <Ionicons name="chevron-forward" size={18} color="#d1d5db" />
             <Text className="font-medium text-gray-800">{item.label}</Text>
-            <Text className="text-gray-400">←</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

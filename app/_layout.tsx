@@ -2,6 +2,9 @@ import '../global.css';
 import '../i18n';
 import { useEffect } from 'react';
 import { I18nManager } from 'react-native';
+
+// Force RTL at module level so React Native Web applies it before first render
+I18nManager.forceRTL(true);
 import { Stack } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -28,10 +31,8 @@ function PushInitializer() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // App is Arabic-only — always enforce RTL
-    if (!I18nManager.isRTL) {
-      I18nManager.forceRTL(true);
-    }
+    // Redundant safety — already set at module level above
+    I18nManager.forceRTL(true);
   }, []);
 
   return (

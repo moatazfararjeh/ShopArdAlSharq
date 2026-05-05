@@ -67,7 +67,7 @@ function OrderCard({ item }: { item: Order }) {
             {updateStatus.isPending ? (
               <ActivityIndicator size="small" color={nextColor} />
             ) : (
-              <Text style={{ fontSize: 13, fontWeight: '700', color: nextColor }}>← {nextLabel}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: nextColor }}>{nextLabel} ←</Text>
             )}
           </TouchableOpacity>
         )}

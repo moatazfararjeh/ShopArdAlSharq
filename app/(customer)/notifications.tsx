@@ -109,7 +109,7 @@ export default function NotificationsScreen() {
           onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/home' as any)}
           style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ fontSize: 18, color: '#374151' }}>‹</Text>
+          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: '#1c1917' }}>التنبيهات</Text>
         {hasUnread && (

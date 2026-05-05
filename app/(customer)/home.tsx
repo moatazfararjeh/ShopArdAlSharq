@@ -66,7 +66,7 @@ function HeroBannerCard({ banner, locale, onPress }: { banner: Banner; locale: s
         />
       )}
       {buttonText ? (
-        <View style={{ position: 'absolute', bottom: 16, left: 22 }}>
+        <View style={{ position: 'absolute', bottom: 16, right: 22 }}>
           <View style={{ backgroundColor: '#ffffff', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8 }}>
             <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>{buttonText}</Text>
           </View>

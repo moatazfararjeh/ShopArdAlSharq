@@ -29,6 +29,7 @@ export const Input = forwardRef<TextInput, InputProps>(
               paddingVertical: 13,
               fontSize: 15,
               color: '#111827',
+              textAlign: 'right',
               shadowColor: focused ? '#f97316' : 'transparent',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.12,

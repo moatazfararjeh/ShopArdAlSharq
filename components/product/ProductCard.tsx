@@ -68,27 +68,27 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           </View>
         )}
 
-        {/* NEW badge — top left */}
-        <View style={{ position: 'absolute', top: 10, left: 10 }}>
+        {/* NEW badge — top right (RTL start) */}
+        <View style={{ position: 'absolute', top: 10, right: 10 }}>
           <View style={{ backgroundColor: '#e36523', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
             <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.6 }}>{locale === 'ar' ? 'جديد' : 'New'}</Text>
           </View>
         </View>
 
-        {/* Sale badge — top right, before heart */}
+        {/* Sale badge — top left (RTL end), before heart */}
         {discounted && !outOfStock && (
-          <View style={{ position: 'absolute', top: 10, right: 44 }}>
+          <View style={{ position: 'absolute', top: 10, left: 44 }}>
             <View style={{ backgroundColor: '#f4c025', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ color: '#1c1917', fontSize: 10, fontWeight: '700' }}>{locale === 'ar' ? 'تخفيض' : 'Sale'}</Text>
             </View>
           </View>
         )}
 
-        {/* Heart / wishlist button — top right */}
+        {/* Heart / wishlist button — top left (RTL end) */}
         <TouchableOpacity
           onPress={() => toggleFavorite.mutate({ productId: product.id, isFavorited: liked })}
           style={{
-            position: 'absolute', top: 10, right: 10,
+            position: 'absolute', top: 10, left: 10,
             width: 32, height: 32, borderRadius: 16,
             backgroundColor: 'rgba(253,252,251,0.82)',
             alignItems: 'center', justifyContent: 'center',

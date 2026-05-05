@@ -94,7 +94,7 @@ export function Button({
       {...rest}
     >
       {isLoading && (
-        <View style={{ marginRight: 8 }}>
+        <View style={{ marginEnd: 8 }}>
           <ActivityIndicator size="small" color={textColor} />
         </View>
       )}

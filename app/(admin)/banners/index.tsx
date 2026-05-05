@@ -31,7 +31,7 @@ export default function AdminBannersScreen() {
         <View style={{ height: 6, backgroundColor: item.bg_color ?? '#1e1a17' }} />
         <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center' }}>
           {/* Emoji preview */}
-          <Text style={{ fontSize: 32, marginRight: 12 }}>{item.emoji ?? '🥘'}</Text>
+          <Text style={{ fontSize: 32, marginEnd: 12 }}>{item.emoji ?? '🥘'}</Text>
 
           {/* Info */}
           <View style={{ flex: 1 }}>

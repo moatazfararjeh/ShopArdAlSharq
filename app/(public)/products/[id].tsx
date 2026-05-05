@@ -111,19 +111,19 @@ export default function ProductDetailScreen() {
           <TouchableOpacity
             onPress={() => goBack()}
             style={{
-              position: 'absolute', top: 50, left: 16,
+              position: 'absolute', top: 50, right: 16,
               width: 40, height: 40, borderRadius: 20,
               backgroundColor: 'rgba(255,255,255,0.95)',
               alignItems: 'center', justifyContent: 'center',
               shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
             }}
           >
-            <Text style={{ fontSize: 18, color: '#374151' }}>←</Text>
+            <Text style={{ fontSize: 18, color: '#374151' }}>→</Text>
           </TouchableOpacity>
           {/* Discount badge */}
           {discounted && (
             <View style={{
-              position: 'absolute', top: 50, right: 16,
+              position: 'absolute', top: 50, left: 16,
               backgroundColor: '#ef4444', borderRadius: 12,
               paddingHorizontal: 10, paddingVertical: 4,
             }}>

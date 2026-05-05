@@ -34,7 +34,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
         style={{ width: 84, height: 84, borderRadius: 16 }}
         contentFit="cover"
       />
-      <View style={{ flex: 1, marginLeft: 12 }}>
+      <View style={{ flex: 1, marginStart: 12 }}>
         <Text
           style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20 }}
           numberOfLines={1}
