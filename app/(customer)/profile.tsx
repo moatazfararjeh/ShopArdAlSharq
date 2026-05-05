@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadDocument } from '@/services/storageService';
-import { changeLocale, getCurrentLocale, SupportedLocale } from '@/i18n';
+
 
 function NavRow({ icon, label, onPress, danger }: { icon: string; label: string; onPress?: () => void; danger?: boolean }) {
   return (
@@ -49,7 +49,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { profile, session, setProfile } = useAuthStore();
   const signOut = useSignOut();
-  const [locale, setLocale] = useState<SupportedLocale>(getCurrentLocale());
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);

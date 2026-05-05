@@ -9,7 +9,6 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartSync } from '@/hooks/useCart';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import i18n from '@/i18n';
 import { Toast } from '@/components/ui/Toast';
 
 function AuthInitializer() {
@@ -29,20 +28,10 @@ function PushInitializer() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Force RTL on for Arabic at startup
+    // App is Arabic-only — always enforce RTL
     if (!I18nManager.isRTL) {
       I18nManager.forceRTL(true);
     }
-
-    // Re-apply RTL whenever language changes
-    const handler = (lng: string) => {
-      const shouldBeRTL = lng !== 'en';
-      if (I18nManager.isRTL !== shouldBeRTL) {
-        I18nManager.forceRTL(shouldBeRTL);
-      }
-    };
-    i18n.on('languageChanged', handler);
-    return () => { i18n.off('languageChanged', handler); };
   }, []);
 
   return (
