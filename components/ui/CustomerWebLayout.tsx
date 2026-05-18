@@ -9,20 +9,20 @@ import { useAuthStore } from '@/stores/authStore';
 import { useUnreadCount } from '@/hooks/useNotifications';
 
 const NAV_ITEMS = [
-  { label: 'الرئيسية',  icon: 'home-outline'          as const, activeIcon: 'home'          as const, path: '/home' },
-  { label: 'المفضلة',  icon: 'heart-outline'          as const, activeIcon: 'heart'          as const, path: '/wishlist' },
-  { label: 'السلة',    icon: 'bag-outline'            as const, activeIcon: 'bag'            as const, path: '/cart' },
-  { label: 'طلباتي',  icon: 'receipt-outline'        as const, activeIcon: 'receipt'        as const, path: '/orders' },
-  { label: 'حسابي',   icon: 'person-outline'         as const, activeIcon: 'person'         as const, path: '/profile' },
+  { label: 'الرئيسية',  icon: 'home-outline'   as const, activeIcon: 'home'    as const, path: '/home' },
+  { label: 'المفضلة',  icon: 'heart-outline'   as const, activeIcon: 'heart'   as const, path: '/wishlist' },
+  { label: 'السلة',    icon: 'bag-outline'     as const, activeIcon: 'bag'     as const, path: '/cart' },
+  { label: 'طلباتي',  icon: 'receipt-outline' as const, activeIcon: 'receipt' as const, path: '/orders' },
+  { label: 'حسابي',   icon: 'person-outline'  as const, activeIcon: 'person'  as const, path: '/profile' },
 ];
 
 const DESKTOP_BREAKPOINT = 768;
-const HEADER_HEIGHT = 64;
+const HEADER_HEIGHT      = 64;
+const BOTTOM_BAR_HEIGHT  = 64;
 
-/** Read the real browser viewport width — bypasses React Native's Dimensions which can lag on web. */
 function getBrowserWidth(): number {
   if (typeof window !== 'undefined') return window.innerWidth;
-  return 1200; // SSR / non-browser default → show desktop layout
+  return 1200;
 }
 
 export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
@@ -33,9 +33,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
   const signOutMutation = useSignOut();
   const profile         = useAuthStore((s) => s.profile);
 
-  // Use window.innerWidth directly so the correct value is read on first render
   const [winWidth, setWinWidth] = useState<number>(getBrowserWidth);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setWinWidth(window.innerWidth);
@@ -45,11 +43,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
 
   const isDesktop = winWidth >= DESKTOP_BREAKPOINT;
 
-  // Close drawer on navigation or when viewport grows to desktop
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
-  useEffect(() => { if (isDesktop) setMenuOpen(false); }, [isDesktop]);
-
-  // ── Inline sidebar content (not a nested component — avoids React remount) ──
+  // ── Sidebar content (desktop only) ──────────────────────────────────────
   const sidebarContent = (
     <>
       {profile && (
@@ -63,10 +57,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
       <View style={styles.divider} />
 
       {NAV_ITEMS.map((item) => {
-        const isActive =
-          pathname === item.path ||
-          (item.path === '/orders' && pathname.startsWith('/orders'));
-
+        const isActive = pathname === item.path || (item.path === '/orders' && pathname.startsWith('/orders'));
         return (
           <TouchableOpacity
             key={item.path}
@@ -114,7 +105,6 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           flexShrink: 0,
         }}
       >
-        {/* Logo */}
         <TouchableOpacity onPress={() => router.push('/(customer)/home' as any)} activeOpacity={0.8}>
           <Image source={require('@/assets/logo.png')} style={{ width: 120, height: 40 }} contentFit="contain" />
         </TouchableOpacity>
@@ -140,21 +130,17 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           </View>
         )}
 
-        {/* Mobile: cart badge + burger button */}
+        {/* Mobile: search + notifications + cart in header */}
         {!isDesktop && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <TouchableOpacity onPress={() => router.push('/(customer)/cart' as any)} style={[styles.headerBtn, { position: 'relative' }]}>
-              <Ionicons name="bag-outline" size={20} color="#5c4a35" />
-              {itemCount > 0 && (
-                <View style={styles.dot}><Text style={styles.dotText}>{itemCount > 9 ? '9+' : itemCount}</Text></View>
-              )}
+            <TouchableOpacity onPress={() => router.push('/(customer)/search' as any)} style={styles.headerBtn}>
+              <Ionicons name="search-outline" size={19} color="#5c4a35" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setMenuOpen((v) => !v)}
-              style={styles.headerBtn}
-              activeOpacity={0.75}
-            >
-              <Ionicons name={menuOpen ? 'close' : 'menu'} size={22} color="#5c4a35" />
+            <TouchableOpacity onPress={() => router.push('/(customer)/notifications' as any)} style={[styles.headerBtn, { position: 'relative' }]}>
+              <Ionicons name="notifications-outline" size={19} color="#5c4a35" />
+              {unreadCount > 0 && (
+                <View style={styles.dot}><Text style={styles.dotText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -163,12 +149,12 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
 
-        {/* Content */}
-        <View style={{ flex: 1, overflowY: 'auto' as any }}>
+        {/* Content — extra bottom padding on mobile so it clears the bottom bar */}
+        <View style={{ flex: 1, overflowY: 'auto' as any, paddingBottom: isDesktop ? 0 : BOTTOM_BAR_HEIGHT }}>
           {children}
         </View>
 
-        {/* Desktop: persistent sidebar */}
+        {/* Desktop: persistent right sidebar */}
         {isDesktop && (
           <View
             style={{
@@ -185,50 +171,49 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             {sidebarContent}
           </View>
         )}
-
-        {/* Mobile: overlay backdrop */}
-        {!isDesktop && menuOpen && (
-          <TouchableOpacity
-            onPress={() => setMenuOpen(false)}
-            activeOpacity={1}
-            style={{
-              position: 'fixed' as any,
-              top: HEADER_HEIGHT,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.45)',
-              zIndex: 50,
-            }}
-          />
-        )}
-
-        {/* Mobile: slide-in drawer */}
-        {!isDesktop && menuOpen && (
-          <View
-            style={{
-              position: 'fixed' as any,
-              top: HEADER_HEIGHT,
-              right: 0,
-              bottom: 0,
-              width: 280,
-              backgroundColor: '#fff',
-              borderLeftWidth: 1,
-              borderLeftColor: '#e6e0d8',
-              paddingTop: 20,
-              paddingHorizontal: 10,
-              overflowY: 'auto' as any,
-              zIndex: 60,
-              shadowColor: '#000',
-              shadowOpacity: 0.18,
-              shadowRadius: 16,
-              shadowOffset: { width: -4, height: 0 },
-            }}
-          >
-            {sidebarContent}
-          </View>
-        )}
       </View>
+
+      {/* ── Mobile: fixed bottom tab bar ───────────────────────────────── */}
+      {!isDesktop && (
+        <View
+          style={{
+            position: 'fixed' as any,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: BOTTOM_BAR_HEIGHT,
+            backgroundColor: 'rgba(253,252,251,0.97)',
+            borderTopWidth: 1,
+            borderTopColor: '#e6e0d8',
+            flexDirection: 'row',
+            zIndex: 100,
+          }}
+        >
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.path || (item.path === '/orders' && pathname.startsWith('/orders'));
+            return (
+              <TouchableOpacity
+                key={item.path}
+                onPress={() => router.push(`/(customer)${item.path}` as any)}
+                activeOpacity={0.75}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 6, cursor: 'pointer' as any }}
+              >
+                {/* Cart badge */}
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name={isActive ? item.activeIcon : item.icon} size={22} color={isActive ? '#e36523' : '#857d78'} />
+                  {item.path === '/cart' && itemCount > 0 && (
+                    <View style={styles.dot}><Text style={styles.dotText}>{itemCount > 9 ? '9+' : itemCount}</Text></View>
+                  )}
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: isActive ? '700' : '500', color: isActive ? '#e36523' : '#857d78' }}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
     </View>
   );
 }
