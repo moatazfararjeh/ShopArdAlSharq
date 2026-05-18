@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -19,8 +19,13 @@ const NAV_ITEMS = [
 const DESKTOP_BREAKPOINT = 768;
 const HEADER_HEIGHT = 64;
 
+/** Read the real browser viewport width — bypasses React Native's Dimensions which can lag on web. */
+function getBrowserWidth(): number {
+  if (typeof window !== 'undefined') return window.innerWidth;
+  return 1200; // SSR / non-browser default → show desktop layout
+}
+
 export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
-  const { width }       = useWindowDimensions();
   const pathname        = usePathname();
   const router          = useRouter();
   const itemCount       = useCartStore((s) => s.summary.itemCount);
@@ -28,66 +33,66 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
   const signOutMutation = useSignOut();
   const profile         = useAuthStore((s) => s.profile);
 
-  const isDesktop = width >= DESKTOP_BREAKPOINT;
+  // Use window.innerWidth directly so the correct value is read on first render
+  const [winWidth, setWinWidth] = useState<number>(getBrowserWidth);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close drawer whenever the active route changes
+  useEffect(() => {
+    const handler = () => setWinWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  const isDesktop = winWidth >= DESKTOP_BREAKPOINT;
+
+  // Close drawer on navigation or when viewport grows to desktop
   useEffect(() => { setMenuOpen(false); }, [pathname]);
-  // Close drawer when viewport grows to desktop
   useEffect(() => { if (isDesktop) setMenuOpen(false); }, [isDesktop]);
 
-  // ── Sidebar panel (shared between desktop persistent + mobile drawer) ──
-  function SidebarContent() {
-    return (
-      <>
-        {profile && (
-          <View style={{ paddingHorizontal: 8, paddingBottom: 14 }}>
-            <Text style={{ fontSize: 12, color: '#a09284' }}>أهلاً،</Text>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917', marginTop: 2 }} numberOfLines={1}>
-              {profile.full_name}
+  // ── Inline sidebar content (not a nested component — avoids React remount) ──
+  const sidebarContent = (
+    <>
+      {profile && (
+        <View style={{ paddingHorizontal: 8, paddingBottom: 14 }}>
+          <Text style={{ fontSize: 12, color: '#a09284' }}>أهلاً،</Text>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917', marginTop: 2 }} numberOfLines={1}>
+            {profile.full_name}
+          </Text>
+        </View>
+      )}
+      <View style={styles.divider} />
+
+      {NAV_ITEMS.map((item) => {
+        const isActive =
+          pathname === item.path ||
+          (item.path === '/orders' && pathname.startsWith('/orders'));
+
+        return (
+          <TouchableOpacity
+            key={item.path}
+            onPress={() => router.push(`/(customer)${item.path}` as any)}
+            activeOpacity={0.75}
+            style={[styles.navItem, isActive && styles.navItemActive]}
+          >
+            <Ionicons name={isActive ? item.activeIcon : item.icon} size={20} color={isActive ? '#e36523' : '#857d78'} />
+            <Text style={[styles.navLabel, { color: isActive ? '#e36523' : '#5c4a35', fontWeight: isActive ? '700' : '500' }]}>
+              {item.label}
             </Text>
-          </View>
-        )}
-        <View style={styles.divider} />
+            {item.path === '/cart' && itemCount > 0 && (
+              <View style={styles.badge}><Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text></View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
 
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            pathname === item.path ||
-            (item.path === '/orders' && pathname.startsWith('/orders'));
+      <View style={[styles.divider, { marginTop: 12 }]} />
 
-          return (
-            <TouchableOpacity
-              key={item.path}
-              onPress={() => router.push(`/(customer)${item.path}` as any)}
-              activeOpacity={0.75}
-              style={[styles.navItem, isActive && styles.navItemActive]}
-            >
-              <Ionicons
-                name={isActive ? item.activeIcon : item.icon}
-                size={20}
-                color={isActive ? '#e36523' : '#857d78'}
-              />
-              <Text style={[styles.navLabel, { color: isActive ? '#e36523' : '#5c4a35', fontWeight: isActive ? '700' : '500' }]}>
-                {item.label}
-              </Text>
-              {item.path === '/cart' && itemCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-
-        <View style={[styles.divider, { marginTop: 12 }]} />
-
-        <TouchableOpacity onPress={() => signOutMutation.mutate()} activeOpacity={0.75} style={styles.navItem}>
-          <Ionicons name="log-out-outline" size={20} color="#857d78" />
-          <Text style={[styles.navLabel, { color: '#857d78' }]}>تسجيل الخروج</Text>
-        </TouchableOpacity>
-      </>
-    );
-  }
+      <TouchableOpacity onPress={() => signOutMutation.mutate()} activeOpacity={0.75} style={styles.navItem}>
+        <Ionicons name="log-out-outline" size={20} color="#857d78" />
+        <Text style={[styles.navLabel, { color: '#857d78' }]}>تسجيل الخروج</Text>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <View style={{ flex: 1, flexDirection: 'column', backgroundColor: '#f8f7f5' }}>
@@ -177,7 +182,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
               flexShrink: 0,
             }}
           >
-            <SidebarContent />
+            {sidebarContent}
           </View>
         )}
 
@@ -220,7 +225,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
               shadowOffset: { width: -4, height: 0 },
             }}
           >
-            <SidebarContent />
+            {sidebarContent}
           </View>
         )}
       </View>
