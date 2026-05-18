@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, FlatList as RNFlatList } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, FlatList as RNFlatList, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts, useProductsPage } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { useBanners } from '@/hooks/useBanners';
 import { useUnreadCount } from '@/hooks/useNotifications';
@@ -138,14 +138,25 @@ function HeroBanner({ locale, onCategorySelect }: { locale: string; onCategorySe
   );
 }
 
+const WEB_PAGE_SIZE = 24;
+const SIDEBAR_WIDTH = 220;
+const CONTENT_PADDING = 32;
+const CARD_GAP = 12;
+
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
   const unreadCount = useUnreadCount();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [page, setPage] = useState(0);
+
+  // Reset to first page whenever filters change
+  useEffect(() => { setPage(0); }, [search, selectedCategory]);
 
   const params: GetProductsParams = {
     search: search.length >= 2 ? search : undefined,
@@ -154,173 +165,344 @@ export default function HomeScreen() {
     sortBy: 'newest',
   };
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useProducts(params);
+  // Mobile: infinite scroll (disabled on web)
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: mobileLoading } =
+    useProducts(params, { enabled: !isWeb });
+
+  // Web: single-page query
+  const { data: webPageData, isLoading: webLoading } = useProductsPage(
+    { ...params, page, limit: WEB_PAGE_SIZE },
+  );
+
   const { data: categories } = useCategories();
 
-  const products: Product[] = data?.pages.flatMap((p) => p.data) ?? [];
+  const mobileProducts: Product[] = data?.pages.flatMap((p) => p.data) ?? [];
+  const webProducts: Product[]    = webPageData?.data ?? [];
+  const totalProducts              = webPageData?.count ?? 0;
+  const totalPages                 = Math.max(1, Math.ceil(totalProducts / WEB_PAGE_SIZE));
+
+  // Web grid column calculation
+  const availWidth = windowWidth - SIDEBAR_WIDTH - CONTENT_PADDING;
+  const numCols    = Math.max(2, Math.floor((availWidth + CARD_GAP) / (200 + CARD_GAP)));
+  const cardWidth  = (availWidth - (numCols - 1) * CARD_GAP) / numCols;
+
+  // Shared header content (banner + categories + section title)
+  function renderListHeader() {
+    return (
+      <>
+        {/* Delivery coverage notice */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+          gap: 6, marginHorizontal: 16, marginTop: 10, marginBottom: 2,
+          backgroundColor: '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
+          borderWidth: 1, borderColor: '#fde0c8',
+        }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#c2410c' }}>
+            🚚 التوصيل يغطي منطقتي عمان و الزرقاء
+          </Text>
+        </View>
+
+        {/* Hero banner */}
+        <HeroBanner locale={locale} onCategorySelect={(id) => setSelectedCategory(id)} />
+
+        {/* Categories */}
+        {categories && categories.length > 0 && (
+          <View style={{ marginTop: 20, marginBottom: 4 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+              style={{ transform: [{ scaleX: -1 }] }}
+            >
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setSelectedCategory(cat.id === selectedCategory ? undefined : cat.id)}
+                  style={{
+                    paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
+                    backgroundColor: selectedCategory === cat.id ? '#1c1917' : '#ede8e1',
+                    transform: [{ scaleX: -1 }],
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: selectedCategory === cat.id ? '#fff' : '#857d78' }}>
+                    {getCategoryName(cat, locale)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                onPress={() => setSelectedCategory(undefined)}
+                style={{
+                  paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
+                  backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1',
+                  transform: [{ scaleX: -1 }],
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: !selectedCategory ? '#fff' : '#857d78' }}>
+                  {t('categories.allCategories')}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Section title */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 22, marginBottom: 6 }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>
+            {selectedCategory
+              ? t('products.categoryProducts', { defaultValue: 'المنتجات' })
+              : t('products.allProducts')}
+          </Text>
+        </View>
+      </>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
-      {/* Header — white, clean */}
-      <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          {/* Search bar */}
+
+      {/* ── Mobile header (search + notifications) — hidden on web ── */}
+      {!isWeb && (
+        <View style={{ backgroundColor: '#ffffff', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <View style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center',
+              backgroundColor: '#f3f4f6',
+              borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, gap: 8,
+              borderWidth: 1, borderColor: '#e6e0d8',
+            }}>
+              {search.length > 0 ? (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={17} color="#9ca3af" />
+                </TouchableOpacity>
+              ) : null}
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t('products.search')}
+                style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' }}
+                placeholderTextColor="#9ca3af"
+              />
+              <Ionicons name="search-outline" size={17} color="#9ca3af" />
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/(customer)/notifications' as any)}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ede8e1', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <View style={{ position: 'relative' }}>
+                <Ionicons name="notifications-outline" size={22} color="#1c1917" />
+                {unreadCount > 0 && (
+                  <View style={{
+                    position: 'absolute', top: -3, right: -4,
+                    minWidth: 16, height: 16, borderRadius: 8,
+                    backgroundColor: '#e36523',
+                    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+                  }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ── Web search bar ── */}
+      {isWeb && (
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
           <View style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center',
-            backgroundColor: '#f3f4f6',
-            borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, gap: 8,
-            borderWidth: 1, borderColor: '#e6e0d8',
+            flexDirection: 'row', alignItems: 'center',
+            backgroundColor: '#f3f4f6', borderRadius: 14,
+            paddingHorizontal: 14, paddingVertical: 10, gap: 8,
+            borderWidth: 1, borderColor: '#e6e0d8', maxWidth: 480,
           }}>
-            {search.length > 0 ? (
+            {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={17} color="#9ca3af" />
               </TouchableOpacity>
-            ) : null}
+            )}
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder={t('products.search')}
-              style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' }}
+              style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' } as any}
               placeholderTextColor="#9ca3af"
             />
             <Ionicons name="search-outline" size={17} color="#9ca3af" />
           </View>
-
-          {/* Notification bell */}
-          <TouchableOpacity
-            onPress={() => router.push('/(customer)/notifications' as any)}
-            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ede8e1', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <View style={{ position: 'relative' }}>
-              <Ionicons name="notifications-outline" size={22} color="#1c1917" />
-              {unreadCount > 0 && (
-                <View style={{
-                  position: 'absolute', top: -3, right: -4,
-                  minWidth: 16, height: 16, borderRadius: 8,
-                  backgroundColor: '#e36523',
-                  alignItems: 'center', justifyContent: 'center',
-                  paddingHorizontal: 3,
-                }}>
-                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
         </View>
-      </View>
+      )}
 
-      <FlatList
-        data={products}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 10, paddingHorizontal: 12 }}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPress={() => router.push(`/(public)/products/${item.id}`)}
-          />
-        )}
-        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
-        onEndReachedThreshold={0.5}
-        contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f9f7f5', gap: 10, paddingTop: 10 }}
-        ListHeaderComponent={
-          <>
-            {/* Delivery coverage notice */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-              gap: 6, marginHorizontal: 16, marginTop: 10, marginBottom: 2,
-              backgroundColor: '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
-              borderWidth: 1, borderColor: '#fde0c8',
-            }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#c2410c' }}>
-                🚚 التوصيل يغطي منطقتي عمان و الزرقاء
-              </Text>
+      {/* ── Mobile FlatList (infinite scroll) ── */}
+      {!isWeb && (
+        <FlatList
+          data={mobileProducts}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 10, paddingHorizontal: 12 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ProductCard
+              product={item}
+              onPress={() => router.push(`/(public)/products/${item.id}`)}
+            />
+          )}
+          onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+          onEndReachedThreshold={0.5}
+          contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f9f7f5', gap: 10, paddingTop: 10 }}
+          ListHeaderComponent={renderListHeader()}
+          ListFooterComponent={isFetchingNextPage ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <ActivityIndicator color="#e36523" />
             </View>
-
-            {/* Hero banner */}
-            <HeroBanner locale={locale} onCategorySelect={(id) => setSelectedCategory(id)} />
-
-            {/* Categories section */}
-            {categories && categories.length > 0 && (
-              <View style={{ marginTop: 20, marginBottom: 4 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-                  style={{ transform: [{ scaleX: -1 }] }}
-                >
-                  {/* Wrap each item with scaleX:-1 to un-flip content */}
-                  {categories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setSelectedCategory(cat.id === selectedCategory ? undefined : cat.id)}
-                      style={{
-                        paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
-                        backgroundColor: selectedCategory === cat.id ? '#1c1917' : '#ede8e1',
-                        borderWidth: 0,
-                        transform: [{ scaleX: -1 }],
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: selectedCategory === cat.id ? '#fff' : '#857d78' }}>
-                        {getCategoryName(cat, locale)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  {/* All pill — last in JSX = rightmost visually in RTL */}
-                  <TouchableOpacity
-                    onPress={() => setSelectedCategory(undefined)}
-                    style={{
-                      paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
-                      backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1',
-                      borderWidth: 0,
-                      transform: [{ scaleX: -1 }],
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: !selectedCategory ? '#fff' : '#857d78' }}>
-                      {t('categories.allCategories')}
-                    </Text>
-                  </TouchableOpacity>
-                </ScrollView>
+          ) : null}
+          ListEmptyComponent={
+            mobileLoading ? (
+              <View style={{ paddingTop: 60, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#e36523" />
               </View>
-            )}
+            ) : (
+              <View style={{ paddingTop: 60, alignItems: 'center', paddingHorizontal: 32 }}>
+                <Text style={{ fontSize: 48, marginBottom: 12 }}>🛍️</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#374151', textAlign: 'center' }}>{t('products.noProducts')}</Text>
+              </View>
+            )
+          }
+        />
+      )}
 
-            {/* Products section header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 22, marginBottom: 6 }}>
-              {products.length > 0 && (
-                <TouchableOpacity>
-                  <Text style={{ fontSize: 13, color: '#e36523', fontWeight: '600' }}>
-                    {t('categories.seeAll', { defaultValue: 'عرض الكل' })}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>
-                {selectedCategory
-                  ? t('products.categoryProducts', { defaultValue: 'المنتجات' })
-                  : t('products.allProducts')}
-              </Text>
-            </View>
-          </>
-        }
-        ListFooterComponent={isFetchingNextPage ? (
-          <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-            <ActivityIndicator color="#e36523" />
-          </View>
-        ) : null}
-        ListEmptyComponent={
-          isLoading ? (
+      {/* ── Web product grid + pagination ── */}
+      {isWeb && (
+        <ScrollView contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f9f7f5' }}>
+          {renderListHeader()}
+
+          {/* Loading state */}
+          {webLoading ? (
             <View style={{ paddingTop: 60, alignItems: 'center' }}>
               <ActivityIndicator size="large" color="#e36523" />
             </View>
-          ) : (
+          ) : webProducts.length === 0 ? (
             <View style={{ paddingTop: 60, alignItems: 'center', paddingHorizontal: 32 }}>
               <Text style={{ fontSize: 48, marginBottom: 12 }}>🛍️</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#374151', textAlign: 'center' }}>{t('products.noProducts')}</Text>
             </View>
-          )
-        }
-      />
+          ) : (
+            <>
+              {/* Product grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, paddingHorizontal: 16, paddingTop: 4 }}>
+                {webProducts.map((item) => (
+                  <View key={item.id} style={{ width: cardWidth }}>
+                    <ProductCard
+                      product={item}
+                      onPress={() => router.push(`/(public)/products/${item.id}`)}
+                    />
+                  </View>
+                ))}
+              </View>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 32 }}>
+                  {/* Next (right in Arabic = next page direction) */}
+                  <TouchableOpacity
+                    onPress={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                    disabled={page >= totalPages - 1}
+                    style={[paginationStyles.btn, page >= totalPages - 1 && paginationStyles.btnDisabled]}
+                  >
+                    <Ionicons name="chevron-back" size={16} color={page >= totalPages - 1 ? '#c9bfb6' : '#5c4a35'} />
+                    <Text style={[paginationStyles.btnText, page >= totalPages - 1 && paginationStyles.btnTextDisabled]}>التالي</Text>
+                  </TouchableOpacity>
+
+                  {/* Page numbers (show up to 7 around current page) */}
+                  {Array.from({ length: totalPages }, (_, i) => i)
+                    .filter((i) => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 2)
+                    .reduce<(number | '...')[]>((acc, i, idx, arr) => {
+                      if (idx > 0 && (i as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(i);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === '...' ? (
+                        <Text key={`ellipsis-${idx}`} style={{ color: '#a09284', fontSize: 14, paddingHorizontal: 4 }}>…</Text>
+                      ) : (
+                        <TouchableOpacity
+                          key={item}
+                          onPress={() => setPage(item as number)}
+                          style={[paginationStyles.pageBtn, page === item && paginationStyles.pageBtnActive]}
+                        >
+                          <Text style={[paginationStyles.pageBtnText, page === item && paginationStyles.pageBtnTextActive]}>
+                            {(item as number) + 1}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    )}
+
+                  {/* Previous */}
+                  <TouchableOpacity
+                    onPress={() => setPage((p) => Math.max(p - 1, 0))}
+                    disabled={page === 0}
+                    style={[paginationStyles.btn, page === 0 && paginationStyles.btnDisabled]}
+                  >
+                    <Text style={[paginationStyles.btnText, page === 0 && paginationStyles.btnTextDisabled]}>السابق</Text>
+                    <Ionicons name="chevron-forward" size={16} color={page === 0 ? '#c9bfb6' : '#5c4a35'} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      )}
+
     </SafeAreaView>
   );
 }
+
+const paginationStyles = {
+  btn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e6e0d8',
+    cursor: 'pointer' as any,
+  },
+  btnDisabled: {
+    opacity: 0.4,
+    cursor: 'default' as any,
+  },
+  btnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#5c4a35',
+  },
+  btnTextDisabled: {
+    color: '#c9bfb6',
+  },
+  pageBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e6e0d8',
+    cursor: 'pointer' as any,
+  },
+  pageBtnActive: {
+    backgroundColor: '#e36523',
+    borderColor: '#e36523',
+  },
+  pageBtnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#5c4a35',
+  },
+  pageBtnTextActive: {
+    color: '#fff',
+  },
+};

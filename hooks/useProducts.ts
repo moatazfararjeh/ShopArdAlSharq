@@ -18,7 +18,10 @@ export const productKeys = {
   detail: (id: string) => [...productKeys.all, id] as const,
 };
 
-export function useProducts(params: Omit<GetProductsParams, 'page'> = {}) {
+export function useProducts(
+  params: Omit<GetProductsParams, 'page'> = {},
+  options: { enabled?: boolean } = {},
+) {
   return useInfiniteQuery({
     queryKey: productKeys.list(params),
     queryFn: ({ pageParam = 0 }) =>
@@ -26,6 +29,15 @@ export function useProducts(params: Omit<GetProductsParams, 'page'> = {}) {
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length : undefined,
+    enabled: options.enabled ?? true,
+  });
+}
+
+/** Single-page fetch — used for web pagination. */
+export function useProductsPage(params: GetProductsParams = {}) {
+  return useQuery({
+    queryKey: [...productKeys.list(params), 'page', params.page ?? 0],
+    queryFn: () => getProducts(params),
   });
 }
 

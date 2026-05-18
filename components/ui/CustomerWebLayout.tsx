@@ -93,16 +93,21 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
         </View>
       </View>
 
-      {/* ── Body: sidebar + content ──────────────────────────────────────── */}
+      {/* ── Body: content + sidebar ──────────────────────────────────────── */}
       <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
 
-        {/* Sidebar — RTL start (right side) */}
+        {/* Main content area — left side */}
+        <View style={{ flex: 1, overflowY: 'auto' as any }}>
+          {children}
+        </View>
+
+        {/* Sidebar — right side */}
         <View
           style={{
             width: 220,
             backgroundColor: '#fff',
-            borderEndWidth: 1,
-            borderEndColor: '#e6e0d8',
+            borderLeftWidth: 1,
+            borderLeftColor: '#e6e0d8',
             paddingTop: 20,
             paddingHorizontal: 10,
             overflowY: 'auto' as any,
@@ -171,11 +176,6 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             <Ionicons name="log-out-outline" size={20} color="#857d78" />
             <Text style={[styles.navLabel, { color: '#857d78' }]}>تسجيل الخروج</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Main content area */}
-        <View style={{ flex: 1, overflowY: 'auto' as any }}>
-          {children}
         </View>
       </View>
     </View>
