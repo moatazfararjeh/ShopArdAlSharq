@@ -54,18 +54,27 @@ export type BannerPayload = Pick<
 >;
 
 export async function uploadBannerImage(uri: string, bannerId: string): Promise<string> {
-  // Only allow local file / content URIs to prevent fetching arbitrary remote URLs.
-  if (!uri.startsWith('file://') && !uri.startsWith('content://') && !uri.startsWith('ph://')) {
+  // Allow local file/content URIs (native) and blob: URIs (web image picker)
+  if (
+    !uri.startsWith('file://') &&
+    !uri.startsWith('content://') &&
+    !uri.startsWith('ph://') &&
+    !uri.startsWith('blob:')
+  ) {
     throw new Error('Invalid image URI: only local file URIs are permitted.');
   }
   // Fetch the file and convert to ArrayBuffer
   const response = await fetch(uri);
   const blob = await response.blob();
-  // Derive extension only from path segment before any query string,
-  // then whitelist to safe image extensions to prevent extension spoofing.
-  const rawExt = (uri.split('?')[0].split('.').pop() ?? 'jpg').toLowerCase();
+  // For native URIs derive extension from path; for blob: URIs fall back to MIME type.
+  const rawExt = uri.startsWith('blob:')
+    ? ''
+    : (uri.split('?')[0].split('.').pop() ?? '').toLowerCase();
+  const MIME_TO_EXT: Record<string, string> = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+  };
   const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
-  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : 'jpg';
+  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : (MIME_TO_EXT[blob.type] ?? 'jpg');
   const path = `banners/${bannerId}.${ext}`;
 
   const { error } = await supabase.storage

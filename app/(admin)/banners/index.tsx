@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useBanners, useDeleteBanner } from '@/hooks/useBanners';
@@ -14,6 +14,13 @@ export default function AdminBannersScreen() {
   const deleteMutation = useDeleteBanner();
 
   function confirmDelete(id: string, title: string) {
+    // Alert.alert buttons don't work in React Native Web — use window.confirm instead
+    if (Platform.OS === 'web') {
+      if (window.confirm(`هل تريد حذف البانر؟\n${title}`)) {
+        deleteMutation.mutate(id);
+      }
+      return;
+    }
     Alert.alert('حذف البانر', title, [
       { text: 'إلغاء', style: 'cancel' },
       {
