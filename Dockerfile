@@ -39,11 +39,15 @@ COPY . .
 # Build the static web export
 # NODE_OPTIONS: raise heap limit to avoid OOM kills on memory-heavy Metro bundling
 # EXPO_NO_TELEMETRY / CI: suppress interactive prompts that can hang the build
+# EXPO_NO_SOURCEMAPS: skip source-map generation (major memory + time saving)
+# --max-workers 2: limit Metro threads to avoid CPU/memory contention in Docker
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
-    NODE_OPTIONS="--max-old-space-size=4096" \
+    NODE_OPTIONS="--max-old-space-size=8192" \
     EXPO_NO_TELEMETRY=1 \
-    npx expo export --platform web --output-dir dist
+    EXPO_NO_SOURCEMAPS=1 \
+    GENERATE_SOURCEMAP=false \
+    npx expo export --platform web --output-dir dist --max-workers 2
 
 # ---- Serve Stage ----
 FROM nginx:alpine
