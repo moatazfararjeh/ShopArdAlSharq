@@ -37,7 +37,13 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 # Build the static web export
-RUN npx expo export --platform web
+# NODE_OPTIONS: raise heap limit to avoid OOM kills on memory-heavy Metro bundling
+# EXPO_NO_TELEMETRY / CI: suppress interactive prompts that can hang the build
+RUN --mount=type=cache,target=/root/.metro-cache \
+    CI=1 \
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    EXPO_NO_TELEMETRY=1 \
+    npx expo export --platform web --output-dir dist
 
 # ---- Serve Stage ----
 FROM nginx:alpine
