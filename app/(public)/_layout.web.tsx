@@ -1,32 +1,40 @@
 import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
+
+const AUTH_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
 /**
- * On web, auth screens are shown as a centered card (max 480 px) over a warm
- * off-white background, keeping the mobile form layout without stretching it
- * awkwardly to full desktop width.
+ * On web, auth screens (login / register / forgot-password) are shown as a
+ * centered card (max 480 px).  All other public pages (e.g. product detail)
+ * get a plain full-width layout so they match the rest of the site.
  */
 export default function PublicWebLayout() {
+  const pathname = usePathname();
+  const isAuthScreen = AUTH_PATHS.includes(pathname);
+
+  // Keep the Stack in a fixed tree position (same wrapper) to avoid remounts.
   return (
     <View
       style={{
         flex: 1,
         backgroundColor: '#f8f7f5',
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: isAuthScreen ? 'center' : 'stretch',
+        justifyContent: isAuthScreen ? 'center' : 'flex-start',
       }}
     >
       <View
         style={{
           width: '100%',
-          maxWidth: 480,
+          maxWidth: isAuthScreen ? 480 : undefined,
           flex: 1,
           backgroundColor: '#fff',
-          shadowColor: '#000',
-          shadowOpacity: 0.08,
-          shadowRadius: 32,
-          shadowOffset: { width: 0, height: 4 },
-          overflow: 'hidden' as any,
+          ...(isAuthScreen ? {
+            shadowColor: '#000',
+            shadowOpacity: 0.08,
+            shadowRadius: 32,
+            shadowOffset: { width: 0, height: 4 },
+            overflow: 'hidden' as any,
+          } : {}),
         }}
       >
         <Stack screenOptions={{ headerShown: false, animation: 'none' }} />

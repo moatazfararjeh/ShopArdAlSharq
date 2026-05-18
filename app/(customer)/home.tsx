@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, FlatList as RNFlatList, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, FlatList as RNFlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -148,8 +148,18 @@ export default function HomeScreen() {
   const router = useRouter();
   const locale = getCurrentLocale();
   const unreadCount = useUnreadCount();
-  const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
+
+  // window.innerWidth is accurate on web; fall back to Dimensions for native.
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
@@ -182,8 +192,16 @@ export default function HomeScreen() {
   const totalPages                 = Math.max(1, Math.ceil(totalProducts / WEB_PAGE_SIZE));
 
   // Web grid column calculation
-  const availWidth = windowWidth - SIDEBAR_WIDTH - CONTENT_PADDING;
-  const numCols    = Math.max(2, Math.floor((availWidth + CARD_GAP) / (200 + CARD_GAP)));
+  // Only subtract left padding — no right padding so the first card sits flush
+  // against the sidebar border (the sidebar already has its own internal padding).
+  const isDesktop    = windowWidth >= 768;
+  const sidebarW     = isDesktop ? SIDEBAR_WIDTH : 0;
+  const gridPadLeft  = 16; // px — space on the left (end) edge only
+  const gridPadRight = 0;  // px — no gap between first card and sidebar
+  const availWidth   = windowWidth - sidebarW - gridPadLeft - gridPadRight;
+  const numCols    = isDesktop
+    ? Math.max(2, Math.floor((availWidth + CARD_GAP) / (200 + CARD_GAP)))
+    : 2;
   const cardWidth  = (availWidth - (numCols - 1) * CARD_GAP) / numCols;
 
   // Shared header content (banner + categories + section title)
@@ -212,17 +230,17 @@ export default function HomeScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-              style={{ transform: [{ scaleX: -1 }] }}
+              style={isWeb ? undefined : { transform: [{ scaleX: -1 }] }}
             >
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
                   onPress={() => setSelectedCategory(cat.id === selectedCategory ? undefined : cat.id)}
-                  style={{
-                    paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
-                    backgroundColor: selectedCategory === cat.id ? '#1c1917' : '#ede8e1',
-                    transform: [{ scaleX: -1 }],
-                  }}
+                  style={[
+                    { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
+                      backgroundColor: selectedCategory === cat.id ? '#1c1917' : '#ede8e1' },
+                    !isWeb && { transform: [{ scaleX: -1 }] },
+                  ]}
                 >
                   <Text style={{ fontSize: 13, fontWeight: '600', color: selectedCategory === cat.id ? '#fff' : '#857d78' }}>
                     {getCategoryName(cat, locale)}
@@ -231,11 +249,11 @@ export default function HomeScreen() {
               ))}
               <TouchableOpacity
                 onPress={() => setSelectedCategory(undefined)}
-                style={{
-                  paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
-                  backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1',
-                  transform: [{ scaleX: -1 }],
-                }}
+                style={[
+                  { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 24,
+                    backgroundColor: !selectedCategory ? '#1c1917' : '#ede8e1' },
+                  !isWeb && { transform: [{ scaleX: -1 }] },
+                ]}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: !selectedCategory ? '#fff' : '#857d78' }}>
                   {t('categories.allCategories')}
@@ -310,18 +328,14 @@ export default function HomeScreen() {
 
       {/* ── Web search bar ── */}
       {isWeb && (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8', direction: 'rtl' as any }}>
           <View style={{
             flexDirection: 'row', alignItems: 'center',
             backgroundColor: '#f3f4f6', borderRadius: 14,
             paddingHorizontal: 14, paddingVertical: 10, gap: 8,
             borderWidth: 1, borderColor: '#e6e0d8', maxWidth: 480,
           }}>
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={17} color="#9ca3af" />
-              </TouchableOpacity>
-            )}
+            <Ionicons name="search-outline" size={17} color="#9ca3af" />
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -329,7 +343,11 @@ export default function HomeScreen() {
               style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' } as any}
               placeholderTextColor="#9ca3af"
             />
-            <Ionicons name="search-outline" size={17} color="#9ca3af" />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={17} color="#9ca3af" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -373,7 +391,7 @@ export default function HomeScreen() {
 
       {/* ── Web product grid + pagination ── */}
       {isWeb && (
-        <ScrollView contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f9f7f5' }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f9f7f5', direction: 'rtl' as any }}>
           {renderListHeader()}
 
           {/* Loading state */}
@@ -389,7 +407,7 @@ export default function HomeScreen() {
           ) : (
             <>
               {/* Product grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, paddingHorizontal: 16, paddingTop: 4 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, paddingRight: gridPadLeft, paddingLeft: gridPadRight, paddingTop: 4 }}>
                 {webProducts.map((item) => (
                   <View key={item.id} style={{ width: cardWidth }}>
                     <ProductCard
