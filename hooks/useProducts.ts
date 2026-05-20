@@ -34,12 +34,17 @@ export function useProducts(
   });
 }
 
-/** Single-page fetch — used for web pagination. */
-export function useProductsPage(params: GetProductsParams = {}) {
+/** Single-page fetch — used for web pagination and per-category sections. */
+export function useProductsPage(
+  params: GetProductsParams = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: [...productKeys.list(params), 'page', params.page ?? 0],
     queryFn: () => getProducts(params),
     placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: options.enabled ?? true,
   });
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -162,7 +162,61 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content — extra bottom padding on mobile so it clears the bottom bar */}
         <View style={{ flex: 1, overflowY: 'auto' as any, paddingBottom: isDesktop ? 0 : BOTTOM_BAR_HEIGHT }}>
-          {children}
+          <View style={{ minHeight: `calc(100vh - ${HEADER_HEIGHT}px)` as any }}>
+            {children}
+          </View>
+
+          {/* ── Footer ─────────────────────────────────────────────────── */}
+          <View style={{ backgroundColor: '#1a1a2e', paddingVertical: 40, paddingHorizontal: isDesktop ? 48 : 20, direction: 'rtl' as any }}>
+            <View style={{ flexDirection: isDesktop ? 'row' : 'column', justifyContent: 'space-between', gap: 32, maxWidth: 1200, alignSelf: 'center' as any, width: '100%' as any }}>
+
+              {/* Social media */}
+              <View style={{ gap: 14, alignItems: isDesktop ? 'flex-start' as any : 'center' as any }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>ابقى على تواصل معنا</Text>
+                <View style={{ flexDirection: 'row', gap: 14 }}>
+                  <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61587917750474/')}><Text style={footerStyles.socialIcon}>f</Text></TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Contact info */}
+              <View style={{ gap: 12, alignItems: isDesktop ? 'flex-start' as any : 'center' as any }}>
+                <TouchableOpacity onPress={() => Linking.openURL('https://api.whatsapp.com/send?phone=%2B962795277537')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+                  <Text style={{ fontSize: 13, color: '#e0e0e0' }}>تواصل معنا عبر الواتساب - مندوب عمان</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => Linking.openURL('https://api.whatsapp.com/send?phone=%2B962792881832')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+                  <Text style={{ fontSize: 13, color: '#e0e0e0' }}>تواصل معنا عبر الواتساب - مندوب الزرقاء</Text>
+                </TouchableOpacity>
+                <View style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>اتصل بنا للحصول على المساعدة</Text>
+                  <TouchableOpacity onPress={() => Linking.openURL('tel:+962795277537')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Ionicons name="call-outline" size={16} color="#fff" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#e0e0e0' }}>مندوب عمان: +962795277537</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => Linking.openURL('tel:+962792881832')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="call-outline" size={16} color="#fff" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#e0e0e0' }}>مندوب الزرقاء: +962792881832</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Download app */}
+              <View style={{ gap: 12, alignItems: isDesktop ? 'flex-start' as any : 'center' as any }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Download Our App</Text>
+                <Text style={{ fontSize: 13, color: '#aaa' }}>قريباً على المتاجر</Text>
+                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' as any, justifyContent: isDesktop ? 'flex-start' as any : 'center' as any, opacity: 0.5 }}>
+                  <View style={footerStyles.appBtn}><Text style={footerStyles.appBtnText}>App Store</Text></View>
+                  <View style={footerStyles.appBtn}><Text style={footerStyles.appBtnText}>Google Play</Text></View>
+                </View>
+              </View>
+            </View>
+
+            {/* Copyright */}
+            <View style={{ borderTopWidth: 1, borderTopColor: '#333', marginTop: 32, paddingTop: 20, alignItems: 'center' as any }}>
+              <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق جميع الحقوق محفوظة</Text>
+            </View>
+          </View>
         </View>
 
         {/* Desktop: persistent right sidebar */}
@@ -289,5 +343,34 @@ const styles = {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700' as const,
+  },
+};
+
+const footerStyles = {
+  socialBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#444',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  socialIcon: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  appBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#555',
+    backgroundColor: '#111',
+  },
+  appBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#fff',
   },
 };
