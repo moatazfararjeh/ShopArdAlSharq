@@ -12,6 +12,7 @@ export const categorySchema = z.object({
     .or(z.literal('')),
   description_ar: z.string().max(500, 'الوصف يجب ألا يتجاوز 500 حرف').optional().or(z.literal('')),
   description_en: z.string().max(500, 'الوصف يجب ألا يتجاوز 500 حرف').optional().or(z.literal('')),
+  image_url: z.string().optional().or(z.literal('')),
   sort_order: z
     .string()
     .optional()

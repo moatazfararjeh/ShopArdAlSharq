@@ -28,7 +28,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const showToast = useToastStore((s) => s.show);
   const liked = favoriteIds.includes(product.id);
   const name = getProductName(product, locale);
-  const mainImage = (product.images?.[0] ?? product.product_images?.[0])?.url;
+  const mainImage = (product.images?.[0] ?? product.product_images?.[0])?.url ?? product.categories?.image_url ?? undefined;
   const discounted = hasDiscount(product);
   const outOfStock = product.stock_quantity === 0;
   const bgColor = CARD_BG_COLORS[(product.id.charCodeAt(0) ?? 0) % CARD_BG_COLORS.length];
@@ -40,7 +40,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   }
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={{ flex: 1 }}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={{ flex: 1, paddingBottom: 8 }}>
       {/* Image container — square, rounded */}
       <View style={{
         aspectRatio: 1,
@@ -67,13 +67,6 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
             </View>
           </View>
         )}
-
-        {/* NEW badge — top right (RTL start) */}
-        <View style={{ position: 'absolute', top: 10, right: 10 }}>
-          <View style={{ backgroundColor: '#e36523', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.6 }}>{locale === 'ar' ? 'جديد' : 'New'}</Text>
-          </View>
-        </View>
 
         {/* Sale badge — top left (RTL end), before heart */}
         {discounted && !outOfStock && (
@@ -179,12 +172,12 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                 onPress={handleAddToCart}
                 activeOpacity={0.8}
                 style={{
-                  width: 30, height: 30, borderRadius: 15,
+                  width: 24, height: 24, borderRadius: 12,
                   backgroundColor: '#e36523',
                   alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <Ionicons name="bag-outline" size={14} color="#fff" />
+                <Ionicons name="bag-outline" size={12} color="#fff" />
               </TouchableOpacity>
             )
           )}

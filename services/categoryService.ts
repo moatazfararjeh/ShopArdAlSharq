@@ -38,7 +38,7 @@ export async function getCategoryById(id: string): Promise<Category> {
 }
 
 export async function createCategory(
-  payload: Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active'>,
+  payload: Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active'> & { image_url?: string | null },
 ): Promise<Category> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('categories') as any)

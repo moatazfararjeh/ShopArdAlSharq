@@ -37,6 +37,7 @@ export default function EditCategoryScreen() {
           name_en: category.name_en ?? '',
           description_ar: category.description_ar ?? '',
           description_en: category.description_en ?? '',
+          image_url: category.image_url ?? '',
           sort_order: String(category.sort_order ?? 0),
           is_active: category.is_active,
         }}

@@ -117,7 +117,7 @@ export interface Product {
   // Joined relations (optional — present when selected explicitly)
   images?: ProductImage[];
   product_images?: ProductImage[];
-  categories?: { name_ar: string; name_en: string | null } | null;
+  categories?: { name_ar: string; name_en: string | null; image_url?: string | null } | null;
 }
 
 export function getProductName(product: Product, locale: SupportedLocale): string {

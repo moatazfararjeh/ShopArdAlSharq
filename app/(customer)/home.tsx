@@ -194,7 +194,7 @@ function CategoryProductsSection({
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -404,14 +404,16 @@ export default function HomeScreen() {
         <FlatList
           data={mobileProducts}
           numColumns={2}
-          columnWrapperStyle={{ gap: 10, paddingHorizontal: 12, direction: 'rtl' as any }}
+          columnWrapperStyle={{ gap: 12, paddingHorizontal: 12, direction: 'rtl' as any }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            <View style={{ flex: 1 }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
           )}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.5}
-          contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f8f7f5', gap: 10, paddingTop: 10 }}
+          contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f8f7f5', gap: 16, paddingTop: 10 }}
           ListFooterComponent={isFetchingNextPage ? (
             <View style={{ paddingVertical: 16, alignItems: 'center' }}><ActivityIndicator color={BRAND} /></View>
           ) : null}
@@ -443,7 +445,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={{ opacity: webFetching ? 0.5 : 1 }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, rowGap: 20, paddingHorizontal: 16, paddingTop: 16 }}>
               {webProducts.map((item) => (
                 <View key={item.id} style={{ width: browseCardW }}>
                   <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
