@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +20,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
   const router          = useRouter();
   const signOutMutation = useSignOut();
   const profile         = useAuthStore((s) => s.profile);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
@@ -40,9 +41,6 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
             flexShrink: 0,
           }}
         >
-          <Text style={{ fontSize: 14, color: '#5c4a35', fontWeight: '500' }}>
-            {profile?.full_name ?? 'المدير'} · أرض الشرق
-          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View
               style={{
@@ -54,6 +52,16 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
             />
             <Text style={{ fontSize: 12, color: '#857d78' }}>متصل</Text>
           </View>
+          <Text style={{ fontSize: 14, color: '#5c4a35', fontWeight: '500' }}>
+            {profile?.full_name ?? 'المدير'} · أرض الشرق
+          </Text>
+          <TouchableOpacity
+            onPress={() => setSidebarOpen((v) => !v)}
+            activeOpacity={0.7}
+            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f0ec', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name={sidebarOpen ? 'close-outline' : 'menu-outline'} size={20} color="#5c4a35" />
+          </TouchableOpacity>
         </View>
 
         {/* Page content */}
@@ -63,6 +71,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
       </View>
 
       {/* ── Dark sidebar — right side ─────────────────────────────────────── */}
+      {sidebarOpen && (
       <View
         style={{
           width: 240,
@@ -124,7 +133,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
             return (
               <TouchableOpacity
                 key={item.path}
-                onPress={() => router.push(`/(admin)${item.path}` as any)}
+                onPress={() => { router.push(`/(admin)${item.path}` as any); setSidebarOpen(false); }}
                 activeOpacity={0.75}
                 style={[
                   styles.navItem,
@@ -153,7 +162,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
         <View style={{ paddingHorizontal: 10, paddingBottom: 24 }}>
           <View style={styles.divider} />
           <TouchableOpacity
-            onPress={() => router.push('/(customer)/home' as any)}
+            onPress={() => { router.push('/(customer)/home' as any); setSidebarOpen(false); }}
             activeOpacity={0.75}
             style={styles.navItem}
           >
@@ -161,7 +170,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
             <Text style={[styles.navLabel, { color: '#a09284' }]}>عرض المتجر</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => signOutMutation.mutate()}
+            onPress={() => { signOutMutation.mutate(); setSidebarOpen(false); }}
             activeOpacity={0.75}
             style={styles.navItem}
           >
@@ -170,6 +179,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
           </TouchableOpacity>
         </View>
       </View>
+      )}
 
     </View>
   );
