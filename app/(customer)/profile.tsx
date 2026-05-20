@@ -381,6 +381,16 @@ export default function ProfileScreen() {
           backgroundColor: '#fff', marginHorizontal: 20, borderRadius: 22,
           overflow: 'hidden',
           shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+          marginBottom: 16,
+        }}>
+          <NavRow icon="💬" label={t('contactUs.title')} onPress={() => router.push('/(customer)/contact' as any)} />
+        </View>
+
+        {/* Logout */}
+        <View style={{
+          backgroundColor: '#fff', marginHorizontal: 20, borderRadius: 22,
+          overflow: 'hidden',
+          shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
           marginBottom: 32,
         }}>
           <NavRow icon="🚪" label={t('auth.logout')} onPress={handleSignOut} danger />

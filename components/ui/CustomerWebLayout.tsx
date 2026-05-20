@@ -78,6 +78,17 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
 
       <View style={[styles.divider, { marginTop: 12 }]} />
 
+      <TouchableOpacity
+        onPress={() => router.push('/(customer)/contact' as any)}
+        activeOpacity={0.75}
+        style={[styles.navItem, pathname === '/contact' && styles.navItemActive]}
+      >
+        <Ionicons name="chatbubble-ellipses-outline" size={20} color={pathname === '/contact' ? '#e36523' : '#857d78'} />
+        <Text style={[styles.navLabel, { color: pathname === '/contact' ? '#e36523' : '#5c4a35', fontWeight: pathname === '/contact' ? '700' : '500' }]}>
+          تواصل معنا
+        </Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => signOutMutation.mutate()} activeOpacity={0.75} style={styles.navItem}>
         <Ionicons name="log-out-outline" size={20} color="#857d78" />
         <Text style={[styles.navLabel, { color: '#857d78' }]}>تسجيل الخروج</Text>

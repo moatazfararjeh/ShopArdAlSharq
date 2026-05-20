@@ -172,6 +172,27 @@
     "deleteSuccess": "Deleted successfully",
     "saveSuccess": "Saved successfully"
   },
+  "contactUs": {
+    "title": "Contact Us",
+    "subtitle": "We're here to help, don't hesitate to reach out",
+    "name": "Full Name",
+    "email": "Email",
+    "subject": "Subject",
+    "message": "Your Message",
+    "messagePlaceholder": "Write your message here...",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "successTitle": "Sent Successfully",
+    "successMsg": "Thank you for contacting us, we will reply as soon as possible",
+    "errorMsg": "An error occurred while sending, please try again",
+    "contactInfo": "Contact Information",
+    "phone": "Phone",
+    "phoneValue": "+966 11 000 0000",
+    "emailAddress": "Email Address",
+    "emailValue": "support@ardalsharg.com",
+    "workingHours": "Working Hours",
+    "workingHoursValue": "Sun - Thu: 9 AM - 6 PM"
+  },
   "errors": {
     "networkError": "Network error, please check your connection",
     "serverError": "Server error, please try again later",

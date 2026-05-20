@@ -176,11 +176,11 @@ export default function HomeScreen() {
   };
 
   // Mobile: infinite scroll (disabled on web)
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: mobileLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: mobileLoading, isFetching: mobileFetching } =
     useProducts(params, { enabled: !isWeb });
 
   // Web: single-page query
-  const { data: webPageData, isLoading: webLoading } = useProductsPage(
+  const { data: webPageData, isLoading: webLoading, isFetching: webFetching } = useProductsPage(
     { ...params, page, limit: WEB_PAGE_SIZE },
   );
 
@@ -354,6 +354,7 @@ export default function HomeScreen() {
 
       {/* ── Mobile FlatList (infinite scroll) ── */}
       {!isWeb && (
+        <View style={{ flex: 1, opacity: (mobileFetching && !mobileLoading) ? 0.55 : 1 }}>
         <FlatList
           data={mobileProducts}
           numColumns={2}
@@ -387,6 +388,7 @@ export default function HomeScreen() {
             )
           }
         />
+        </View>
       )}
 
       {/* ── Web product grid + pagination ── */}
@@ -405,7 +407,7 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#374151', textAlign: 'center' }}>{t('products.noProducts')}</Text>
             </View>
           ) : (
-            <>
+            <View style={{ opacity: webFetching ? 0.5 : 1 }}>
               {/* Product grid */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, paddingRight: gridPadLeft, paddingLeft: gridPadRight, paddingTop: 4 }}>
                 {webProducts.map((item) => (
@@ -417,7 +419,6 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </View>
-
               {/* Pagination controls */}
               {totalPages > 1 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 32 }}>
@@ -466,7 +467,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-            </>
+            </View>
           )}
         </ScrollView>
       )}

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   getProducts,
   getProductById,
@@ -30,6 +30,7 @@ export function useProducts(
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length : undefined,
     enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -38,6 +39,7 @@ export function useProductsPage(params: GetProductsParams = {}) {
   return useQuery({
     queryKey: [...productKeys.list(params), 'page', params.page ?? 0],
     queryFn: () => getProducts(params),
+    placeholderData: keepPreviousData,
   });
 }
 

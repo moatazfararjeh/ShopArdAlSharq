@@ -175,6 +175,27 @@
     "deleteSuccess": "تم الحذف بنجاح",
     "saveSuccess": "تم الحفظ بنجاح"
   },
+  "contactUs": {
+    "title": "تواصل معنا",
+    "subtitle": "نحن هنا لمساعدتك، لا تتردد في التواصل معنا",
+    "name": "الاسم الكامل",
+    "email": "البريد الإلكتروني",
+    "subject": "الموضوع",
+    "message": "رسالتك",
+    "messagePlaceholder": "اكتب رسالتك هنا...",
+    "send": "إرسال الرسالة",
+    "sending": "جاري الإرسال...",
+    "successTitle": "تم الإرسال بنجاح",
+    "successMsg": "شكراً لتواصلك معنا، سنرد عليك في أقرب وقت ممكن",
+    "errorMsg": "حدث خطأ أثناء الإرسال، يرجى المحاولة مرة أخرى",
+    "contactInfo": "معلومات التواصل",
+    "phone": "الهاتف",
+    "phoneValue": "+962795277537 , +962792881832",
+    "emailAddress": "البريد الإلكتروني",
+    "emailValue": "support@ardalsharg.com",
+    "workingHours": "ساعات العمل",
+    "workingHoursValue": "الأحد - الخميس: 9 ص - 6 م"
+  },
   "errors": {
     "networkError": "خطأ في الاتصال، يرجى التحقق من الإنترنت",
     "serverError": "خطأ في الخادم، يرجى المحاولة لاحقًا",
