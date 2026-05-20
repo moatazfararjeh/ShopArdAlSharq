@@ -29,25 +29,23 @@ ENV EXPO_PUBLIC_ENABLE_REVIEWS=$EXPO_PUBLIC_ENABLE_REVIEWS
 COPY package.json package-lock.json ./
 
 # Install ALL dependencies (including devDeps needed for expo build)
-# --mount=type=cache persists the npm cache between Coolify deploys, avoiding re-downloading packages
+# --mount=type=cache persists the npm cache between Coolify deploys
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps --ignore-scripts
+    npm ci --legacy-peer-deps --ignore-scripts --prefer-offline
 
 # Copy source code
 COPY . .
 
 # Build the static web export
-# NODE_OPTIONS: raise heap limit to avoid OOM kills on memory-heavy Metro bundling
-# EXPO_NO_TELEMETRY / CI: suppress interactive prompts that can hang the build
-# EXPO_NO_SOURCEMAPS: skip source-map generation (major memory + time saving)
-# --max-workers 2: limit Metro threads to avoid CPU/memory contention in Docker
+# NODE_OPTIONS: raise heap limit to avoid OOM kills
+# --max-workers 1: minimize memory/CPU in constrained Docker environments
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
-    NODE_OPTIONS="--max-old-space-size=8192" \
+    NODE_OPTIONS="--max-old-space-size=4096" \
     EXPO_NO_TELEMETRY=1 \
     EXPO_NO_SOURCEMAPS=1 \
     GENERATE_SOURCEMAP=false \
-    npx expo export --platform web --output-dir dist --max-workers 2
+    npx expo export --platform web --output-dir dist --max-workers 1
 
 # ---- Serve Stage ----
 FROM nginx:alpine
