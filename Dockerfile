@@ -38,15 +38,15 @@ COPY . .
 
 # Build the static web export
 # NODE_OPTIONS: raise heap limit to avoid OOM kills
-# --max-workers 2: balance speed vs memory in constrained Docker environments
+# --max-workers 1: server has limited RAM, 2 workers causes OOM
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
-    NODE_OPTIONS="--max-old-space-size=4096" \
+    NODE_OPTIONS="--max-old-space-size=3072" \
     EXPO_NO_TELEMETRY=1 \
     EXPO_NO_SOURCEMAPS=1 \
     GENERATE_SOURCEMAP=false \
     EXPO_USE_FAST_RESOLVER=1 \
-    npx expo export --platform web --output-dir dist --max-workers 2
+    npx expo export --platform web --output-dir dist --max-workers 1
 
 # ---- Serve Stage ----
 FROM nginx:alpine
