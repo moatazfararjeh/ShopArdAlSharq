@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # are NEVER accidentally included, keeping the build context lean permanently.
 # Config / entry files
 COPY app.json babel.config.js metro.config.cjs tailwind.config.js tsconfig.json ./
-COPY global.css nativewind-env.d.ts expo-env.d.ts index.ts App.tsx ./
+COPY global.css nativewind-env.d.ts index.ts App.tsx ./
 # Source directories
 COPY app/        ./app/
 COPY assets/     ./assets/
