@@ -416,6 +416,14 @@ export default function HomeScreen() {
           contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f8f7f5', gap: 16, paddingTop: 10 }}
           ListFooterComponent={isFetchingNextPage ? (
             <View style={{ paddingVertical: 16, alignItems: 'center' }}><ActivityIndicator color={BRAND} /></View>
+          ) : hasNextPage ? (
+            <TouchableOpacity
+              onPress={() => fetchNextPage()}
+              style={{ paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+            >
+              <Text style={{ color: BRAND, fontWeight: '700', fontSize: 14 }}>تحميل المزيد</Text>
+              <Ionicons name="chevron-down-circle-outline" size={20} color={BRAND} />
+            </TouchableOpacity>
           ) : null}
           ListEmptyComponent={
             !mobileFetching ? (
@@ -512,7 +520,7 @@ export default function HomeScreen() {
       {!isWeb && (
         <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, direction: 'rtl' as any }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <SearchBar />
+            {SearchBar({})}
             <TouchableOpacity
               onPress={() => router.push('/(customer)/notifications' as any)}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ede8e1', alignItems: 'center', justifyContent: 'center' }}
@@ -537,17 +545,17 @@ export default function HomeScreen() {
       {/* Web search bar */}
       {isWeb && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
-          <SearchBar maxWidth={480} />
+          {SearchBar({ maxWidth: 480 })}
         </View>
       )}
 
       {/* Browse header */}
-      {browseMode && <BrowseHeader />}
+      {browseMode && BrowseHeader()}
 
       {/* Content */}
       {browseMode
-        ? isWeb ? <WebBrowseContent /> : <MobileBrowseContent />
-        : <DiscoverContent />
+        ? isWeb ? WebBrowseContent() : MobileBrowseContent()
+        : DiscoverContent()
       }
     </SafeAreaView>
   );

@@ -124,6 +124,14 @@ export default function SearchScreen() {
           <View style={{ paddingVertical: 16, alignItems: 'center' }}>
             <ActivityIndicator color="#e36523" />
           </View>
+        ) : hasNextPage ? (
+          <TouchableOpacity
+            onPress={() => fetchNextPage()}
+            style={{ paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+          >
+            <Text style={{ color: '#e36523', fontWeight: '700', fontSize: 14 }}>تحميل المزيد</Text>
+            <Ionicons name="chevron-down-circle-outline" size={20} color="#e36523" />
+          </TouchableOpacity>
         ) : null}
         ListEmptyComponent={
           isLoading ? (

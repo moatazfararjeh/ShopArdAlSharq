@@ -44,6 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   initialize: async () => {
+    try {
     // Load current session on app start
     const {
       data: { session },
@@ -69,6 +70,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isInitialized: true,
       isLoading: false,
     });
+    } catch {
+      // Even on error, mark as initialized so the app doesn't stay stuck on a blank screen
+      set({ isInitialized: true, isLoading: false });
+    }
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
