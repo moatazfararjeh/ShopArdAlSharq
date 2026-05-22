@@ -33,12 +33,31 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps --ignore-scripts --prefer-offline
 
-# Copy source code
-COPY . .
+# ── Copy ONLY what expo export needs ─────────────────────────────────────────
+# Using explicit paths instead of "COPY . ." so that any new files or
+# directories added to the repo (docs, scripts, migrations, design files, etc.)
+# are NEVER accidentally included, keeping the build context lean permanently.
+# Config / entry files
+COPY app.json babel.config.js metro.config.cjs tailwind.config.js tsconfig.json ./
+COPY global.css nativewind-env.d.ts expo-env.d.ts index.ts App.tsx ./
+# Source directories
+COPY app/        ./app/
+COPY assets/     ./assets/
+COPY components/ ./components/
+COPY hooks/      ./hooks/
+COPY i18n/       ./i18n/
+COPY lib/        ./lib/
+COPY schemas/    ./schemas/
+COPY services/   ./services/
+COPY stores/     ./stores/
+COPY types/      ./types/
+COPY utils/      ./utils/
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Build the static web export
 # NODE_OPTIONS: raise heap limit to avoid OOM kills
-# --max-workers 1: server has limited RAM, 2 workers causes OOM
+# METRO_CACHE_DIR: tells Metro to write its bundle cache to the mounted volume,
+#   so subsequent deploys on the same Coolify host skip re-bundling unchanged modules.
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
     NODE_OPTIONS="--max-old-space-size=3072" \
@@ -46,6 +65,7 @@ RUN --mount=type=cache,target=/root/.metro-cache \
     EXPO_NO_SOURCEMAPS=1 \
     GENERATE_SOURCEMAP=false \
     EXPO_USE_FAST_RESOLVER=1 \
+    METRO_CACHE_DIR=/root/.metro-cache \
     npx expo export --platform web --output-dir dist --max-workers 1
 
 # ---- Serve Stage ----
