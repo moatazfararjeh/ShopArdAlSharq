@@ -40,13 +40,20 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   }
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={{ flex: 1, paddingBottom: 8 }}>
-      {/* Image container — square, rounded */}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={{
+      flex: 1,
+      borderWidth: 1,
+      borderColor: '#e6e0d8',
+      borderRadius: 18,
+      backgroundColor: '#fff',
+    }}>
+      {/* Image container — square, full-bleed at top */}
       <View style={{
         aspectRatio: 1,
-        borderRadius: 16,
         backgroundColor: bgColor,
         overflow: 'hidden',
+        borderTopLeftRadius: 17,
+        borderTopRightRadius: 17,
         marginBottom: 10,
       }}>
         <Image
@@ -97,7 +104,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
       </View>
 
       {/* Info — below image */}
-      <View style={{ paddingHorizontal: 2 }}>
+      <View style={{ paddingHorizontal: 8, paddingBottom: 10 }}>
         {/* Brand */}
         <Text style={{ fontSize: 10, fontWeight: '600', color: '#857d78', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
           {name.split(' ')[0] ?? 'منتج'}
