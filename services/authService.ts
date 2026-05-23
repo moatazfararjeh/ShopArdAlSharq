@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
 import { Profile } from '@/types/models';
 import { uploadDocument } from '@/services/storageService';
+import { APP_URL } from '@/lib/constants';
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -76,7 +77,10 @@ export async function signOut() {
 }
 
 export async function sendPasswordResetEmail(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  const redirectTo = APP_URL ? `${APP_URL}/reset-password` : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    ...(redirectTo ? { redirectTo } : {}),
+  });
   if (error) throw parseSupabaseError(error);
 }
 
