@@ -56,6 +56,16 @@ export async function signUp(
     }
   }
 
+  // The DB trigger (033_auto_confirm_email) sets email_confirmed_at immediately,
+  // but Supabase's signUp() still returns session:null when the "confirm email"
+  // setting is on. Sign in right away — the confirmed email lets it succeed.
+  if (!data.session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInError && signInData.session) {
+      return { ...signInData, needsConfirmation: false };
+    }
+  }
+
   if (data.session) return { ...data, needsConfirmation: false };
   return { ...data, needsConfirmation: true };
 }
