@@ -339,7 +339,14 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* أهم المنتجات — category circles */}
+        {/* Banners */}
+        <HeroBannerCarousel
+          locale={locale}
+          bannerWidth={bannerW}
+          onCategorySelect={setSelectedCategory}
+        />
+
+        {/* الأقسام — category circles */}
         {categories && categories.length > 0 && (
           <>
             <View style={{
@@ -347,7 +354,7 @@ export default function HomeScreen() {
               paddingHorizontal: 16, marginTop: 20, marginBottom: 14,
               direction: 'rtl' as any,
             }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>أهم المنتجات</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>الأقسام</Text>
             </View>
 
             <View style={{ direction: 'rtl' as any }}>
@@ -368,13 +375,6 @@ export default function HomeScreen() {
             </View>
           </>
         )}
-
-        {/* Banners */}
-        <HeroBannerCarousel
-          locale={locale}
-          bannerWidth={bannerW}
-          onCategorySelect={setSelectedCategory}
-        />
 
         {/* Product section per category */}
         {categories?.map((cat) => (

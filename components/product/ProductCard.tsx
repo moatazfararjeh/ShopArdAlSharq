@@ -104,87 +104,97 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
       </View>
 
       {/* Info — below image */}
-      <View style={{ paddingHorizontal: 8, paddingBottom: 10 }}>
-        {/* Brand */}
-        <Text style={{ fontSize: 10, fontWeight: '600', color: '#857d78', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
-          {name.split(' ')[0] ?? 'منتج'}
+      <View style={{ paddingHorizontal: 10, paddingBottom: 10, paddingTop: 6, gap: 3 }}>
+
+        {/* Brand / first word — small gray, right-aligned */}
+        <Text style={{ fontSize: 10, color: '#857d78', fontWeight: '600', textAlign: 'right' }}>
+          {name.split(' ')[0]}
         </Text>
 
-        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '500', color: '#1c1917', lineHeight: 18, marginBottom: 2 }}>
+        {/* Title */}
+        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '700', color: '#1c1917', lineHeight: 19, textAlign: 'right' }}>
           {name}
         </Text>
+
+        {/* Weight */}
         {product.weight != null && (
-          <Text style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4 }}>
-            ⚖️ {product.weight} {product.weight_unit ?? 'كغ'}
+          <Text style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right' }}>
+            {product.weight} {product.weight_unit ?? 'غم'} ⚖️
           </Text>
         )}
 
-        {/* Price row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Unit badges */}
+        <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+            {product.price_per_piece != null && (
+              <View style={{ backgroundColor: '#fff0eb', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#e36523' }}>حبة</Text>
+              </View>
+            )}
+            {product.price_per_kg != null && (
+              <View style={{ backgroundColor: '#fff0eb', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#e36523' }}>
+                  {product.weight != null ? `كيلو (${product.weight} ${product.weight_unit ?? 'كغ'})` : 'كيلو'}
+                </Text>
+              </View>
+            )}
+            {product.price_per_carton != null && (
+              <View style={{ backgroundColor: '#fff0eb', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#e36523' }}>
+                  {product.pieces_per_carton ? `كرتون (${product.pieces_per_carton} حبة)` : 'كرتون'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+        {/* Price + add to cart — same row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1c1917' }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917' }}>
               {formatPrice(discounted ? product.discount_price! : product.price)}
             </Text>
             {discounted && (
-              <Text style={{ fontSize: 11, color: '#857d78', textDecorationLine: 'line-through' }}>
+              <Text style={{ fontSize: 10, color: '#9ca3af', textDecorationLine: 'line-through' }}>
                 {formatPrice(product.price)}
               </Text>
             )}
-            {(['piece', 'kg', 'carton'] as const)
-              .filter((u) =>
-                u === 'piece' ? product.price_per_piece != null
-                : u === 'kg'  ? product.price_per_kg != null
-                : product.price_per_carton != null
-              )
-              .map((u) => (
-                <View key={u} style={{ backgroundColor: '#fff0eb', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#e36523' }}>
-                    {u === 'carton' && product.pieces_per_carton
-                      ? `كرتون (${product.pieces_per_carton} حبة)`
-                      : { piece: 'حبة', kg: 'كيلو', carton: 'كرتون' }[u]}
-                  </Text>
-                </View>
-              ))
-            }
           </View>
 
-          {/* Add to cart / quantity stepper */}
           {!outOfStock && (
             cartQty > 0 ? (
               <View style={{
                 flexDirection: 'row', alignItems: 'center',
-                borderRadius: 15, overflow: 'hidden',
-                borderWidth: 1.5, borderColor: '#e36523',
+                borderRadius: 8, borderWidth: 1.5, borderColor: '#e36523',
+                overflow: 'hidden',
               }}>
                 <TouchableOpacity
                   onPress={() => updateQuantity(product.id, cartQty - 1)}
                   activeOpacity={0.7}
-                  style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: '#fff0eb' }}
+                  style={{ paddingHorizontal: 6, paddingVertical: 3, backgroundColor: '#fff0eb' }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523', lineHeight: 18 }}>−</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#e36523', lineHeight: 16 }}>−</Text>
                 </TouchableOpacity>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#1c1917', minWidth: 18, textAlign: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#1c1917', minWidth: 20, textAlign: 'center' }}>
                   {cartQty}
                 </Text>
                 <TouchableOpacity
                   onPress={() => updateQuantity(product.id, cartQty + 1)}
                   activeOpacity={0.7}
-                  style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: '#e36523' }}
+                  style={{ paddingHorizontal: 6, paddingVertical: 3, backgroundColor: '#e36523' }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff', lineHeight: 18 }}>+</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', lineHeight: 16 }}>+</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity
                 onPress={handleAddToCart}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
                 style={{
-                  width: 24, height: 24, borderRadius: 12,
+                  width: 28, height: 28, borderRadius: 8,
                   backgroundColor: '#e36523',
                   alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <Ionicons name="bag-outline" size={12} color="#fff" />
+                <Ionicons name="bag-add-outline" size={14} color="#fff" />
               </TouchableOpacity>
             )
           )}

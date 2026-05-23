@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, Platform, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Platform, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,10 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadDocument } from '@/services/storageService';
+import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService';
 
 
-function NavRow({ icon, label, onPress, danger }: { icon: string; label: string; onPress?: () => void; danger?: boolean }) {
+function NavRow({ icon, ionicon, label, onPress, danger }: { icon?: string; ionicon?: string; label: string; onPress?: () => void; danger?: boolean }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -32,7 +32,9 @@ function NavRow({ icon, label, onPress, danger }: { icon: string; label: string;
         alignItems: 'center', justifyContent: 'center',
         marginRight: 14,
       }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        {ionicon
+          ? <Ionicons name={ionicon as any} size={20} color={danger ? '#ef4444' : '#f97316'} />
+          : <Text style={{ fontSize: 18 }}>{icon}</Text>}
       </View>
       <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: danger ? '#ef4444' : '#111827' }}>
         {label}
@@ -50,6 +52,7 @@ export default function ProfileScreen() {
   const { profile, session, setProfile } = useAuthStore();
   const signOut = useSignOut();
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editName, setEditName] = useState('');
@@ -94,6 +97,36 @@ export default function ProfileScreen() {
       else { Alert.alert('خطأ', e?.message ?? 'فشل الحفظ'); }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleViewDocument() {
+    const storagePath = (profile as any)?.commercial_register_url;
+    if (!storagePath) return;
+    setViewingDoc(true);
+    try {
+      const signedUrl = await getSignedDocumentUrl(storagePath);
+      if (Platform.OS === 'web') {
+        // Fetch the file as a blob so the browser downloads it directly
+        // (the <a download> attribute is ignored for cross-origin URLs)
+        const res = await fetch(signedUrl);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        const ext = storagePath.split('.').pop() ?? 'jpg';
+        a.download = `commercial_register.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+      } else {
+        Linking.openURL(signedUrl);
+      }
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message ?? 'تعذّر تحميل الملف');
+    } finally {
+      setViewingDoc(false);
     }
   }
 
@@ -332,35 +365,77 @@ export default function ProfileScreen() {
           <NavRow icon="📦" label={t('profile.myOrders')} onPress={() => router.push('/(customer)/orders/')} />
           <NavRow icon="📍" label={t('profile.savedAddresses')} onPress={() => router.push('/(customer)/addresses' as any)} />
           {/* Commercial register */}
-          <TouchableOpacity
-            onPress={uploadingDoc ? undefined : handleUploadCommercialRegister}
-            style={{
-              flexDirection: 'row', alignItems: 'center',
-              paddingVertical: 16, paddingHorizontal: 20,
-              borderBottomWidth: 1, borderBottomColor: '#f9fafb',
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={{
-              width: 38, height: 38, borderRadius: 12,
-              backgroundColor: (profile as any)?.commercial_register_url ? '#f0fdf4' : '#fff7ed',
-              alignItems: 'center', justifyContent: 'center',
-              marginRight: 14,
-            }}>
-              <Ionicons
-                name={(profile as any)?.commercial_register_url ? 'document-text' : 'document-text-outline'}
-                size={20}
-                color={(profile as any)?.commercial_register_url ? '#16a34a' : '#e36523'}
-              />
+          <View style={{
+            paddingVertical: 14, paddingHorizontal: 20,
+            borderBottomWidth: 1, borderBottomColor: '#f9fafb',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{
+                width: 38, height: 38, borderRadius: 12,
+                backgroundColor: (profile as any)?.commercial_register_url ? '#f0fdf4' : '#fff7ed',
+                alignItems: 'center', justifyContent: 'center',
+                marginRight: 14,
+              }}>
+                <Ionicons
+                  name={(profile as any)?.commercial_register_url ? 'document-text' : 'document-text-outline'}
+                  size={20}
+                  color={(profile as any)?.commercial_register_url ? '#16a34a' : '#e36523'}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>السجل التجاري</Text>
+                <Text style={{ fontSize: 12, color: (profile as any)?.commercial_register_url ? '#16a34a' : '#9ca3af', marginTop: 2 }}>
+                  {uploadingDoc ? 'جارٍ الرفع...' : (profile as any)?.commercial_register_url ? 'تم الرفع ✓' : 'لم يتم الرفع'}
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>السجل التجاري</Text>
-              <Text style={{ fontSize: 12, color: (profile as any)?.commercial_register_url ? '#16a34a' : '#9ca3af', marginTop: 2 }}>
-                {uploadingDoc ? 'جارٍ الرفع...' : (profile as any)?.commercial_register_url ? 'تم الرفع ✓' : 'لم يتم الرفع — اضغط للرفع'}
-              </Text>
+
+            {/* Action buttons */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, marginRight: 52 }}>
+              {(profile as any)?.commercial_register_url && (
+                <TouchableOpacity
+                  onPress={viewingDoc ? undefined : handleViewDocument}
+                  style={{
+                    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                    gap: 6, paddingVertical: 8, borderRadius: 10,
+                    backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac',
+                    opacity: viewingDoc ? 0.5 : 1,
+                  }}
+                  activeOpacity={0.75}
+                >
+                  {viewingDoc ? (
+                    <ActivityIndicator size="small" color="#16a34a" />
+                  ) : (
+                    <>
+                      <Ionicons name="download-outline" size={15} color="#16a34a" />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#16a34a' }}>تحميل</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={uploadingDoc ? undefined : handleUploadCommercialRegister}
+                style={{
+                  flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                  gap: 6, paddingVertical: 8, borderRadius: 10,
+                  backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa',
+                  opacity: uploadingDoc ? 0.5 : 1,
+                }}
+                activeOpacity={0.75}
+              >
+                {uploadingDoc ? (
+                  <ActivityIndicator size="small" color="#e36523" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={15} color="#e36523" />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#e36523' }}>
+                      {(profile as any)?.commercial_register_url ? 'إعادة رفع' : 'رفع الملف'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-            <Text style={{ color: '#9ca3af', fontSize: 20 }}>‹</Text>
-          </TouchableOpacity>
+          </View>
           {/* Language toggle hidden */}
         </View>
 
@@ -393,7 +468,7 @@ export default function ProfileScreen() {
           shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
           marginBottom: 32,
         }}>
-          <NavRow icon="🚪" label={t('auth.logout')} onPress={handleSignOut} danger />
+          <NavRow ionicon="log-out-outline" label={t('auth.logout')} onPress={handleSignOut} danger />
         </View>
       </ScrollView>
     </SafeAreaView>

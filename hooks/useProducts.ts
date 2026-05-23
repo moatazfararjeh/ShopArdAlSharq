@@ -56,10 +56,29 @@ export function useFeaturedProducts(limit = 6) {
 }
 
 export function useProduct(id: string) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: productKeys.detail(id),
     queryFn: () => getProductById(id),
     enabled: !!id,
+    // Pre-populate from the list/page caches so the detail page renders
+    // instantly when navigating from any product list (no blank loading screen).
+    initialData: () => {
+      const allCached = qc.getQueriesData<any>({ queryKey: productKeys.lists() });
+      for (const [, result] of allCached) {
+        // Infinite query pages
+        const pages: any[] = result?.pages ?? [result];
+        for (const page of pages) {
+          const items: any[] = Array.isArray(page?.data) ? page.data : Array.isArray(page) ? page : [];
+          const found = items.find((p) => p?.id === id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    },
+    // initialData is always treated as stale so a background refetch fires
+    // immediately to get the full detail (images, etc.)
+    initialDataUpdatedAt: 0,
   });
 }
 
