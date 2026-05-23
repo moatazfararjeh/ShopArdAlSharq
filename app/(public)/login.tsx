@@ -44,7 +44,7 @@ export default function LoginScreen() {
           contentContainerClassName="flex-grow justify-center px-6 py-8"
           keyboardShouldPersistTaps="handled"
         >
-          <Image source={require('@/assets/logo.png')} style={{ width: 280, height: 110, marginBottom: 24, alignSelf: 'center' }} resizeMode="contain" />
+          <Image source={require('@/assets/logo.png')} style={{ width: 340, height: 140, marginBottom: 24, alignSelf: 'center' }} resizeMode="contain" />
           <Text className="mb-2 text-3xl font-bold text-gray-900">{t('auth.login')}</Text>
 
           {showConfirmNotice && (

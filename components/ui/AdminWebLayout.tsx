@@ -95,7 +95,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
         >
           <Image
             source={require('@/assets/logo.png')}
-            style={{ width: 130, height: 42 }}
+            style={{ width: 180, height: 60 }}
             contentFit="contain"
           />
           <View

@@ -117,7 +117,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
         }}
       >
         <TouchableOpacity onPress={() => router.push('/(customer)/home' as any)} activeOpacity={0.8}>
-          <Image source={require('@/assets/logo.png')} style={{ width: 120, height: 40 }} contentFit="contain" />
+          <Image source={require('@/assets/logo.png')} style={{ width: 180, height: 60 }} contentFit="contain" />
         </TouchableOpacity>
 
         {/* Desktop: action icons */}
