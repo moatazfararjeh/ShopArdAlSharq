@@ -237,7 +237,7 @@ export default function HomeScreen() {
 
   // Layout metrics
   const sidebarW      = isDesktop ? SIDEBAR_W : 0;
-  const availW        = windowWidth - sidebarW - 24;
+  const availW        = windowWidth - sidebarW - 32;
   const numCols       = isDesktop ? Math.max(2, Math.floor((availW + CARD_GAP) / (200 + CARD_GAP))) : 2;
   const browseCardW   = (availW - (numCols - 1) * CARD_GAP) / numCols;
   const discoverCardW = isDesktop ? 185 : 150;
@@ -404,12 +404,10 @@ export default function HomeScreen() {
         <FlatList
           data={mobileProducts}
           numColumns={2}
-          columnWrapperStyle={{ gap: 12, paddingHorizontal: 12, direction: 'rtl' as any }}
+          columnWrapperStyle={{ gap: 10, paddingHorizontal: 12 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={{ flex: 1 }}>
-              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
-            </View>
+            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
           )}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.5}
