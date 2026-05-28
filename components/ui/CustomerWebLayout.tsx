@@ -166,8 +166,8 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             {children}
           </View>
 
-          {/* ── Footer ─────────────────────────────────────────────────── */}
-          <View style={{ backgroundColor: '#1a1a2e', paddingVertical: 40, paddingHorizontal: isDesktop ? 48 : 20, direction: 'rtl' as any }}>
+          {/* ── Footer (desktop only) ────────────────────────────────── */}
+          {isDesktop && <View style={{ backgroundColor: '#1a1a2e', paddingVertical: 40, paddingHorizontal: 48, direction: 'rtl' as any }}>
             <View style={{ flexDirection: isDesktop ? 'row' : 'column', justifyContent: 'space-between', gap: 32, maxWidth: 1200, alignSelf: 'center' as any, width: '100%' as any }}>
 
               {/* Social media */}
@@ -216,7 +216,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             <View style={{ borderTopWidth: 1, borderTopColor: '#333', marginTop: 32, paddingTop: 20, alignItems: 'center' as any }}>
               <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق جميع الحقوق محفوظة</Text>
             </View>
-          </View>
+          </View>}
         </View>
 
         {/* Desktop: persistent right sidebar */}
