@@ -44,6 +44,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   initialize: async () => {
+    // Guard against double-initialization
+    if (get().isInitialized) return () => {};
+
     try {
     // Load current session on app start
     const {

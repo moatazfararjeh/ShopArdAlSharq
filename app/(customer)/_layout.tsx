@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
-import { Text, View } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { Tabs, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/stores/cartStore';
@@ -8,18 +7,21 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function CustomerLayout() {
   const { isAuthenticated, isInitialized } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.replace('/(public)/login');
-    }
-  }, [isAuthenticated, isInitialized]);
 
   const { t } = useTranslation();
   const itemCount = useCartStore((s) => s.summary.itemCount);
 
-  if (!isAuthenticated) return null;
+  if (!isInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#e36523" />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/(public)/login" />;
+  }
 
   return (
     <Tabs
