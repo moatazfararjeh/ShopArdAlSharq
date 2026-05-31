@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, Dimensions, TouchableOpacity,
+  View, Text, Dimensions, TouchableOpacity,
   ActivityIndicator, PanResponder,
 } from 'react-native';
 
@@ -12,17 +12,33 @@ import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getProductName, Product, Category } from '@/types/models';
 import { formatPrice } from '@/utils/formatPrice';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-
 // ── Design constants matching the professional catalog look ───────────────────
 const ITEMS_PER_PAGE = 6; // 3 columns × 2 rows per page
 const HEADER_COLOR = '#1a3a6b'; // Dark blue header like the reference
 const ACCENT = '#e36523';
 const DARK = '#1c1917';
 
-function getBrowserWidth() {
-  if (typeof window !== 'undefined') return window.innerWidth;
-  return SCREEN_W;
+function useWindowSize() {
+  const [size, setSize] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width,
+    height: typeof window !== 'undefined' ? window.innerHeight : Dimensions.get('window').height,
+  }));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      const sub = Dimensions.addEventListener('change', ({ window: w }) => {
+        setSize({ width: w.width, height: w.height });
+      });
+      return () => sub.remove();
+    }
+    const handleResize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return size;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -102,7 +118,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   }, [pages]);
 
   const [spreadIdx, setSpreadIdx] = useState(0);
-  const winW = getBrowserWidth();
+  const { width: winW, height: winH } = useWindowSize();
   const isDesktop = winW >= 900;
 
   const canPrev = spreadIdx > 0;
@@ -142,14 +158,15 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
       {/* Book + Navigation */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 20 : 8, flex: 1, width: '100%', justifyContent: 'center' }}>
         {/* Right arrow (prev in RTL) */}
-        <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} disabled={!canPrev} />
+        <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} onLongPress={() => setSpreadIdx(0)} disabled={!canPrev} />
 
         {/* Open book */}
         <View
           {...(!isDesktop ? panResponder.panHandlers : {})}
           style={{
             width: isDesktop ? winW - 120 : winW - 32,
-            flex: 1,
+            height: isDesktop ? undefined : winH - 120,
+            flex: isDesktop ? 1 : undefined,
             flexDirection: isDesktop ? 'row' : 'column',
             borderRadius: 4,
             overflow: 'hidden',
@@ -186,7 +203,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
         </View>
 
         {/* Left arrow (next in RTL) */}
-        <NavBtn icon="chevron-back" onPress={() => setSpreadIdx((s) => s + 1)} disabled={!canNext} />
+        <NavBtn icon="chevron-back" onPress={() => setSpreadIdx((s) => s + 1)} onLongPress={() => setSpreadIdx(spreads.length - 1)} disabled={!canNext} />
       </View>
 
       {/* Bottom controls */}
@@ -256,7 +273,7 @@ function CoverPage({ locale }: { locale: string }) {
 function ContentPage({ page, locale, side }: { page: PageData; locale: string; side: 'left' | 'right' }) {
   const products = page.products ?? [];
   const category = page.category!;
-  const winW = getBrowserWidth();
+  const { width: winW } = useWindowSize();
   const isDesktop = winW >= 900;
   const cols = isDesktop ? 3 : 2;
 
@@ -278,18 +295,19 @@ function ContentPage({ page, locale, side }: { page: PageData; locale: string; s
       </View>
 
       {/* Products Grid */}
-      <ScrollView
-        contentContainerStyle={{
+      <View
+        style={{
+          flex: 1,
           flexDirection: 'row', flexWrap: 'wrap',
-          padding: 10, gap: 8,
+          padding: 6, gap: 6,
           direction: 'rtl' as any,
+          alignContent: 'flex-start',
         }}
-        showsVerticalScrollIndicator={false}
       >
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} locale={locale} cols={cols} />
+          <ProductCard key={product.id} product={product} locale={locale} cols={cols} totalItems={products.length} />
         ))}
-      </ScrollView>
+      </View>
 
       {/* Page footer */}
       <View style={{
@@ -320,7 +338,7 @@ function ContentPage({ page, locale, side }: { page: PageData; locale: string; s
 
 // ── Product Card — matches the reference catalog style ───────────────────────
 
-function ProductCard({ product, locale, cols }: { product: Product; locale: string; cols: number }) {
+function ProductCard({ product, locale, cols, totalItems }: { product: Product; locale: string; cols: number; totalItems: number }) {
   const imageUrl = product.product_images?.find((img) => img.is_primary)?.url
     ?? product.product_images?.[0]?.url;
 
@@ -328,26 +346,28 @@ function ProductCard({ product, locale, cols }: { product: Product; locale: stri
   const sizeLabel = getSizeLabel(product);
 
   // Calculate width based on columns
-  // Approximate: (100% - gaps) / cols
-  const widthPercent = cols === 3 ? '31%' : '47%';
+  const widthPercent = cols === 3 ? '31.5%' : '48%';
+  // Always use max rows (based on ITEMS_PER_PAGE) so page size stays constant
+  const maxRows = Math.ceil(ITEMS_PER_PAGE / cols);
+  const heightPercent = `${Math.floor(100 / maxRows) - 2}%`;
 
   return (
     <View style={{
       width: widthPercent as any,
+      height: heightPercent as any,
       backgroundColor: '#fff',
       borderRadius: 6,
       borderWidth: 1,
       borderColor: '#e8e4e0',
       overflow: 'hidden',
-      marginBottom: 4,
       direction: 'rtl' as any,
     }}>
       {/* Product image */}
       <View style={{
-        width: '100%', aspectRatio: 1,
+        width: '100%', flex: 1,
         backgroundColor: '#f8f7f5',
         alignItems: 'center', justifyContent: 'center',
-        padding: 6,
+        padding: 4,
       }}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
@@ -444,19 +464,19 @@ function BackPage() {
 // NAV BUTTON
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function NavBtn({ icon, onPress, disabled }: { icon: any; onPress: () => void; disabled: boolean }) {
+function NavBtn({ icon, onPress, onLongPress, disabled }: { icon: any; onPress: () => void; onLongPress?: () => void; disabled: boolean }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={disabled}
       style={{
-        width: 38, height: 38, borderRadius: 19,
-        backgroundColor: disabled ? 'transparent' : 'rgba(255,255,255,0.06)',
-        borderWidth: 1.5, borderColor: disabled ? '#333' : '#666',
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: disabled ? 'rgba(255,255,255,0.05)' : ACCENT,
         alignItems: 'center', justifyContent: 'center',
       }}
     >
-      <Ionicons name={icon} size={18} color={disabled ? '#444' : '#ccc'} />
+      <Ionicons name={icon} size={22} color={disabled ? '#666' : '#fff'} />
     </TouchableOpacity>
   );
 }
