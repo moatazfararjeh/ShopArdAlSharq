@@ -154,21 +154,18 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   const [leftPage, rightPage] = spreads[spreadIdx];
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: isDesktop ? 10 : 4 }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: isDesktop ? 10 : 0 }}>
       {/* Book + Navigation */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 20 : 8, flex: 1, width: '100%', justifyContent: 'center' }}>
-        {/* Right arrow (prev in RTL) */}
-        <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} onLongPress={() => setSpreadIdx(0)} disabled={!canPrev} />
-
+      <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
         {/* Open book */}
         <View
           {...(!isDesktop ? panResponder.panHandlers : {})}
           style={{
-            width: isDesktop ? winW - 120 : winW - 32,
-            height: isDesktop ? undefined : winH - 120,
+            width: isDesktop ? winW - 160 : winW,
+            height: isDesktop ? undefined : winH - 100,
             flex: isDesktop ? 1 : undefined,
             flexDirection: isDesktop ? 'row' : 'column',
-            borderRadius: 4,
+            borderRadius: isDesktop ? 4 : 0,
             overflow: 'hidden',
             backgroundColor: '#fff',
             // Shadow for book depth
@@ -186,7 +183,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
           )}
 
           {/* Left page (right in book for RTL) */}
-          <View style={{ flex: 1, borderRightWidth: isDesktop ? 0 : 0 }}>
+          <View style={{ flex: 1 }}>
             <CatalogPage page={leftPage} locale={locale} side="right" />
           </View>
 
@@ -200,10 +197,13 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
               )}
             </View>
           )}
-        </View>
 
-        {/* Left arrow (next in RTL) */}
-        <NavBtn icon="chevron-back" onPress={() => setSpreadIdx((s) => s + 1)} onLongPress={() => setSpreadIdx(spreads.length - 1)} disabled={!canNext} />
+          {/* Overlay navigation arrows */}
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'box-none' }}>
+            <NavBtn icon="chevron-back" onPress={() => setSpreadIdx((s) => s + 1)} onLongPress={() => setSpreadIdx(spreads.length - 1)} disabled={!canNext} side="left" />
+            <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} onLongPress={() => setSpreadIdx(0)} disabled={!canPrev} side="right" />
+          </View>
+        </View>
       </View>
 
       {/* Bottom controls */}
@@ -464,19 +464,23 @@ function BackPage() {
 // NAV BUTTON
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function NavBtn({ icon, onPress, onLongPress, disabled }: { icon: any; onPress: () => void; onLongPress?: () => void; disabled: boolean }) {
+function NavBtn({ icon, onPress, onLongPress, disabled, side }: { icon: any; onPress: () => void; onLongPress?: () => void; disabled: boolean; side: 'left' | 'right' }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       onLongPress={onLongPress}
       disabled={disabled}
       style={{
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: disabled ? 'rgba(255,255,255,0.05)' : ACCENT,
+        width: 40, height: 90,
+        borderTopLeftRadius: side === 'left' ? 0 : 45,
+        borderBottomLeftRadius: side === 'left' ? 0 : 45,
+        borderTopRightRadius: side === 'right' ? 0 : 45,
+        borderBottomRightRadius: side === 'right' ? 0 : 45,
+        backgroundColor: disabled ? 'rgba(0,0,0,0.2)' : 'rgba(255,200,130,0.6)',
         alignItems: 'center', justifyContent: 'center',
       }}
     >
-      <Ionicons name={icon} size={22} color={disabled ? '#666' : '#fff'} />
+      <Ionicons name={icon} size={28} color={disabled ? 'rgba(255,255,255,0.4)' : '#fff'} />
     </TouchableOpacity>
   );
 }
