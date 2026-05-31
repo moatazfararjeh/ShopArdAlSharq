@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useProductsPage, useDeleteProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
@@ -16,7 +16,8 @@ export default function AdminProductsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
-  const [page, setPage] = useState(0);
+  const { page: pageParam } = useLocalSearchParams<{ page?: string }>();
+  const [page, setPage] = useState(() => (pageParam ? parseInt(pageParam, 10) : 0));
 
   const { data, isLoading, isFetching } = useProductsPage({ availableOnly: false, page, limit: DEFAULT_PAGE_SIZE, groupByCategory: true });
   const { data: categories } = useCategories(false);
@@ -103,7 +104,7 @@ export default function AdminProductsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() => router.push(`/(admin)/products/${item.id}/edit`)}
+                      onPress={() => router.push(`/(admin)/products/${item.id}/edit?page=${page}` as any)}
                       style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                     >
                       <Text style={{ fontSize: 13 }}>{t('common.edit')}</Text>

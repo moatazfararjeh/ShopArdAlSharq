@@ -18,7 +18,7 @@ import { getCategoryName } from '@/types/models';
 export default function EditProductScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, page: pageParam } = useLocalSearchParams<{ id: string; page?: string }>();
   const locale = getCurrentLocale();
 
   const { data: product, isLoading } = useProduct(id);
@@ -114,8 +114,8 @@ export default function EditProductScreen() {
       price_per_kg: values.price_per_kg ? parseFloat(values.price_per_kg) : null,
       pieces_per_carton: values.pieces_per_carton ? parseInt(values.pieces_per_carton) : null,
     } as Parameters<typeof updateMutation.mutateAsync>[0]);
-    if (router.canGoBack()) router.back();
-    else router.replace('/(admin)/products' as any);
+    const returnPage = pageParam ? parseInt(pageParam, 10) : 0;
+    router.replace(`/(admin)/products?page=${returnPage}` as any);
   }
 
   if (isLoading) {
