@@ -22,6 +22,7 @@ export default function CustomerLayout() {
   if (!isAuthenticated) {
     return <Redirect href="/(public)/login" />;
   }
+  // Note: catalog is accessible without login via web layout bypass
 
   return (
     <Tabs
@@ -81,6 +82,7 @@ export default function CustomerLayout() {
       <Tabs.Screen name="addresses" options={{ href: null }} />
       <Tabs.Screen name="edit-address" options={{ href: null }} />
       <Tabs.Screen name="contact" options={{ href: null }} />
+      <Tabs.Screen name="catalog" options={{ href: null }} />
     </Tabs>
   );
 }

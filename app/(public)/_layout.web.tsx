@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 
-const AUTH_PATHS = ['/', '/login', '/register', '/forgot-password'];
+const AUTH_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password'];
 
 /**
  * On web, auth screens (login / register / forgot-password) are shown as a

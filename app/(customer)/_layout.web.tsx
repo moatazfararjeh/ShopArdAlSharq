@@ -1,10 +1,19 @@
 import { ActivityIndicator, View } from 'react-native';
-import { Redirect, Slot } from 'expo-router';
+import { Redirect, Slot, usePathname } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { CustomerWebLayout } from '@/components/ui/CustomerWebLayout';
 
+// Pages accessible without login
+const PUBLIC_PAGES = ['/catalog'];
+// Pages rendered without the CustomerWebLayout chrome (header/footer/menu)
+const STANDALONE_PAGES = ['/catalog'];
+
 export default function CustomerWebLayoutRoute() {
   const { isAuthenticated, isInitialized } = useAuth();
+  const pathname = usePathname();
+
+  const isPublicPage = PUBLIC_PAGES.includes(pathname);
+  const isStandalone = STANDALONE_PAGES.includes(pathname);
 
   if (!isInitialized) {
     return (
@@ -14,8 +23,12 @@ export default function CustomerWebLayoutRoute() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isPublicPage) {
     return <Redirect href="/(public)/login" />;
+  }
+
+  if (isStandalone) {
+    return <Slot />;
   }
 
   return (
