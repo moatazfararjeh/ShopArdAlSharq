@@ -101,6 +101,21 @@ export default function AdminProductsScreen() {
                     <Text style={{ fontSize: 11, color: item.is_available ? '#22c55e' : '#ef4444', marginTop: 2 }}>
                       {item.is_available ? 'متوفر' : 'غير متوفر'} • المخزون: {item.stock_quantity}
                     </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                      {(item.product_images?.length ?? 0) > 0 ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#f0fdf4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10 }}>🖼️</Text>
+                          <Text style={{ fontSize: 10, color: '#16a34a', fontWeight: '600' }}>
+                            {item.product_images!.length} {item.product_images!.length === 1 ? 'صورة' : 'صور'}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#fef2f2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10 }}>⚠️</Text>
+                          <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: '600' }}>بدون صورة</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
