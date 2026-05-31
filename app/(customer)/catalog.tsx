@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   View, Text, ScrollView, Dimensions, TouchableOpacity,
-  ActivityIndicator,
+  ActivityIndicator, PanResponder,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories } from '@/hooks/useCategories';
@@ -35,16 +35,16 @@ export default function CatalogScreen() {
 
   if (catLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#2c2c2c', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#2c2c2c', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" color="#fff" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#2c2c2c' }}>
+    <View style={{ flex: 1, backgroundColor: '#2c2c2c' }}>
       <BookView categories={categories ?? []} locale={locale} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -108,6 +108,25 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   const canPrev = spreadIdx > 0;
   const canNext = spreadIdx < spreads.length - 1;
 
+  // Swipe gesture for mobile navigation
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return !isDesktop && Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const SWIPE_THRESHOLD = 50;
+        if (gestureState.dx > SWIPE_THRESHOLD) {
+          // Swipe right → previous page (RTL: next spread)
+          setSpreadIdx((s) => Math.max(0, s - 1));
+        } else if (gestureState.dx < -SWIPE_THRESHOLD) {
+          // Swipe left → next page (RTL: prev spread)
+          setSpreadIdx((s) => Math.min(spreads.length - 1, s + 1));
+        }
+      },
+    })
+  ).current;
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -119,25 +138,26 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   const [leftPage, rightPage] = spreads[spreadIdx];
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: isDesktop ? 10 : 4 }}>
       {/* Book + Navigation */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 20 : 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isDesktop ? 20 : 8, flex: 1, width: '100%', justifyContent: 'center' }}>
         {/* Right arrow (prev in RTL) */}
         <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} disabled={!canPrev} />
 
         {/* Open book */}
-        <View style={{
-          width: isDesktop ? Math.min(winW - 180, 1100) : winW - 64,
-          aspectRatio: isDesktop ? 1.45 : 0.7,
-          maxHeight: isDesktop ? 640 : undefined,
-          flexDirection: isDesktop ? 'row' : 'column',
-          borderRadius: 4,
-          overflow: 'hidden',
-          backgroundColor: '#fff',
-          // Shadow for book depth
-          shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: 10 },
-          elevation: 16,
-        }}>
+        <View
+          {...(!isDesktop ? panResponder.panHandlers : {})}
+          style={{
+            width: isDesktop ? winW - 120 : winW - 32,
+            flex: 1,
+            flexDirection: isDesktop ? 'row' : 'column',
+            borderRadius: 4,
+            overflow: 'hidden',
+            backgroundColor: '#fff',
+            // Shadow for book depth
+            shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: 10 },
+            elevation: 16,
+          }}>
           {/* Spine divider */}
           {isDesktop && (
             <View style={{
