@@ -18,6 +18,11 @@ export default function AdminProductsScreen() {
   const locale = getCurrentLocale();
   const { page: pageParam } = useLocalSearchParams<{ page?: string }>();
   const [page, setPage] = useState(() => (pageParam ? parseInt(pageParam, 10) : 0));
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  function toggleCollapse(catId: string) {
+    setCollapsed((prev) => ({ ...prev, [catId]: !prev[catId] }));
+  }
 
   const { data, isLoading, isFetching } = useProductsPage({ availableOnly: false, page, limit: DEFAULT_PAGE_SIZE, groupByCategory: true });
   const { data: categories } = useCategories(false);
@@ -84,14 +89,21 @@ export default function AdminProductsScreen() {
           {Object.entries(grouped).map(([catId, items]) => (
             <View key={catId} style={{ marginTop: 16 }}>
               {/* Category header */}
-              <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#f3f0ec', marginHorizontal: 12, borderRadius: 10 }}>
+              <TouchableOpacity
+                onPress={() => toggleCollapse(catId)}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f3f0ec', marginHorizontal: 12, borderRadius: 10 }}
+              >
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#5c4a35' }}>
                   {getCategoryName(catId)} ({items.length})
                 </Text>
-              </View>
+                <Text style={{ fontSize: 16, color: '#5c4a35', fontWeight: '700' }}>
+                  {collapsed[catId] ? '＋' : '－'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Products in this category */}
-              {items.map((item) => (
+              {!collapsed[catId] && items.map((item) => (
                 <View key={item.id} style={{ marginHorizontal: 16, marginVertical: 4, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 16 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: '600', color: '#111827' }} numberOfLines={1}>

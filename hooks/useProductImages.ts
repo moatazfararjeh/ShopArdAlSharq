@@ -23,11 +23,12 @@ export function useProductImages(productId: string) {
   });
 
   const addImage = useMutation({
-    mutationFn: async (uri: string) => {
+    mutationFn: async ({ uri, mimeType }: { uri: string; mimeType?: string }) => {
       const blob = await uriToBlob(uri);
-      const ext = uri.split('.').pop()?.split(/[?#]/)[0] ?? 'jpg';
+      const resolvedMime = mimeType || blob.type || 'image/jpeg';
+      const ext = mimeToExt(resolvedMime);
       const filePath = `${productId}/${Date.now()}.${ext}`;
-      const { publicUrl } = await uploadImage(PRODUCT_IMAGE_BUCKET, filePath, blob);
+      const { publicUrl } = await uploadImage(PRODUCT_IMAGE_BUCKET, filePath, new Blob([blob], { type: resolvedMime }));
       const currentCount = images.data?.length ?? 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('product_images').insert({
@@ -67,23 +68,34 @@ export function useProductImages(productId: string) {
 }
 
 function uriToBlob(uri: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = () => resolve(xhr.response as Blob);
-    xhr.onerror = () => reject(new Error('فشل قراءة الصورة'));
-    xhr.responseType = 'blob';
-    xhr.open('GET', uri, true);
-    xhr.send(null);
+  return fetch(uri).then((res) => {
+    if (!res.ok) throw new Error('فشل قراءة الصورة');
+    return res.blob();
   });
 }
 
+function mimeToExt(mime: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+  };
+  return map[mime.toLowerCase()] ?? 'jpg';
+}
+
 /** Upload a batch of local image URIs for a newly created product */
-export async function uploadProductImages(productId: string, uris: string[]): Promise<void> {
-  for (let i = 0; i < uris.length; i++) {
-    const blob = await uriToBlob(uris[i]);
-    const ext = uris[i].split('.').pop()?.split(/[?#]/)[0] ?? 'jpg';
+export async function uploadProductImages(productId: string, assets: { uri: string; mimeType?: string }[]): Promise<void> {
+  for (let i = 0; i < assets.length; i++) {
+    const { uri, mimeType } = assets[i];
+    const blob = await uriToBlob(uri);
+    const resolvedMime = mimeType || blob.type || 'image/jpeg';
+    const ext = mimeToExt(resolvedMime);
     const filePath = `${productId}/${Date.now()}-${i}.${ext}`;
-    const { publicUrl } = await uploadImage(PRODUCT_IMAGE_BUCKET, filePath, blob);
+    const { publicUrl } = await uploadImage(PRODUCT_IMAGE_BUCKET, filePath, new Blob([blob], { type: resolvedMime }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('product_images').insert({
       product_id: productId,

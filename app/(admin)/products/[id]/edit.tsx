@@ -40,7 +40,7 @@ export default function EditProductScreen() {
     if (result.canceled) return;
     for (const asset of result.assets) {
       try {
-        await addImage.mutateAsync(asset.uri);
+        await addImage.mutateAsync({ uri: asset.uri, mimeType: asset.mimeType ?? undefined });
       } catch (e) {
         Alert.alert('خطأ', (e as Error).message ?? 'فشل رفع الصورة');
       }

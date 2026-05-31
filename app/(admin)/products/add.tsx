@@ -22,7 +22,7 @@ export default function AddProductScreen() {
   const locale = getCurrentLocale();
   const createMutation = useCreateProduct();
   const { data: categories } = useCategories(false);
-  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [pendingImages, setPendingImages] = useState<{ uri: string; mimeType?: string }[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
 
   async function pickImage() {
@@ -37,7 +37,7 @@ export default function AddProductScreen() {
       allowsMultipleSelection: true,
     });
     if (!result.canceled) {
-      setPendingImages((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+      setPendingImages((prev) => [...prev, ...result.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType ?? undefined }))]);
     }
   }
 
@@ -121,10 +121,10 @@ export default function AddProductScreen() {
           style={{ marginBottom: 20 }}
           contentContainerStyle={{ gap: 8 }}
         >
-          {pendingImages.map((uri, index) => (
+          {pendingImages.map((asset, index) => (
             <View key={index} style={{ position: 'relative' }}>
               <Image
-                source={{ uri }}
+                source={{ uri: asset.uri }}
                 style={{
                   width: 90, height: 90, borderRadius: 10,
                   borderWidth: index === 0 ? 2.5 : 1.5,
