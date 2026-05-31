@@ -74,6 +74,7 @@ interface PageData {
   category?: Category;
   pageNumber?: number;
   totalCatPages?: number;
+  globalPageNumber?: number;
 }
 
 function BookView({ categories, locale }: { categories: Category[]; locale: string }) {
@@ -89,6 +90,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
     const result: PageData[] = [];
     result.push({ type: 'cover' });
 
+    let globalNum = 1;
     for (const cat of categories) {
       const catProducts = allProducts.filter((p) => p.category_id === cat.id);
       if (catProducts.length === 0) continue;
@@ -100,6 +102,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
           category: cat,
           pageNumber: i + 1,
           totalCatPages: chunks.length,
+          globalPageNumber: globalNum++,
         });
       });
     }
@@ -118,11 +121,12 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   }, [pages]);
 
   const [spreadIdx, setSpreadIdx] = useState(0);
+  const [pageIdx, setPageIdx] = useState(0); // For mobile single-page navigation
   const { width: winW, height: winH } = useWindowSize();
   const isDesktop = winW >= 900;
 
-  const canPrev = spreadIdx > 0;
-  const canNext = spreadIdx < spreads.length - 1;
+  const canPrev = isDesktop ? spreadIdx > 0 : pageIdx > 0;
+  const canNext = isDesktop ? spreadIdx < spreads.length - 1 : pageIdx < pages.length - 1;
 
   // Swipe gesture for mobile navigation
   const panResponder = useRef(
@@ -133,11 +137,9 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
       onPanResponderRelease: (_, gestureState) => {
         const SWIPE_THRESHOLD = 50;
         if (gestureState.dx > SWIPE_THRESHOLD) {
-          // Swipe right → previous page (RTL: next spread)
-          setSpreadIdx((s) => Math.max(0, s - 1));
+          setPageIdx((s) => Math.max(0, s - 1));
         } else if (gestureState.dx < -SWIPE_THRESHOLD) {
-          // Swipe left → next page (RTL: prev spread)
-          setSpreadIdx((s) => Math.min(spreads.length - 1, s + 1));
+          setPageIdx((s) => Math.min(pages.length - 1, s + 1));
         }
       },
     })
@@ -152,6 +154,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   }
 
   const [leftPage, rightPage] = spreads[spreadIdx];
+  const currentPage = pages[pageIdx]; // For mobile single-page view
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: isDesktop ? 10 : 0 }}>
@@ -182,26 +185,32 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
             }} />
           )}
 
-          {/* Left page (right in book for RTL) */}
-          <View style={{ flex: 1 }}>
-            <CatalogPage page={leftPage} locale={locale} side="right" />
-          </View>
-
-          {/* Right page (left in book for RTL) */}
-          {isDesktop && (
+          {isDesktop ? (
+            <>
+              {/* Left page */}
+              <View style={{ flex: 1 }}>
+                <CatalogPage page={leftPage} locale={locale} side="right" />
+              </View>
+              {/* Right page */}
+              <View style={{ flex: 1 }}>
+                {rightPage ? (
+                  <CatalogPage page={rightPage} locale={locale} side="left" />
+                ) : (
+                  <View style={{ flex: 1, backgroundColor: '#fafafa' }} />
+                )}
+              </View>
+            </>
+          ) : (
+            /* Mobile: single page view */
             <View style={{ flex: 1 }}>
-              {rightPage ? (
-                <CatalogPage page={rightPage} locale={locale} side="left" />
-              ) : (
-                <View style={{ flex: 1, backgroundColor: '#fafafa' }} />
-              )}
+              <CatalogPage page={currentPage} locale={locale} side="right" />
             </View>
           )}
 
           {/* Overlay navigation arrows */}
           <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'box-none' }}>
-            <NavBtn icon="chevron-back" onPress={() => setSpreadIdx((s) => s + 1)} onLongPress={() => setSpreadIdx(spreads.length - 1)} disabled={!canNext} side="left" />
-            <NavBtn icon="chevron-forward" onPress={() => setSpreadIdx((s) => s - 1)} onLongPress={() => setSpreadIdx(0)} disabled={!canPrev} side="right" />
+            <NavBtn icon="chevron-back" onPress={() => isDesktop ? setSpreadIdx((s) => s + 1) : setPageIdx((s) => s + 1)} onLongPress={() => isDesktop ? setSpreadIdx(spreads.length - 1) : setPageIdx(pages.length - 1)} disabled={!canNext} side="left" />
+            <NavBtn icon="chevron-forward" onPress={() => isDesktop ? setSpreadIdx((s) => s - 1) : setPageIdx((s) => s - 1)} onLongPress={() => isDesktop ? setSpreadIdx(0) : setPageIdx(0)} disabled={!canPrev} side="right" />
           </View>
         </View>
       </View>
@@ -209,17 +218,24 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
       {/* Bottom controls */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 18 }}>
         <Text style={{ color: '#999', fontSize: 12 }}>
-          {spreadIdx * 2 + 1}–{Math.min(spreadIdx * 2 + 2, pages.length)} / {pages.length} صفحة
+          {isDesktop ? `${spreadIdx * 2 + 1}–${Math.min(spreadIdx * 2 + 2, pages.length)}` : `${pageIdx + 1}`} / {pages.length} صفحة
         </Text>
       </View>
 
-      {/* Spread dots */}
+      {/* Dots */}
       <View style={{ flexDirection: 'row', gap: 5, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 320 }}>
-        {spreads.map((_, i) => (
+        {isDesktop ? spreads.map((_, i) => (
           <TouchableOpacity key={i} onPress={() => setSpreadIdx(i)}>
             <View style={{
               width: spreadIdx === i ? 18 : 7, height: 7, borderRadius: 4,
               backgroundColor: spreadIdx === i ? ACCENT : '#555',
+            }} />
+          </TouchableOpacity>
+        )) : pages.map((_, i) => (
+          <TouchableOpacity key={i} onPress={() => setPageIdx(i)}>
+            <View style={{
+              width: pageIdx === i ? 18 : 7, height: 7, borderRadius: 4,
+              backgroundColor: pageIdx === i ? ACCENT : '#555',
             }} />
           </TouchableOpacity>
         ))}
@@ -318,7 +334,7 @@ function ContentPage({ page, locale, side }: { page: PageData; locale: string; s
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <View style={{ width: 30, height: 3, backgroundColor: HEADER_COLOR, borderRadius: 2 }} />
           <Text style={{ fontSize: 11, fontWeight: '700', color: HEADER_COLOR }}>
-            {page.pageNumber}
+            {page.globalPageNumber}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
