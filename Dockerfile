@@ -32,8 +32,10 @@ COPY package.json package-lock.json ./
 
 # Install ALL dependencies (including devDeps needed for expo build)
 # --mount=type=cache persists the npm cache between Coolify deploys
+# NODE_OPTIONS limits npm's own heap to avoid OOM during install
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps --ignore-scripts --prefer-offline
+    NODE_OPTIONS="--max-old-space-size=1536" \
+    npm ci --legacy-peer-deps --ignore-scripts --prefer-offline --maxsockets=5
 
 # ── Copy ONLY what expo export needs ─────────────────────────────────────────
 # Using explicit paths instead of "COPY . ." so that any new files or
@@ -56,13 +58,16 @@ COPY types/      ./types/
 COPY utils/      ./utils/
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Free npm/package-manager memory before the export step
+RUN npm cache clean --force 2>/dev/null; rm -rf /tmp/* 2>/dev/null; true
+
 # Build the static web export
-# NODE_OPTIONS: raise heap limit to avoid OOM kills
+# NODE_OPTIONS: cap heap to avoid OOM kills on limited-RAM servers
 # METRO_CACHE_DIR: tells Metro to write its bundle cache to the mounted volume,
 #   so subsequent deploys on the same Coolify host skip re-bundling unchanged modules.
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
-    NODE_OPTIONS="--max-old-space-size=3072" \
+    NODE_OPTIONS="--max-old-space-size=2048" \
     EXPO_NO_TELEMETRY=1 \
     EXPO_NO_SOURCEMAPS=1 \
     GENERATE_SOURCEMAP=false \
