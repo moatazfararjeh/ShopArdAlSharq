@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   ActivityIndicator, Dimensions, FlatList, Platform, I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -17,6 +18,9 @@ import { GetProductsParams } from '@/services/productService';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getBannerButtonText } from '@/types/models';
 import { Product, Banner, Category } from '@/types/models';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
+import { useFavoriteIds, useFavoriteProducts } from '@/hooks/useFavorites';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND     = '#e36523';
@@ -153,18 +157,51 @@ function CategoryCard({
   );
 }
 
+// ─── Sort products: favorites first ───────────────────────────────────────────
+function sortByFavorites(products: Product[], favIds: string[]): Product[] {
+  if (!favIds.length) return products;
+  const favSet = new Set(favIds);
+  return [...products].sort((a, b) => {
+    const aFav = favSet.has(a.id) ? 0 : 1;
+    const bFav = favSet.has(b.id) ? 0 : 1;
+    return aFav - bFav;
+  });
+}
+
+/** Merge favorite products first, then remaining (deduped). Optionally filter by category. */
+function mergeWithFavorites(products: Product[], favProducts: Product[], favIds: string[], categoryId?: string): Product[] {
+  if (!favIds.length) return products;
+  const favSet = new Set(favIds);
+  // Filter favorites by category if specified, and only available ones
+  let relevantFavs = favProducts.filter(p => p.is_available !== false);
+  if (categoryId) {
+    relevantFavs = relevantFavs.filter(p => p.category_id === categoryId);
+  }
+  // IDs already in products list
+  const existingIds = new Set(products.map(p => p.id));
+  // Favorites not yet in the list
+  const missingFavs = relevantFavs.filter(p => !existingIds.has(p.id));
+  // All favorites (already in list + missing)
+  const allFavs = [...products.filter(p => favSet.has(p.id)), ...missingFavs];
+  // Non-favorites from original list
+  const nonFavs = products.filter(p => !favSet.has(p.id));
+  return [...allFavs, ...nonFavs];
+}
+
 // ─── Per-category horizontal product row ──────────────────────────────────────
 function CategoryProductsSection({
   category, locale, cardWidth, onSeeAll,
 }: { category: Category; locale: string; cardWidth: number; onSeeAll: () => void }) {
   const router = useRouter();
+  const { data: favIds } = useFavoriteIds();
+  const { data: favProducts } = useFavoriteProducts();
   const { data, isLoading } = useProductsPage({
     categoryId: category.id,
     limit: 10,
     availableOnly: true,
     sortBy: 'newest',
   });
-  const products: Product[] = data?.data ?? [];
+  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], category.id);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -208,6 +245,59 @@ function CategoryProductsSection({
   );
 }
 
+// ─── All products grid (no category filter) ──────────────────────────────────
+function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; cardWidth: number; onSeeAll: () => void }) {
+  const router = useRouter();
+  const { data: favIds } = useFavoriteIds();
+  const { data: favProducts } = useFavoriteProducts();
+  const { data, isLoading } = useProductsPage({
+    availableOnly: true,
+    sortBy: 'newest',
+    limit: 20,
+  });
+  const rawProducts: Product[] = data?.data ?? [];
+  const products = mergeWithFavorites(rawProducts, favProducts ?? [], favIds ?? []);
+
+  if (!isLoading && products.length === 0) return null;
+
+  return (
+    <View style={{ marginTop: 24, marginBottom: 28 }}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 14,
+        direction: 'rtl' as any,
+      }}>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>جميع المنتجات</Text>
+        <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>رؤية الكل</Text>
+          <Ionicons name="chevron-forward" size={13} color={BRAND} />
+        </TouchableOpacity>
+      </View>
+
+      {isLoading ? (
+        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={BRAND} />
+        </View>
+      ) : (
+        <View style={{ direction: 'rtl' as any }}>
+        <FlatList
+          data={products}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
+          )}
+        />
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -216,6 +306,7 @@ export default function HomeScreen() {
   const router      = useRouter();
   const locale      = getCurrentLocale();
   const unreadCount = useUnreadCount();
+  const { data: favIds } = useFavoriteIds();
   const isWeb       = Platform.OS === 'web';
 
   const [windowWidth, setWindowWidth] = useState<number>(getBrowserWidth);
@@ -233,6 +324,7 @@ export default function HomeScreen() {
   useEffect(() => { setPage(0); }, [search, selectedCategory]);
 
   const isDesktop  = windowWidth >= 768;
+  const isAllProducts = selectedCategory === '__all__';
   const browseMode = !!selectedCategory || search.length >= 2;
 
   // Layout metrics
@@ -249,7 +341,7 @@ export default function HomeScreen() {
   // Browse-mode queries
   const browseParams: GetProductsParams = {
     search: search.length >= 2 ? search : undefined,
-    categoryId: selectedCategory,
+    categoryId: isAllProducts ? undefined : selectedCategory,
     availableOnly: true,
     sortBy: 'newest',
   };
@@ -298,9 +390,11 @@ export default function HomeScreen() {
 
   // ── Browse header ──────────────────────────────────────────────────────────
   function BrowseHeader() {
-    const label = selectedCat
-      ? getCategoryName(selectedCat, locale as any)
-      : search.length >= 2 ? `"${search}"` : '';
+    const label = isAllProducts
+      ? 'جميع المنتجات'
+      : selectedCat
+        ? getCategoryName(selectedCat, locale as any)
+        : search.length >= 2 ? `"${search}"` : '';
     return (
       <View style={{
         flexDirection: 'row', alignItems: 'center',
@@ -321,23 +415,59 @@ export default function HomeScreen() {
   }
 
   // ── Discover content (home) ────────────────────────────────────────────────
+  // Address state (hooks must be at top level, not inside conditionally-called functions)
+  const { session } = useAuthStore();
+  const [defaultAddress, setDefaultAddress] = useState<{ id: string; label: string; city: string } | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    if (!session?.user?.id) return;
+    supabase
+      .from('addresses')
+      .select('id, label, city')
+      .eq('user_id', session.user.id)
+      .eq('is_default', true)
+      .single()
+      .then(({ data }) => {
+        setDefaultAddress(data as any ?? null);
+      });
+  }, [session?.user?.id]));
+
   function DiscoverContent() {
     return (
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Delivery notice */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-          gap: 6, marginHorizontal: 16, marginTop: 10, marginBottom: 4,
-          backgroundColor: '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
-          borderWidth: 1, borderColor: '#fde0c8',
-        }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#c2410c' }}>
-            🚚 التوصيل يغطي منطقتي عمان و الزرقاء
-          </Text>
-        </View>
+        {/* Delivery address selector */}
+        <TouchableOpacity
+          onPress={() => {
+            if (defaultAddress) {
+              router.push('/(customer)/addresses' as any);
+            } else {
+              router.push('/(customer)/edit-address' as any);
+            }
+          }}
+          activeOpacity={0.7}
+          style={{
+            flexDirection: 'row', alignItems: 'center',
+            gap: 8, marginHorizontal: 16, marginTop: 10, marginBottom: 4,
+            backgroundColor: defaultAddress ? '#fff' : '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+            borderWidth: 1, borderColor: defaultAddress ? '#e6e0d8' : '#fde0c8',
+          }}
+        >
+          <Ionicons name="location" size={18} color={BRAND} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, color: '#6b7280' }}>توصيل إلى</Text>
+            <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700', color: defaultAddress ? '#1c1917' : '#c2410c' }}>
+              {defaultAddress ? `${defaultAddress.label} - ${defaultAddress.city}` : 'أضف عنوان توصيل'}
+            </Text>
+          </View>
+          {defaultAddress ? (
+            <Ionicons name="chevron-down" size={16} color="#6b7280" />
+          ) : (
+            <Ionicons name="add-circle" size={20} color={BRAND} />
+          )}
+        </TouchableOpacity>
 
         {/* Banners */}
         <HeroBannerCarousel
@@ -363,6 +493,24 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 4 }}
             >
+              {/* All products icon */}
+              <TouchableOpacity onPress={() => { setSelectedCategory(undefined); setSearch(''); }} activeOpacity={0.8} style={{ alignItems: 'center', gap: 7, width: 80 }}>
+                <View style={{
+                  width: 68, height: 68, borderRadius: 34,
+                  backgroundColor: '#fff7ed',
+                  overflow: 'hidden',
+                  borderWidth: 1.5, borderColor: BRAND,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Ionicons name="grid" size={28} color={BRAND} />
+                </View>
+                <Text numberOfLines={2} style={{
+                  fontSize: 11, fontWeight: '600', color: '#1c1917',
+                  textAlign: 'center', lineHeight: 15,
+                }}>
+                  جميع المنتجات
+                </Text>
+              </TouchableOpacity>
               {categories.map((cat) => (
                 <CategoryCard
                   key={cat.id}
@@ -375,6 +523,9 @@ export default function HomeScreen() {
             </View>
           </>
         )}
+
+        {/* All products section (no category filter) */}
+        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedCategory('__all__')} />
 
         {/* Product section per category */}
         {categories?.map((cat) => (

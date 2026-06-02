@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService';
+import { useToastStore } from '@/stores/toastStore';
 
 
 function NavRow({ icon, ionicon, label, onPress, danger }: { icon?: string; ionicon?: string; label: string; onPress?: () => void; danger?: boolean }) {
@@ -92,6 +93,7 @@ export default function ProfileScreen() {
       const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (data) setProfile(data as any);
       setEditMode(false);
+      useToastStore.getState().show('تم حفظ التغييرات بنجاح', 'success');
     } catch (e: any) {
       if (Platform.OS === 'web') { window.alert(e?.message ?? 'فشل الحفظ'); }
       else { Alert.alert('خطأ', e?.message ?? 'فشل الحفظ'); }
@@ -459,6 +461,7 @@ export default function ProfileScreen() {
           marginBottom: 16,
         }}>
           <NavRow icon="💬" label={t('contactUs.title')} onPress={() => router.push('/(customer)/contact' as any)} />
+          <NavRow ionicon="trash-outline" label="حذف الحساب" onPress={() => router.push('/(customer)/delete-account' as any)} danger />
         </View>
 
         {/* Logout */}

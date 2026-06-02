@@ -31,7 +31,7 @@ export default function EditAddressScreen() {
       floor_number: undefined,
       apartment_number: undefined,
       notes: undefined,
-      is_default: false,
+      is_default: true,
     },
   });
 
@@ -56,7 +56,7 @@ export default function EditAddressScreen() {
   }, [id]);
 
   async function onSubmit(values: AddressFormValues) {
-    if (!id || !session?.user?.id) return;
+    if (!session?.user?.id) return;
 
     // If setting as default, clear existing default first
     if (values.is_default) {
@@ -65,28 +65,41 @@ export default function EditAddressScreen() {
         .eq('user_id', session.user.id);
     }
 
-    const { error } = await (supabase.from('addresses') as any)
-      .update({
-        label: values.label,
-        recipient_name: values.recipient_name,
-        phone: values.phone,
-        city: values.city,
-        district: values.district || null,
-        street: values.street || null,
-        building_number: values.building_number || null,
-        floor_number: values.floor_number || null,
-        apartment_number: values.apartment_number || null,
-        notes: values.notes || null,
-        is_default: values.is_default,
-      })
-      .eq('id', id);
+    const payload = {
+      label: values.label,
+      recipient_name: values.recipient_name,
+      phone: values.phone,
+      city: values.city,
+      district: values.district || null,
+      street: values.street || null,
+      building_number: values.building_number || null,
+      floor_number: values.floor_number || null,
+      apartment_number: values.apartment_number || null,
+      notes: values.notes || null,
+      is_default: values.is_default,
+    };
+
+    let error: any;
+
+    if (id) {
+      // Update existing address
+      const result = await (supabase.from('addresses') as any)
+        .update(payload)
+        .eq('id', id);
+      error = result.error;
+    } else {
+      // Create new address
+      const result = await (supabase.from('addresses') as any)
+        .insert({ ...payload, user_id: session.user.id });
+      error = result.error;
+    }
 
     if (error) {
       showToast('فشل حفظ العنوان: ' + error.message, 'error');
       return;
     }
 
-    showToast('تم حفظ العنوان', 'success');
+    showToast(id ? 'تم حفظ العنوان' : 'تم إضافة العنوان بنجاح', 'success');
     router.canGoBack() ? router.back() : router.replace('/(customer)/addresses' as any);
   }
 
@@ -101,7 +114,7 @@ export default function EditAddressScreen() {
         <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/addresses' as any)}>
           <Ionicons name="arrow-forward" size={22} color="#1c1917" />
         </TouchableOpacity>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>تعديل العنوان</Text>
+        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>{id ? 'تعديل العنوان' : 'إضافة عنوان جديد'}</Text>
         <View style={{ width: 22 }} />
       </View>
 

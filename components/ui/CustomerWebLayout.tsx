@@ -10,7 +10,6 @@ import { useUnreadCount } from '@/hooks/useNotifications';
 
 const NAV_ITEMS = [
   { label: 'الرئيسية', icon: 'home-outline'    as const, activeIcon: 'home'    as const, path: '/home' },
-  { label: 'الكتالوج', icon: 'book-outline'    as const, activeIcon: 'book'    as const, path: '/catalog' },
   { label: 'المفضلة',  icon: 'heart-outline'   as const, activeIcon: 'heart'   as const, path: '/wishlist' },
   { label: 'السلة',    icon: 'bag-outline'     as const, activeIcon: 'bag'     as const, path: '/cart' },
   { label: 'طلباتي',  icon: 'receipt-outline' as const, activeIcon: 'receipt' as const, path: '/orders' },

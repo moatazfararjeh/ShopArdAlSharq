@@ -63,7 +63,8 @@ function WishlistItem({ product }: { product: Product }) {
         </TouchableOpacity>
       </View>
       <TouchableOpacity
-        onPress={() => toggleFavorite.mutate({ productId: product.id, isFavorited: true })}
+        onPress={(e) => { e.stopPropagation(); toggleFavorite.mutate({ productId: product.id, isFavorited: true }); }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         style={{
           width: 34, height: 34, borderRadius: 17,
           backgroundColor: '#fff0eb',

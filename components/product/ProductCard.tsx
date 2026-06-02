@@ -86,12 +86,14 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
         {/* Heart / wishlist button — top left (RTL end) */}
         <TouchableOpacity
-          onPress={() => toggleFavorite.mutate({ productId: product.id, isFavorited: liked })}
+          onPress={(e) => { e.stopPropagation(); toggleFavorite.mutate({ productId: product.id, isFavorited: liked }); }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{
             position: 'absolute', top: 10, left: 10,
             width: 32, height: 32, borderRadius: 16,
             backgroundColor: 'rgba(253,252,251,0.82)',
             alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
           }}
           activeOpacity={0.7}
         >
