@@ -6,17 +6,17 @@ import {
 
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useCategories } from '@/hooks/useCategories';
+
 import { useBrands } from '@/hooks/useBrands';
 import { useProductsPage } from '@/hooks/useProducts';
 import { getCurrentLocale } from '@/i18n';
-import { getCategoryName, getProductName, Product, Category, Brand } from '@/types/models';
+import { getProductName, Product, Brand } from '@/types/models';
 import { formatPrice } from '@/utils/formatPrice';
 
 // ── Design constants matching the professional catalog look ───────────────────
-const ITEMS_PER_PAGE = 6; // 3 columns × 2 rows per page
-const HEADER_COLOR = '#1a3a6b'; // Dark blue header like the reference
-const ACCENT = '#e36523';
+const ITEMS_PER_PAGE = 9; // 3 columns × 3 rows per page
+const HEADER_COLOR = '#2C2F34'; // App secondary blue
+const ACCENT = '#f97316'; // App primary orange
 const DARK = '#1c1917';
 
 function useWindowSize() {
@@ -198,7 +198,7 @@ function BookView({ brands, locale }: { brands: Brand[]; locale: string }) {
             <View style={{
               position: 'absolute', top: 0, bottom: 0, left: '50%',
               width: 6, marginLeft: -3, zIndex: 20,
-              backgroundColor: '#d4d0cc',
+              backgroundColor: '#c8d8cc',
               shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: -2, height: 0 },
             }} />
           )}
@@ -276,26 +276,23 @@ function CatalogPage({ page, locale, side }: { page: PageData; locale: string; s
 
 function CoverPage({ locale }: { locale: string }) {
   return (
-    <View style={{ flex: 1, backgroundColor: HEADER_COLOR }}>
-      {/* Decorative diagonal stripes */}
+    <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+      {/* Decorative elements */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-        <View style={{ position: 'absolute', top: -80, right: -100, width: 350, height: 350, borderRadius: 175, backgroundColor: 'rgba(255,255,255,0.03)' }} />
-        <View style={{ position: 'absolute', bottom: -60, left: -80, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.02)' }} />
-        {/* Gold diagonal accent */}
-        <View style={{ position: 'absolute', top: '20%', right: -20, width: 8, height: '60%', backgroundColor: '#c9a96e', transform: [{ rotate: '15deg' }] }} />
-        <View style={{ position: 'absolute', top: '18%', right: -4, width: 3, height: '60%', backgroundColor: '#c9a96e55', transform: [{ rotate: '15deg' }] }} />
+        <View style={{ position: 'absolute', top: -80, right: -100, width: 350, height: 350, borderRadius: 175, backgroundColor: HEADER_COLOR + '08' }} />
+        <View style={{ position: 'absolute', bottom: -60, left: -80, width: 280, height: 280, borderRadius: 140, backgroundColor: HEADER_COLOR + '05' }} />
       </View>
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-        {/* Top label */}
-        {/* Logo area */}
-   
-
-        <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', textAlign: 'center' }}>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: HEADER_COLOR, textAlign: 'center' }}>
           شركة أرض الشرق الحديثة
         </Text>
-        <Text style={{ fontSize: 11, color: '#aaa', marginTop: 6, textAlign: 'center' }}>
+        <Text style={{ fontSize: 11, color: '#666', marginTop: 6, textAlign: 'center' }}>
           لتوزيع المواد الغذائية
+        </Text>
+        <View style={{ width: 60, height: 3, backgroundColor: HEADER_COLOR, borderRadius: 2, marginTop: 16 }} />
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#444', marginTop: 16, textAlign: 'center' }}>
+          كتالوج المنتجات
         </Text>
       </View>
     </View>
@@ -307,62 +304,80 @@ function CoverPage({ locale }: { locale: string }) {
 function ContentPage({ page, locale, side }: { page: PageData; locale: string; side: 'left' | 'right' }) {
   const products = page.products ?? [];
   const brand = page.brand!;
-  const { width: winW } = useWindowSize();
-  const isDesktop = winW >= 900;
-  const cols = isDesktop ? 3 : 2;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Header bar — blue like the reference */}
-      <View style={{
-        backgroundColor: HEADER_COLOR,
-        paddingVertical: 10, paddingHorizontal: 14,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        direction: 'rtl' as any,
-      }}>
-        <Text style={{ fontSize: 11, fontWeight: '600', color: '#c9a96e' }}>
-          {brand.name}
-        </Text>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }} numberOfLines={1}>
-          شركة أرض الشرق الحديثة لتوزيع المواد الغذائية
-        </Text>
+      {/* Hero Header */}
+      <View style={{ backgroundColor: HEADER_COLOR, overflow: 'hidden' }}>
+        {/* Diagonal accent */}
+        <View style={{
+          position: 'absolute', top: -20, left: -30,
+          width: 120, height: 80,
+          backgroundColor: ACCENT,
+          transform: [{ rotate: '-15deg' }],
+        }} />
+        <View style={{
+          paddingVertical: 12, paddingHorizontal: 16,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          direction: 'rtl' as any,
+        }}>
+          {/* Brand logo/name area */}
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 6,
+            paddingHorizontal: 10, paddingVertical: 6,
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: HEADER_COLOR }}>{brand.name}</Text>
+          </View>
+          {/* Title */}
+          <View style={{ alignItems: 'center', flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT }}>
+              كتالوج المنتجات
+            </Text>
+            <Text style={{ fontSize: 8, color: '#fff', marginTop: 2 }}>
+              تشكيلة مختارة من المنتجات الغذائية
+            </Text>
+          </View>
+        </View>
       </View>
 
-      {/* Products Grid */}
-      <View
-        style={{
-          flex: 1,
-          flexDirection: 'row', flexWrap: 'wrap',
-          padding: 6, gap: 6,
-          direction: 'rtl' as any,
-          alignContent: 'flex-start',
-        }}
-      >
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} locale={locale} cols={cols} totalItems={products.length} />
+      {/* Section label */}
+      <View style={{
+        backgroundColor: ACCENT, paddingVertical: 3, paddingHorizontal: 14,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>🛒 عروض و منتجات</Text>
+      </View>
+
+      {/* Products Grid — 3 columns */}
+      <View style={{
+        flex: 1, paddingHorizontal: 6, paddingTop: 6,
+        flexDirection: 'row', flexWrap: 'wrap', gap: 5,
+        direction: 'rtl' as any, alignContent: 'flex-start',
+      }}>
+        {products.map((product, index) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            locale={locale}
+            index={((page.pageNumber ?? 1) - 1) * ITEMS_PER_PAGE + index + 1}
+          />
         ))}
       </View>
 
       {/* Page footer */}
       <View style={{
-        paddingVertical: 8, paddingHorizontal: 14,
-        borderTopWidth: 1, borderTopColor: '#eee',
-        direction: 'rtl' as any,
+        paddingVertical: 6, paddingHorizontal: 14,
+        backgroundColor: HEADER_COLOR,
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <View style={{ width: 30, height: 3, backgroundColor: HEADER_COLOR, borderRadius: 2 }} />
-          <Text style={{ fontSize: 11, fontWeight: '700', color: HEADER_COLOR }}>
-            {page.globalPageNumber}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="call-outline" size={9} color="#666" />
-            <Text style={{ fontSize: 8, color: '#666' }}>0795277537</Text>
+            <Ionicons name="logo-whatsapp" size={11} color="#25D366" />
+            <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600' }}>0792881832</Text>
           </View>
+          <Text style={{ fontSize: 9, color: ACCENT, fontWeight: '600' }}>للتواصل والاستفسار</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="call-outline" size={9} color="#666" />
-            <Text style={{ fontSize: 8, color: '#666' }}>0792881832</Text>
+            <Ionicons name="logo-whatsapp" size={11} color="#25D366" />
+            <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600' }}>0795277537</Text>
           </View>
         </View>
       </View>
@@ -372,92 +387,59 @@ function ContentPage({ page, locale, side }: { page: PageData; locale: string; s
 
 // ── Product Card — matches the reference catalog style ───────────────────────
 
-function ProductCard({ product, locale, cols, totalItems }: { product: Product; locale: string; cols: number; totalItems: number }) {
+function ProductCard({ product, locale, index }: { product: Product; locale: string; index: number }) {
   const imageUrl = product.product_images?.find((img) => img.is_primary)?.url
     ?? product.product_images?.[0]?.url;
 
-  const unitLabel = getUnitLabel(product);
   const sizeLabel = getSizeLabel(product);
-
-  // Calculate width based on columns
-  const widthPercent = cols === 3 ? '31.5%' : '48%';
-  // Always use max rows (based on ITEMS_PER_PAGE) so page size stays constant
-  const maxRows = Math.ceil(ITEMS_PER_PAGE / cols);
-  const heightPercent = `${Math.floor(100 / maxRows) - 2}%`;
 
   return (
     <View style={{
-      width: widthPercent as any,
-      height: heightPercent as any,
+      width: '31.5%',
+      height: '31%',
       backgroundColor: '#fff',
       borderRadius: 6,
       borderWidth: 1,
-      borderColor: '#e8e4e0',
+      borderColor: '#e8e8e8',
       overflow: 'hidden',
       direction: 'rtl' as any,
     }}>
       {/* Product image */}
       <View style={{
         width: '100%', flex: 1,
-        backgroundColor: '#f8f7f5',
+        backgroundColor: '#fafafa',
         alignItems: 'center', justifyContent: 'center',
-        padding: 4,
+        overflow: 'hidden',
       }}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
         ) : (
-          <Ionicons name="cube-outline" size={30} color="#ddd" />
+          <Ionicons name="cube-outline" size={24} color="#ccc" />
         )}
       </View>
 
-      {/* Product name */}
-      <View style={{ paddingHorizontal: 6, paddingTop: 6, paddingBottom: 4, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: DARK, textAlign: 'center' }} numberOfLines={2}>
-          {getProductName(product, locale as any)}
-        </Text>
-        {product.name_en && locale === 'ar' && (
-          <Text style={{ fontSize: 8, color: '#888', textAlign: 'center', marginTop: 1 }} numberOfLines={1}>
-            {product.name_en}
+      {/* Product info */}
+      <View style={{ paddingHorizontal: 4, paddingTop: 3, paddingBottom: 0 }}>
+        {/* Name + Size + Price — no gaps */}
+        <View>
+          <Text style={{ fontSize: 8, fontWeight: '700', color: DARK, textAlign: 'right' }} numberOfLines={1}>
+            {getProductName(product, locale as any)}
           </Text>
-        )}
-      </View>
+          <Text style={{ fontSize: 7, color: '#888', textAlign: 'right' }} numberOfLines={1}>
+            {sizeLabel}{product.pieces_per_carton ? ` · ${product.pieces_per_carton} حبة` : ''}
+          </Text>
+        </View>
 
-      {/* Details table — like the reference image */}
-      <View style={{ paddingHorizontal: 5, paddingBottom: 6, marginTop: 4, direction: 'rtl' as any }}>
-        {/* Unit row */}
-        <DetailRow label="الوحدة" value={unitLabel ?? '—'} color="#0369a1" />
-        {/* Size/weight row */}
-        <DetailRow label="الحجم" value={sizeLabel} color={ACCENT} />
-        {/* Sell unit row */}
-        {product.pieces_per_carton && (
-          <DetailRow label="الكرتون" value={`${product.pieces_per_carton} حبة`} color="#7c3aed" />
-        )}
-        {/* Price row */}
+        {/* Price */}
         <View style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          backgroundColor: HEADER_COLOR + '0C', paddingHorizontal: 5, paddingVertical: 3,
-          borderRadius: 3, marginTop: 3,
+          backgroundColor: ACCENT, borderRadius: 3,
+          paddingHorizontal: 4, paddingVertical: 2,
+          alignSelf: 'flex-start', marginTop: 2, marginBottom: 3,
         }}>
-          <Text style={{ fontSize: 8, fontWeight: '600', color: '#666' }}>السعر</Text>
-          <Text style={{ fontSize: 10, fontWeight: '800', color: ACCENT }}>
+          <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>
             {product.discount_price ? formatPrice(product.discount_price) : formatPrice(product.price)}
           </Text>
         </View>
-      </View>
-    </View>
-  );
-}
-
-function DetailRow({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <View style={{
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 5, paddingVertical: 2,
-      borderBottomWidth: 0.5, borderBottomColor: '#f0ece8',
-    }}>
-      <Text style={{ fontSize: 8, color: '#888' }}>{label}</Text>
-      <View style={{ backgroundColor: color + '12', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3 }}>
-        <Text style={{ fontSize: 8, fontWeight: '700', color }}>{value}</Text>
       </View>
     </View>
   );
@@ -467,29 +449,28 @@ function DetailRow({ label, value, color }: { label: string; value: string; colo
 
 function BackPage() {
   return (
-    <View style={{ flex: 1, backgroundColor: HEADER_COLOR, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-      <View style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }} />
+    <View style={{ flex: 1, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+      <View style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: HEADER_COLOR + '10' }} />
 
-
-      <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>
+      <Text style={{ fontSize: 18, fontWeight: '800', color: HEADER_COLOR, textAlign: 'center', marginBottom: 6 }}>
         شكراً لاطلاعكم
       </Text>
-      <Text style={{ fontSize: 11, color: '#aab', textAlign: 'center', marginBottom: 20 }}>
+      <Text style={{ fontSize: 11, color: '#666', textAlign: 'center', marginBottom: 20 }}>
         للطلب والاستفسار تواصل معنا
       </Text>
 
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-          <Text style={{ fontSize: 12, color: '#e0e0e0' }}>مندوب عمان: +962795277537</Text>
+          <Text style={{ fontSize: 12, color: '#333' }}>مندوب عمان: +962795277537</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-          <Text style={{ fontSize: 12, color: '#e0e0e0' }}>مندوب الزرقاء: +962792881832</Text>
+          <Text style={{ fontSize: 12, color: '#333' }}>مندوب الزرقاء: +962792881832</Text>
         </View>
       </View>
 
-      <Text style={{ fontSize: 9, color: '#556', marginTop: 30 }}>© 2026 شركة أرض الشرق الحديثة - جميع الحقوق محفوظة</Text>
+      <Text style={{ fontSize: 9, color: '#999', marginTop: 30 }}>© 2026 شركة أرض الشرق الحديثة - جميع الحقوق محفوظة</Text>
     </View>
   );
 }
@@ -510,7 +491,7 @@ function NavBtn({ icon, onPress, onLongPress, disabled, side }: { icon: any; onP
         borderBottomLeftRadius: side === 'left' ? 0 : 45,
         borderTopRightRadius: side === 'right' ? 0 : 45,
         borderBottomRightRadius: side === 'right' ? 0 : 45,
-        backgroundColor: disabled ? 'rgba(0,0,0,0.2)' : 'rgba(255,200,130,0.6)',
+        backgroundColor: disabled ? 'rgba(0,0,0,0.2)' : HEADER_COLOR + 'AA',
         alignItems: 'center', justifyContent: 'center',
       }}
     >
@@ -531,14 +512,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
-function getUnitLabel(product: Product): string | null {
-  switch (product.unit_type) {
-    case 'piece': return 'حبة';
-    case 'kg': return 'كيلو';
-    case 'carton': return 'كرتون';
-    default: return null;
-  }
-}
+
 
 function getSizeLabel(product: Product): string {
   if (product.weight) {
