@@ -10,6 +10,11 @@ export const productSchema = z.object({
     .max(120, 'الاسم يجب ألا يتجاوز 120 حرفًا')
     .optional()
     .or(z.literal('')),
+  brand_id: z
+    .string()
+    .uuid('يرجى اختيار ماركة صحيحة')
+    .optional()
+    .or(z.literal('')),
   description_ar: z.string().max(2000, 'الوصف يجب ألا يتجاوز 2000 حرف').optional().or(z.literal('')),
   description_en: z.string().max(2000, 'الوصف يجب ألا يتجاوز 2000 حرف').optional().or(z.literal('')),
   price: z

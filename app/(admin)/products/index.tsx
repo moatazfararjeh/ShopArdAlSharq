@@ -1,52 +1,45 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useProductsPage, useDeleteProduct } from '@/hooks/useProducts';
-import { useCategories } from '@/hooks/useCategories';
+import { useBrands } from '@/hooks/useBrands';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { formatPrice } from '@/utils/formatPrice';
 import { Product } from '@/types/models';
 import { Button } from '@/components/ui/Button';
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
 export default function AdminProductsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
-  const { page: pageParam } = useLocalSearchParams<{ page?: string }>();
-  const [page, setPage] = useState(() => (pageParam ? parseInt(pageParam, 10) : 0));
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  function toggleCollapse(catId: string) {
-    setCollapsed((prev) => ({ ...prev, [catId]: !prev[catId] }));
+  function toggleCollapse(brandId: string) {
+    setCollapsed((prev) => ({ ...prev, [brandId]: !prev[brandId] }));
   }
 
-  const { data, isLoading, isFetching } = useProductsPage({ availableOnly: false, page, limit: DEFAULT_PAGE_SIZE, groupByCategory: true });
-  const { data: categories } = useCategories(false);
+  const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
+  const { data: brands } = useBrands(false);
   const deleteMutation = useDeleteProduct();
 
   const products: Product[] = data?.data ?? [];
-  const totalCount = data?.count ?? 0;
-  const totalPages = Math.ceil(totalCount / DEFAULT_PAGE_SIZE);
-  const hasNext = page < totalPages - 1;
-  const hasPrev = page > 0;
 
-  // Group products by category
+  // Group products by brand
   const grouped = products.reduce<Record<string, Product[]>>((acc, product) => {
-    const catId = product.category_id ?? 'uncategorized';
-    if (!acc[catId]) acc[catId] = [];
-    acc[catId].push(product);
+    const brandId = product.brand_id ?? 'no-brand';
+    if (!acc[brandId]) acc[brandId] = [];
+    acc[brandId].push(product);
     return acc;
   }, {});
 
-  function getCategoryName(catId: string): string {
-    if (catId === 'uncategorized') return locale === 'ar' ? 'بدون تصنيف' : 'Uncategorized';
-    const cat = categories?.find((c) => c.id === catId);
-    if (!cat) return catId;
-    return locale === 'ar' ? cat.name_ar : (cat.name_en ?? cat.name_ar);
+  function getBrandName(brandId: string): string {
+    if (brandId === 'no-brand') return 'أخرى';
+    const brand = brands?.find((b) => b.id === brandId);
+    if (!brand) return brandId;
+    return brand.name;
   }
 
   function confirmDelete(id: string, name: string) {
@@ -80,35 +73,60 @@ export default function AdminProductsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Collapse All / Expand All */}
+      {!isLoading && Object.keys(grouped).length > 0 && (
+        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+          <TouchableOpacity
+            onPress={() => {
+              const allCollapsed: Record<string, boolean> = {};
+              Object.keys(grouped).forEach((id) => { allCollapsed[id] = true; });
+              setCollapsed(allCollapsed);
+            }}
+            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f3f4f6' }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>طي الكل ＋</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setCollapsed({})}
+            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f3f4f6' }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>فتح الكل －</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color="#e36523" />
         </View>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
-          {Object.entries(grouped).map(([catId, items]) => (
-            <View key={catId} style={{ marginTop: 16 }}>
-              {/* Category header */}
+          {Object.entries(grouped).map(([brandId, items]) => (
+            <View key={brandId} style={{ marginTop: 16 }}>
+              {/* Brand header */}
               <TouchableOpacity
-                onPress={() => toggleCollapse(catId)}
+                onPress={() => toggleCollapse(brandId)}
                 activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f3f0ec', marginHorizontal: 12, borderRadius: 10 }}
               >
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#5c4a35' }}>
-                  {getCategoryName(catId)} ({items.length})
+                  {getBrandName(brandId)} ({items.length})
                 </Text>
                 <Text style={{ fontSize: 16, color: '#5c4a35', fontWeight: '700' }}>
-                  {collapsed[catId] ? '＋' : '－'}
+                  {collapsed[brandId] ? '＋' : '－'}
                 </Text>
               </TouchableOpacity>
 
-              {/* Products in this category */}
-              {!collapsed[catId] && items.map((item) => (
+              {/* Products in this brand */}
+              {!collapsed[brandId] && items.map((item) => (
                 <View key={item.id} style={{ marginHorizontal: 16, marginVertical: 4, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 16 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: '600', color: '#111827' }} numberOfLines={1}>
                       {getProductName(item, locale)}
                     </Text>
+                    {item.brands?.name && (
+                      <Text style={{ fontSize: 11, color: '#857d78', marginTop: 2 }}>الماركة: {item.brands.name}</Text>
+                    )}
                     <Text style={{ fontSize: 13, color: '#e36523', marginTop: 2 }}>{formatPrice(item.price)}</Text>
                     <Text style={{ fontSize: 11, color: item.is_available ? '#22c55e' : '#ef4444', marginTop: 2 }}>
                       {item.is_available ? 'متوفر' : 'غير متوفر'} • المخزون: {item.stock_quantity}
@@ -131,7 +149,7 @@ export default function AdminProductsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() => router.push(`/(admin)/products/${item.id}/edit?page=${page}` as any)}
+                      onPress={() => router.push(`/(admin)/products/${item.id}/edit` as any)}
                       style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                     >
                       <Text style={{ fontSize: 13 }}>{t('common.edit')}</Text>
@@ -155,32 +173,6 @@ export default function AdminProductsScreen() {
           )}
         </ScrollView>
       )}
-
-      {/* Pagination footer */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-        <TouchableOpacity
-          disabled={!hasPrev || isFetching}
-          onPress={() => setPage((p) => p - 1)}
-          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: hasPrev ? '#e36523' : '#e5e7eb' }}
-        >
-          <Text style={{ color: hasPrev ? '#fff' : '#9ca3af', fontWeight: '600', fontSize: 13 }}>→ السابق</Text>
-        </TouchableOpacity>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {isFetching && <ActivityIndicator size="small" color="#e36523" />}
-          <Text style={{ fontSize: 13, color: '#6b7280' }}>
-            صفحة {page + 1} من {totalPages || 1}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          disabled={!hasNext || isFetching}
-          onPress={() => setPage((p) => p + 1)}
-          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: hasNext ? '#e36523' : '#e5e7eb' }}
-        >
-          <Text style={{ color: hasNext ? '#fff' : '#9ca3af', fontWeight: '600', fontSize: 13 }}>التالي ←</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }

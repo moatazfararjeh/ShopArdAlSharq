@@ -10,6 +10,7 @@ import { productSchema, ProductFormValues } from '@/schemas/productSchema';
 import { useProduct, useUpdateProduct } from '@/hooks/useProducts';
 import { useProductImages } from '@/hooks/useProductImages';
 import { useCategories } from '@/hooks/useCategories';
+import { useBrands } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { getCurrentLocale } from '@/i18n';
@@ -24,6 +25,7 @@ export default function EditProductScreen() {
   const { data: product, isLoading } = useProduct(id);
   const updateMutation = useUpdateProduct(id);
   const { data: categories } = useCategories(false);
+  const { data: brands } = useBrands(false);
   const { images, addImage, removeImage, setPrimary } = useProductImages(id);
 
   async function pickImage() {
@@ -52,6 +54,7 @@ export default function EditProductScreen() {
     defaultValues: {
       name_ar: '',
       name_en: '',
+      brand_id: '',
       description_ar: '',
       description_en: '',
       price: '',
@@ -76,6 +79,7 @@ export default function EditProductScreen() {
     reset({
       name_ar: product.name_ar ?? '',
       name_en: product.name_en ?? '',
+      brand_id: product.brand_id ?? '',
       description_ar: product.description_ar ?? '',
       description_en: product.description_en ?? '',
       price: String(product.price ?? ''),
@@ -98,6 +102,7 @@ export default function EditProductScreen() {
     await updateMutation.mutateAsync({
       name_ar: values.name_ar,
       name_en: values.name_en || null,
+      brand_id: values.brand_id || null,
       description_ar: values.description_ar || null,
       description_en: values.description_en || null,
       price: parseFloat(values.price),
@@ -232,6 +237,30 @@ export default function EditProductScreen() {
             <Input label="Name in English" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.name_en?.message} />
           )}
         />
+
+        {/* Brand picker */}
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>الماركة</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {brands?.map((brand) => {
+            const selected = watch('brand_id') === brand.id;
+            return (
+              <TouchableOpacity
+                key={brand.id}
+                onPress={() => setValue('brand_id', selected ? '' : brand.id)}
+                style={{
+                  paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+                  backgroundColor: selected ? '#e36523' : '#ede8e1',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : '#1c1917' }}>
+                  {brand.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {errors.brand_id && <Text style={{ color: '#dc2626', fontSize: 12, marginTop: -12, marginBottom: 12 }}>{errors.brand_id.message}</Text>}
+
         <Controller control={control} name="description_ar"
           render={({ field: { onChange, value, onBlur } }) => (
             <Input label="الوصف" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />

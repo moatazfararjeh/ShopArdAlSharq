@@ -11,13 +11,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useProducts, useProductsPage } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
+import { useBrands } from '@/hooks/useBrands';
 import { useBanners } from '@/hooks/useBanners';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { ProductCard } from '@/components/product/ProductCard';
 import { GetProductsParams } from '@/services/productService';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getBannerButtonText } from '@/types/models';
-import { Product, Banner, Category } from '@/types/models';
+import { Product, Banner, Category, Brand } from '@/types/models';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useFavoriteIds, useFavoriteProducts } from '@/hooks/useFavorites';
@@ -168,14 +169,17 @@ function sortByFavorites(products: Product[], favIds: string[]): Product[] {
   });
 }
 
-/** Merge favorite products first, then remaining (deduped). Optionally filter by category. */
-function mergeWithFavorites(products: Product[], favProducts: Product[], favIds: string[], categoryId?: string): Product[] {
+/** Merge favorite products first, then remaining (deduped). Optionally filter by category or brand. */
+function mergeWithFavorites(products: Product[], favProducts: Product[], favIds: string[], categoryId?: string, brandId?: string): Product[] {
   if (!favIds.length) return products;
   const favSet = new Set(favIds);
-  // Filter favorites by category if specified, and only available ones
+  // Filter favorites by category/brand if specified, and only available ones
   let relevantFavs = favProducts.filter(p => p.is_available !== false);
   if (categoryId) {
     relevantFavs = relevantFavs.filter(p => p.category_id === categoryId);
+  }
+  if (brandId) {
+    relevantFavs = relevantFavs.filter(p => p.brand_id === brandId);
   }
   // IDs already in products list
   const existingIds = new Set(products.map(p => p.id));
@@ -219,6 +223,107 @@ function CategoryProductsSection({
           <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>رؤية الكل</Text>
           <Ionicons name="chevron-forward" size={13} color={BRAND} />
         </TouchableOpacity>
+      </View>
+
+      {isLoading ? (
+        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={BRAND} />
+        </View>
+      ) : (
+        <View style={{ direction: 'rtl' as any }}>
+        <FlatList
+          data={products}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
+          )}
+        />
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Per-brand horizontal product row ─────────────────────────────────────────
+function BrandProductsSection({
+  brand, locale, cardWidth,
+}: { brand: Brand; locale: string; cardWidth: number }) {
+  const router = useRouter();
+  const { data: favIds } = useFavoriteIds();
+  const { data: favProducts } = useFavoriteProducts();
+  const { data, isLoading } = useProductsPage({
+    brandId: brand.id,
+    limit: 10,
+    availableOnly: true,
+    sortBy: 'newest',
+  });
+  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], undefined, brand.id);
+
+  if (!isLoading && products.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: 28 }}>
+      {/* Section header */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 10, direction: 'rtl' as any,
+      }}>
+        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
+          {brand.name}
+        </Text>
+      </View>
+
+      {isLoading ? (
+        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={BRAND} />
+        </View>
+      ) : (
+        <View style={{ direction: 'rtl' as any }}>
+        <FlatList
+          data={products}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
+          )}
+        />
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Products without brand (أخرى) ───────────────────────────────────────────
+function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWidth: number }) {
+  const router = useRouter();
+  const { data: favIds } = useFavoriteIds();
+  const { data: favProducts } = useFavoriteProducts();
+  const { data, isLoading } = useProductsPage({
+    noBrand: true,
+    limit: 10,
+    availableOnly: true,
+    sortBy: 'newest',
+  });
+  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? []);
+
+  if (!isLoading && products.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: 28 }}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 10, direction: 'rtl' as any,
+      }}>
+        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>أخرى</Text>
       </View>
 
       {isLoading ? (
@@ -336,6 +441,7 @@ export default function HomeScreen() {
   const bannerW       = isWeb ? windowWidth - sidebarW : SCREEN_W;
 
   const { data: categories } = useCategories();
+  const { data: brands } = useBrands();
   const selectedCat = categories?.find((c) => c.id === selectedCategory);
 
   // Browse-mode queries
@@ -438,6 +544,13 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Hero banner image */}
+        <Image
+          source={require('@/assets/hero-banner.png')}
+          style={{ width: '100%', aspectRatio: 1580 / 600 }}
+          contentFit="cover"
+        />
+
         {/* Delivery address selector */}
         <TouchableOpacity
           onPress={() => {
@@ -527,16 +640,18 @@ export default function HomeScreen() {
         {/* All products section (no category filter) */}
         <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedCategory('__all__')} />
 
-        {/* Product section per category */}
-        {categories?.map((cat) => (
-          <CategoryProductsSection
-            key={cat.id}
-            category={cat}
+        {/* Product section per brand */}
+        {brands?.map((brand) => (
+          <BrandProductsSection
+            key={brand.id}
+            brand={brand}
             locale={locale}
             cardWidth={discoverCardW}
-            onSeeAll={() => setSelectedCategory(cat.id)}
           />
         ))}
+
+        {/* Products without brand — أخرى */}
+        <NoBrandProductsSection locale={locale} cardWidth={discoverCardW} />
       </ScrollView>
     );
   }

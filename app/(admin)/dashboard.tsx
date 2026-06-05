@@ -61,6 +61,7 @@ export default function AdminDashboardScreen() {
         {[
           { label: t('admin.manageProducts'), route: '/(admin)/products/' as const },
           { label: t('admin.manageCategories'), route: '/(admin)/categories/' as const },
+          { label: 'إدارة الماركات', route: '/(admin)/brands/' as const },
           { label: t('admin.manageOrders'), route: '/(admin)/orders/' as const },
           { label: 'البانرات الإعلانية', route: '/(admin)/banners/' as const },
           { label: 'إدارة الحسابات', route: '/(admin)/users/' as const },

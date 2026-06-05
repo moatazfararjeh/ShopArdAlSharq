@@ -7,9 +7,10 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories } from '@/hooks/useCategories';
+import { useBrands } from '@/hooks/useBrands';
 import { useProductsPage } from '@/hooks/useProducts';
 import { getCurrentLocale } from '@/i18n';
-import { getCategoryName, getProductName, Product, Category } from '@/types/models';
+import { getCategoryName, getProductName, Product, Category, Brand } from '@/types/models';
 import { formatPrice } from '@/utils/formatPrice';
 
 // ── Design constants matching the professional catalog look ───────────────────
@@ -47,9 +48,9 @@ function useWindowSize() {
 
 export default function CatalogScreen() {
   const locale = getCurrentLocale();
-  const { data: categories, isLoading: catLoading } = useCategories(true);
+  const { data: brands, isLoading: brandsLoading } = useBrands(true);
 
-  if (catLoading) {
+  if (brandsLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#2c2c2c', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" color="#fff" />
@@ -59,7 +60,7 @@ export default function CatalogScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#2c2c2c' }}>
-      <BookView categories={categories ?? []} locale={locale} />
+      <BookView brands={brands ?? []} locale={locale} />
     </View>
   );
 }
@@ -71,13 +72,13 @@ export default function CatalogScreen() {
 interface PageData {
   type: 'cover' | 'content' | 'back';
   products?: Product[];
-  category?: Category;
+  brand?: Brand;
   pageNumber?: number;
-  totalCatPages?: number;
+  totalBrandPages?: number;
   globalPageNumber?: number;
 }
 
-function BookView({ categories, locale }: { categories: Category[]; locale: string }) {
+function BookView({ brands, locale }: { brands: Brand[]; locale: string }) {
   const { data, isLoading } = useProductsPage(
     { availableOnly: true, limit: 2000 },
     { enabled: true },
@@ -85,31 +86,48 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
 
   const allProducts: Product[] = data?.data ?? [];
 
-  // Build pages: cover, then each category's products chunked into pages, then back
+  // Build pages: cover, then each brand's products chunked into pages, then back
   const pages = useMemo(() => {
     const result: PageData[] = [];
     result.push({ type: 'cover' });
 
     let globalNum = 1;
-    for (const cat of categories) {
-      const catProducts = allProducts.filter((p) => p.category_id === cat.id);
-      if (catProducts.length === 0) continue;
-      const chunks = chunkArray(catProducts, ITEMS_PER_PAGE);
+    for (const brand of brands) {
+      const brandProducts = allProducts.filter((p) => p.brand_id === brand.id);
+      if (brandProducts.length === 0) continue;
+      const chunks = chunkArray(brandProducts, ITEMS_PER_PAGE);
       chunks.forEach((chunk, i) => {
         result.push({
           type: 'content',
           products: chunk,
-          category: cat,
+          brand: brand,
           pageNumber: i + 1,
-          totalCatPages: chunks.length,
+          totalBrandPages: chunks.length,
           globalPageNumber: globalNum++,
         });
       });
     }
 
-    result.push({ type: 'back' });
-    return result;
-  }, [categories, allProducts]);
+      // Products without brand — أخرى
+      const noBrandProducts = allProducts.filter((p) => !p.brand_id);
+      if (noBrandProducts.length > 0) {
+        const otherBrand: Brand = { id: '__other__', name: 'أخرى', is_active: true, sort_order: 9999, created_at: '' };
+        const chunks = chunkArray(noBrandProducts, ITEMS_PER_PAGE);
+        chunks.forEach((chunk, i) => {
+          result.push({
+            type: 'content',
+            products: chunk,
+            brand: otherBrand,
+            pageNumber: i + 1,
+            totalBrandPages: chunks.length,
+            globalPageNumber: globalNum++,
+          });
+        });
+      }
+
+      result.push({ type: 'back' });
+      return result;
+    }, [brands, allProducts]);
 
   // Spreads = pairs of pages (left + right of the open book)
   const spreads = useMemo(() => {
@@ -121,7 +139,7 @@ function BookView({ categories, locale }: { categories: Category[]; locale: stri
   }, [pages]);
 
   const [spreadIdx, setSpreadIdx] = useState(0);
-  const [pageIdx, setPageIdx] = useState(0); // For mobile single-page navigation
+  const [pageIdx, setPageIdx] = useState(0);
   const { width: winW, height: winH } = useWindowSize();
   const isDesktop = winW >= 900;
 
@@ -288,7 +306,7 @@ function CoverPage({ locale }: { locale: string }) {
 
 function ContentPage({ page, locale, side }: { page: PageData; locale: string; side: 'left' | 'right' }) {
   const products = page.products ?? [];
-  const category = page.category!;
+  const brand = page.brand!;
   const { width: winW } = useWindowSize();
   const isDesktop = winW >= 900;
   const cols = isDesktop ? 3 : 2;
@@ -303,7 +321,7 @@ function ContentPage({ page, locale, side }: { page: PageData; locale: string; s
         direction: 'rtl' as any,
       }}>
         <Text style={{ fontSize: 11, fontWeight: '600', color: '#c9a96e' }}>
-          {getCategoryName(category, locale as any)}
+          {brand.name}
         </Text>
         <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }} numberOfLines={1}>
           شركة أرض الشرق الحديثة لتوزيع المواد الغذائية

@@ -108,10 +108,12 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
       {/* Info — below image */}
       <View style={{ paddingHorizontal: 10, paddingBottom: 10, paddingTop: 6, gap: 3 }}>
 
-        {/* Brand / first word — small gray, right-aligned */}
-        <Text style={{ fontSize: 10, color: '#857d78', fontWeight: '600', textAlign: 'right' }}>
-          {name.split(' ')[0]}
-        </Text>
+        {/* Brand — small gray, right-aligned */}
+        {product.brands?.name && (
+          <Text style={{ fontSize: 10, color: '#857d78', fontWeight: '600', textAlign: 'right' }}>
+            {product.brands.name}
+          </Text>
+        )}
 
         {/* Title */}
         <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '700', color: '#1c1917', lineHeight: 19, textAlign: 'right' }}>

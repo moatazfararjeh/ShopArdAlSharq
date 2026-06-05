@@ -79,6 +79,16 @@ export function getBannerButtonText(banner: Banner, locale: SupportedLocale): st
   return locale === 'ar' ? banner.button_text_ar : (banner.button_text_en ?? banner.button_text_ar);
 }
 
+// ─── Brand ───────────────────────────────────────────────────────────────────
+
+export interface Brand {
+  id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 export interface ProductImage {
@@ -95,6 +105,7 @@ export interface ProductImage {
 export interface Product {
   id: string;
   category_id: string;
+  brand_id: string | null;
   name_ar: string;
   name_en: string | null;
   description_ar: string | null;
@@ -118,6 +129,7 @@ export interface Product {
   images?: ProductImage[];
   product_images?: ProductImage[];
   categories?: { name_ar: string; name_en: string | null; image_url?: string | null } | null;
+  brands?: { name: string } | null;
 }
 
 export function getProductName(product: Product, locale: SupportedLocale): string {

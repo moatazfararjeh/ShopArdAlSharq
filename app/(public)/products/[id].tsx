@@ -1,14 +1,15 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Dimensions, FlatList, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useProduct } from '@/hooks/useProducts';
+import { useProduct, useProductsPage } from '@/hooks/useProducts';
 import { useCart } from '@/hooks/useCart';
 import { useToastStore } from '@/stores/toastStore';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, getProductDescription, hasDiscount } from '@/types/models';
 import { formatPrice, getDiscountPercent } from '@/utils/formatPrice';
+import { ProductCard } from '@/components/product/ProductCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -101,11 +102,11 @@ export default function ProductDetailScreen() {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero image */}
-        <View style={{ position: 'relative' }}>
+        <View style={{ position: 'relative', backgroundColor: '#f9f7f5', alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
           <Image
             source={{ uri: currentImage }}
-            style={{ width: SCREEN_WIDTH, height: 320 }}
-            contentFit="cover"
+            style={{ width: SCREEN_WIDTH * 0.75, aspectRatio: 1, borderRadius: 16 }}
+            contentFit="contain"
           />
           {/* Back button */}
           <TouchableOpacity
@@ -268,6 +269,9 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
+        {/* Similar products by category */}
+        <SimilarProducts categoryId={product.category_id} currentProductId={product.id} locale={locale} />
+
         <View style={{ height: 110 }} />
       </ScrollView>
 
@@ -305,6 +309,49 @@ export default function ProductDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+    </View>
+  );
+}
+
+// ─── Similar Products Section ─────────────────────────────────────────────────
+function SimilarProducts({ categoryId, currentProductId, locale }: { categoryId: string; currentProductId: string; locale: string }) {
+  const router = useRouter();
+  const { data, isLoading } = useProductsPage({
+    categoryId,
+    availableOnly: true,
+    sortBy: 'newest',
+    limit: 10,
+  });
+
+  const products = (data?.data ?? []).filter((p) => p.id !== currentProductId);
+
+  if (isLoading) {
+    return (
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+        <ActivityIndicator color="#f97316" />
+      </View>
+    );
+  }
+
+  if (products.length === 0) return null;
+
+  return (
+    <View style={{ marginTop: 8, marginBottom: 16 }}>
+      <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917', paddingHorizontal: 20, marginBottom: 12 }}>
+        منتجات مشابهة
+      </Text>
+      <FlatList
+        data={products}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={{ width: 155 }}>
+            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+          </View>
+        )}
+      />
     </View>
   );
 }

@@ -35,7 +35,7 @@ export default function DeleteAccountScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: 'Delete Account' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'حذف الحساب' }} />
       <ScrollView
         style={{ flex: 1, backgroundColor: '#ffffff' }}
         contentContainerStyle={{
@@ -46,10 +46,10 @@ export default function DeleteAccountScreen() {
         }}
       >
         <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 8, color: '#111827' }}>
-          Delete Your Account
+          حذف حسابك
         </Text>
         <Text style={{ fontSize: 15, lineHeight: 24, color: '#374151', marginBottom: 24 }}>
-          Request deletion of your {APP_NAME} account and all associated personal data.
+          طلب حذف حسابك في {APP_NAME} وجميع البيانات الشخصية المرتبطة به.
         </Text>
 
         {submitted ? (
@@ -63,26 +63,24 @@ export default function DeleteAccountScreen() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: '600', color: '#065f46', marginBottom: 8 }}>
-              Request Received
+              تم استلام الطلب
             </Text>
             <Text style={{ fontSize: 15, lineHeight: 24, color: '#047857' }}>
-              We have received your account deletion request. Your account and associated data will
-              be permanently deleted within 30 days. You will receive a confirmation email once the
-              process is complete.
+              لقد استلمنا طلب حذف حسابك. سيتم حذف حسابك وجميع البيانات المرتبطة به نهائياً خلال 30 يوماً. ستتلقى بريداً إلكترونياً للتأكيد عند اكتمال العملية.
             </Text>
           </View>
         ) : (
           <View>
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#1f2937', marginBottom: 16 }}>
-              What will be deleted:
+              ما سيتم حذفه:
             </Text>
             <View style={{ marginBottom: 24, paddingLeft: 8 }}>
               {[
-                'Your account profile and credentials',
-                'Order history',
-                'Saved addresses',
-                'Wishlist and cart items',
-                'Push notification subscriptions',
+                'ملفك الشخصي وبيانات الدخول',
+                'سجل الطلبات',
+                'العناوين المحفوظة',
+                'قائمة الأمنيات وعناصر السلة',
+                'اشتراكات الإشعارات',
               ].map((item, index) => (
                 <View key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
                   <Text style={{ fontSize: 15, color: '#374151', marginRight: 8 }}>•</Text>
@@ -102,16 +100,16 @@ export default function DeleteAccountScreen() {
                 fontWeight: '500',
               }}
             >
-              This action is irreversible. Once your data is deleted, it cannot be recovered.
+              هذا الإجراء لا يمكن التراجع عنه. بمجرد حذف بياناتك، لا يمكن استعادتها.
             </Text>
 
             <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 }}>
-              Reason for leaving (optional)
+              سبب المغادرة (اختياري)
             </Text>
             <TextInput
               value={reason}
               onChangeText={setReason}
-              placeholder="Tell us why you're deleting your account..."
+              placeholder="أخبرنا لماذا تريد حذف حسابك..."
               multiline
               numberOfLines={3}
               style={{
@@ -124,6 +122,7 @@ export default function DeleteAccountScreen() {
                 backgroundColor: '#f9fafb',
                 minHeight: 80,
                 textAlignVertical: 'top',
+                textAlign: 'right',
               }}
             />
 
@@ -142,7 +141,7 @@ export default function DeleteAccountScreen() {
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
-                  Request Account Deletion
+                  طلب حذف الحساب
                 </Text>
               )}
             </Pressable>

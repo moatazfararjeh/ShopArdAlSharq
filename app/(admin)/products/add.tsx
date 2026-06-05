@@ -11,6 +11,7 @@ import { productSchema, ProductFormValues } from '@/schemas/productSchema';
 import { useCreateProduct } from '@/hooks/useProducts';
 import { uploadProductImages } from '@/hooks/useProductImages';
 import { useCategories } from '@/hooks/useCategories';
+import { useBrands } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { getCurrentLocale } from '@/i18n';
@@ -22,6 +23,7 @@ export default function AddProductScreen() {
   const locale = getCurrentLocale();
   const createMutation = useCreateProduct();
   const { data: categories } = useCategories(false);
+  const { data: brands } = useBrands(false);
   const [pendingImages, setPendingImages] = useState<{ uri: string; mimeType?: string }[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
 
@@ -50,6 +52,7 @@ export default function AddProductScreen() {
     defaultValues: {
       name_ar: '',
       name_en: '',
+      brand_id: '',
       description_ar: '',
       price: '',
       discount_price: '',
@@ -69,6 +72,7 @@ export default function AddProductScreen() {
     const newProduct = await createMutation.mutateAsync({
       name_ar: values.name_ar,
       name_en: values.name_en || null,
+      brand_id: values.brand_id || null,
       description_ar: values.description_ar || null,
       description_en: values.description_en || null,
       price: parseFloat(values.price),
@@ -175,6 +179,29 @@ export default function AddProductScreen() {
             <Input label="Name in English" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.name_en?.message} />
           )}
         />
+        {/* Brand picker */}
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>الماركة</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {brands?.map((brand) => {
+            const selected = watch('brand_id') === brand.id;
+            return (
+              <TouchableOpacity
+                key={brand.id}
+                onPress={() => setValue('brand_id', selected ? '' : brand.id)}
+                style={{
+                  paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+                  backgroundColor: selected ? '#e36523' : '#ede8e1',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : '#1c1917' }}>
+                  {brand.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {errors.brand_id && <Text style={{ color: '#dc2626', fontSize: 12, marginTop: -12, marginBottom: 12 }}>{errors.brand_id.message}</Text>}
+
         <Controller control={control} name="description_ar"
           render={({ field: { onChange, value, onBlur } }) => (
             <Input label="الوصف" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />

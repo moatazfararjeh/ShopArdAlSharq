@@ -5,6 +5,8 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
 export interface GetProductsParams {
   categoryId?: string;
+  brandId?: string;
+  noBrand?: boolean;
   search?: string;
   featured?: boolean;
   availableOnly?: boolean;
@@ -33,11 +35,13 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
 
   let query = supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url)', { count: 'exact' })
+    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)', { count: 'exact' })
     .range(page * limit, (page + 1) * limit - 1);
 
   if (availableOnly) query = query.eq('is_available', true);
   if (categoryId) query = query.eq('category_id', categoryId);
+  if (params.brandId) query = query.eq('brand_id', params.brandId);
+  if (params.noBrand) query = query.is('brand_id', null);
   if (featured !== undefined) query = query.eq('is_featured', featured);
   if (search) query = query.ilike('name_ar', `%${search}%`);
 
@@ -74,7 +78,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
 export async function getProductById(id: string): Promise<Product> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url)')
+    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)')
     .eq('id', id)
     .single();
   if (error) throw parseSupabaseError(error);
@@ -84,7 +88,7 @@ export async function getProductById(id: string): Promise<Product> {
 export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url)')
+    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)')
     .eq('is_available', true)
     .eq('is_featured', true)
     .order('created_at', { ascending: false })

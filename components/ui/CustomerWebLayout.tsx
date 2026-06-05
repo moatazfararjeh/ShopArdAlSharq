@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 ];
 
 const DESKTOP_BREAKPOINT = 768;
-const HEADER_HEIGHT      = 64;
+const HEADER_HEIGHT      = 70;
 const BOTTOM_BAR_HEIGHT  = 64;
 
 function getBrowserWidth(): number {
@@ -110,6 +110,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
+          direction: 'ltr' as any,
           position: 'sticky' as any,
           top: 0,
           zIndex: 100,
@@ -117,7 +118,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
         }}
       >
         <TouchableOpacity onPress={() => router.push('/(customer)/home' as any)} activeOpacity={0.8}>
-          <Image source={require('@/assets/logo.png')} style={{ width: 180, height: 60 }} contentFit="contain" />
+          <Image source={require('@/assets/logo.png')} style={{ width: isDesktop ? 50 : 50, height: isDesktop ? 50 : 50 }} contentFit="contain" />
         </TouchableOpacity>
 
         {/* Desktop: action icons */}
@@ -213,7 +214,10 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             </View>
 
             {/* Copyright */}
-            <View style={{ borderTopWidth: 1, borderTopColor: '#333', marginTop: 32, paddingTop: 20, alignItems: 'center' as any }}>
+            <View style={{ borderTopWidth: 1, borderTopColor: '#333', marginTop: 32, paddingTop: 20, alignItems: 'center' as any, gap: 10 }}>
+              <TouchableOpacity onPress={() => router.push('/(public)/privacy-policy' as any)}>
+                <Text style={{ fontSize: 13, color: '#aaa', textDecorationLine: 'underline' }}>سياسة الخصوصية</Text>
+              </TouchableOpacity>
               <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق جميع الحقوق محفوظة</Text>
             </View>
           </View>}
