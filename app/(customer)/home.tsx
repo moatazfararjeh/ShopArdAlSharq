@@ -589,6 +589,7 @@ export default function HomeScreen() {
           onCategorySelect={setSelectedCategory}
         />
 
+
         {/* الأقسام — category circles */}
         {categories && categories.length > 0 && (
           <>

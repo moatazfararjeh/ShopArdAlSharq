@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { loginSchema, LoginFormValues } from '@/schemas/authSchema';
@@ -44,8 +45,36 @@ export default function LoginScreen() {
           contentContainerClassName="flex-grow justify-center px-6 py-8"
           keyboardShouldPersistTaps="handled"
         >
-          <Image source={require('@/assets/logo.png')} style={{ width: 340, height: 140, marginBottom: 24, alignSelf: 'center' }} resizeMode="contain" />
-          <Text className="mb-2 text-3xl font-bold text-gray-900">{t('auth.login')}</Text>
+          <Image source={require('@/assets/logo.png')} style={{ width: 340, height: 140, marginBottom: 16, alignSelf: 'center' }} resizeMode="contain" />
+
+          {/* Hero features */}
+          <View style={{ marginBottom: 20, alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', textAlign: 'center' }}>
+              كل احتياجاتك مجمدة وموثوقة{"\n"}في مكان واحد
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 14 }}>
+              <View style={{ alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="car-outline" size={22} color="#e36523" />
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: '#5c4a35' }}>توصيل سريع</Text>
+              </View>
+              <View style={{ alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="shield-checkmark-outline" size={22} color="#e36523" />
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: '#5c4a35' }}>جودة عالية</Text>
+              </View>
+              <View style={{ alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="gift-outline" size={22} color="#e36523" />
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: '#5c4a35' }}>تشكيلة متنوعة</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#1c1917', marginBottom: 8 }}>{t('auth.login')}</Text>
 
           {showConfirmNotice && (
             <View className="mb-4 rounded-xl bg-green-50 px-4 py-3">
