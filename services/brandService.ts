@@ -16,17 +16,17 @@ export async function getBrands(activeOnly = true): Promise<Brand[]> {
   return (data ?? []) as unknown as Brand[];
 }
 
-export async function createBrand(name: string, sort_order = 0): Promise<Brand> {
+export async function createBrand(name: string, sort_order = 0, image_url?: string | null): Promise<Brand> {
   const { data, error } = await supabase
     .from('brands')
-    .insert({ name, sort_order })
+    .insert({ name, sort_order, image_url: image_url ?? null })
     .select()
     .single();
   if (error) throw parseSupabaseError(error);
   return data as unknown as Brand;
 }
 
-export async function updateBrand(id: string, payload: Partial<Pick<Brand, 'name' | 'is_active' | 'sort_order'>>): Promise<Brand> {
+export async function updateBrand(id: string, payload: Partial<Pick<Brand, 'name' | 'is_active' | 'sort_order' | 'image_url'>>): Promise<Brand> {
   const { data, error } = await supabase
     .from('brands')
     .update(payload)

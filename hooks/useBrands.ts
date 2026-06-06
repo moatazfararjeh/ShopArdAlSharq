@@ -16,7 +16,7 @@ export function useBrands(activeOnly = true) {
 export function useCreateBrand() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, sort_order }: { name: string; sort_order?: number }) => createBrand(name, sort_order),
+    mutationFn: ({ name, sort_order, image_url }: { name: string; sort_order?: number; image_url?: string | null }) => createBrand(name, sort_order, image_url),
     onSuccess: () => qc.invalidateQueries({ queryKey: brandKeys.all }),
   });
 }
@@ -24,7 +24,7 @@ export function useCreateBrand() {
 export function useUpdateBrand() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...payload }: { id: string; name?: string; is_active?: boolean; sort_order?: number }) =>
+    mutationFn: ({ id, ...payload }: { id: string; name?: string; is_active?: boolean; sort_order?: number; image_url?: string | null }) =>
       updateBrand(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: brandKeys.all }),
   });

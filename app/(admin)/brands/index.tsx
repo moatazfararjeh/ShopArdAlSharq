@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Image } from 'expo-image';
 import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand } from '@/hooks/useBrands';
+import { uploadImage } from '@/services/storageService';
+import { BRAND_IMAGE_BUCKET } from '@/lib/constants';
 import { Brand } from '@/types/models';
 
 export default function AdminBrandsScreen() {
@@ -17,16 +20,78 @@ export default function AdminBrandsScreen() {
 
   const [newName, setNewName] = useState('');
   const [newSortOrder, setNewSortOrder] = useState('0');
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingNew, setUploadingNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editSortOrder, setEditSortOrder] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [uploadingEdit, setUploadingEdit] = useState(false);
+
+  async function pickAndUploadImage(setUrl: (url: string) => void, setLoading: (v: boolean) => void) {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/png,image/webp';
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoading(true);
+        try {
+          const fileName = `brand_${Date.now()}_${file.name}`;
+          const result = await uploadImage(BRAND_IMAGE_BUCKET, fileName, file);
+          setUrl(result.publicUrl);
+        } catch (err: any) {
+          window.alert(err?.message ?? 'فشل رفع الصورة');
+        } finally {
+          setLoading(false);
+        }
+      };
+      input.click();
+    } else {
+      // Native: use expo-image-picker
+      const ImagePicker = require('expo-image-picker');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      setLoading(true);
+      try {
+        const asset = result.assets[0];
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const ext = asset.uri.split('.').pop() ?? 'jpg';
+        const fileName = `brand_${Date.now()}.${ext}`;
+        const uploadResult = await uploadImage(BRAND_IMAGE_BUCKET, fileName, blob);
+        setUrl(uploadResult.publicUrl);
+      } catch (err: any) {
+        Alert.alert('خطأ', err?.message ?? 'فشل رفع الصورة');
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
 
   function handleAdd() {
     const name = newName.trim();
-    if (!name) return;
-    const sort_order = parseInt(newSortOrder) || 0;
-    createMutation.mutate({ name, sort_order }, {
-      onSuccess: () => { setNewName(''); setNewSortOrder('0'); },
+    const sort_order = parseInt(newSortOrder);
+    const missing: string[] = [];
+    if (!name) missing.push('الاسم');
+    if (!newSortOrder.trim() || isNaN(sort_order)) missing.push('الترتيب');
+    if (!newImageUrl) missing.push('الصورة');
+    if (missing.length) {
+      const msg = `يرجى تعبئة: ${missing.join('، ')}`;
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('حقول مطلوبة', msg);
+      return;
+    }
+    createMutation.mutate({ name, sort_order, image_url: newImageUrl }, {
+      onSuccess: () => { setNewName(''); setNewSortOrder('0'); setNewImageUrl(''); },
     });
   }
 
@@ -34,14 +99,23 @@ export default function AdminBrandsScreen() {
     setEditingId(brand.id);
     setEditName(brand.name);
     setEditSortOrder(String(brand.sort_order));
+    setEditImageUrl(brand.image_url ?? '');
   }
 
   function handleSaveEdit() {
     if (!editingId) return;
     const name = editName.trim();
-    if (!name) return;
-    const sort_order = parseInt(editSortOrder) || 0;
-    updateMutation.mutate({ id: editingId, name, sort_order }, {
+    const sort_order = parseInt(editSortOrder);
+    const missing: string[] = [];
+    if (!name) missing.push('الاسم');
+    if (!editSortOrder.trim() || isNaN(sort_order)) missing.push('الترتيب');
+    if (!editImageUrl) missing.push('الصورة');
+    if (missing.length) {
+      const msg = `يرجى تعبئة: ${missing.join('، ')}`;
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('حقول مطلوبة', msg);
+      return;
+    }
+    updateMutation.mutate({ id: editingId, name, sort_order, image_url: editImageUrl }, {
       onSuccess: () => setEditingId(null),
     });
   }
@@ -106,15 +180,48 @@ export default function AdminBrandsScreen() {
           />
           <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الترتيب</Text>
         </View>
+        {/* Image upload */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => pickAndUploadImage(setNewImageUrl, setUploadingNew)}
+            disabled={uploadingNew}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+              borderWidth: 1.5, borderColor: newImageUrl ? '#059669' : '#e5e7eb',
+              backgroundColor: newImageUrl ? '#ecfdf5' : '#fff',
+            }}
+          >
+            {uploadingNew ? (
+              <ActivityIndicator size="small" color="#e36523" />
+            ) : (
+              <>
+                {newImageUrl ? (
+                  <Image source={{ uri: newImageUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} contentFit="cover" />
+                ) : (
+                  <Text style={{ fontSize: 13, color: '#6b7280' }}>📷</Text>
+                )}
+                <Text style={{ fontSize: 12, color: newImageUrl ? '#059669' : '#dc2626', fontWeight: '600' }}>
+                  {newImageUrl ? 'تم الرفع ✓' : 'رفع صورة *'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+          {newImageUrl ? (
+            <TouchableOpacity onPress={() => setNewImageUrl('')}>
+              <Text style={{ fontSize: 12, color: '#dc2626' }}>إزالة</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
         <TouchableOpacity
           onPress={handleAdd}
-          disabled={createMutation.isPending || !newName.trim()}
+          disabled={createMutation.isPending}
           style={{
             alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
-            backgroundColor: newName.trim() ? '#e36523' : '#e5e7eb',
+            backgroundColor: (newName.trim() && newImageUrl) ? '#e36523' : '#e5e7eb',
           }}
         >
-          <Text style={{ color: newName.trim() ? '#fff' : '#9ca3af', fontWeight: '700', fontSize: 14 }}>إضافة</Text>
+          <Text style={{ color: (newName.trim() && newImageUrl) ? '#fff' : '#9ca3af', fontWeight: '700', fontSize: 14 }}>إضافة</Text>
         </TouchableOpacity>
       </View>
 
@@ -168,6 +275,39 @@ export default function AdminBrandsScreen() {
                   />
                   <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الترتيب</Text>
                 </View>
+                {/* Image upload in edit mode */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => pickAndUploadImage(setEditImageUrl, setUploadingEdit)}
+                    disabled={uploadingEdit}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+                      borderWidth: 1.5, borderColor: editImageUrl ? '#059669' : '#e5e7eb',
+                      backgroundColor: editImageUrl ? '#ecfdf5' : '#fff',
+                    }}
+                  >
+                    {uploadingEdit ? (
+                      <ActivityIndicator size="small" color="#e36523" />
+                    ) : (
+                      <>
+                        {editImageUrl ? (
+                          <Image source={{ uri: editImageUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} contentFit="cover" />
+                        ) : (
+                          <Text style={{ fontSize: 13, color: '#6b7280' }}>📷</Text>
+                        )}
+                        <Text style={{ fontSize: 12, color: editImageUrl ? '#059669' : '#6b7280', fontWeight: '600' }}>
+                          {editImageUrl ? 'تغيير الصورة' : 'رفع صورة'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {editImageUrl ? (
+                    <TouchableOpacity onPress={() => setEditImageUrl('')}>
+                      <Text style={{ fontSize: 12, color: '#dc2626' }}>إزالة</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <TouchableOpacity onPress={() => setEditingId(null)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#f3f4f6' }}>
                     <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600' }}>إلغاء</Text>
@@ -193,14 +333,23 @@ export default function AdminBrandsScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>{item.name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <Text style={{ fontSize: 11, color: '#9ca3af' }}>الترتيب: {item.sort_order}</Text>
-                    <Text style={{ fontSize: 11, color: item.is_active ? '#059669' : '#dc2626' }}>
-                      {item.is_active ? '● نشطة' : '● معطلة'}
-                    </Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>{item.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#9ca3af' }}>الترتيب: {item.sort_order}</Text>
+                      <Text style={{ fontSize: 11, color: item.is_active ? '#059669' : '#dc2626' }}>
+                        {item.is_active ? '● نشطة' : '● معطلة'}
+                      </Text>
+                    </View>
                   </View>
+                  {item.image_url ? (
+                    <Image source={{ uri: item.image_url }} style={{ width: 44, height: 44, borderRadius: 10 }} contentFit="cover" />
+                  ) : (
+                    <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 20, color: '#d1d5db' }}>📷</Text>
+                    </View>
+                  )}
                 </View>
               </>
             )}

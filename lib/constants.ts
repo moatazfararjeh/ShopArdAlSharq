@@ -19,6 +19,7 @@ export const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 export const MAX_PRODUCT_IMAGES = 5;
 export const PRODUCT_IMAGE_BUCKET = 'product-images';
 export const CATEGORY_IMAGE_BUCKET = 'category-images';
+export const BRAND_IMAGE_BUCKET = 'brand-images';
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 20;
