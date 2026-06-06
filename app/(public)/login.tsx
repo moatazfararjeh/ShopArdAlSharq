@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { loginSchema, LoginFormValues } from '@/schemas/authSchema';
 import { useLogin } from '@/hooks/useAuth';
+import { useBiometric } from '@/hooks/useBiometric';
+import { useState } from 'react';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -16,6 +18,8 @@ export default function LoginScreen() {
   const loginMutation = useLogin();
   const params = useLocalSearchParams<{ confirmed?: string }>();
   const showConfirmNotice = params.confirmed === '1';
+  const { isAvailable, isEnabled, saveCredentials, getCredentials, getBiometricLabel, getBiometricIcon } = useBiometric();
+  const [biometricLoading, setBiometricLoading] = useState(false);
 
   const {
     control,
@@ -29,9 +33,28 @@ export default function LoginScreen() {
   async function onSubmit(values: LoginFormValues) {
     try {
       await loginMutation.mutateAsync(values);
+      // Offer to save credentials if biometrics available and not already enabled
+      if (isAvailable && !isEnabled && Platform.OS !== 'web') {
+        await saveCredentials(values.email, values.password);
+      }
       router.replace('/(customer)/home');
     } catch (err: unknown) {
       // Error displayed via mutation state
+    }
+  }
+
+  async function handleBiometricLogin() {
+    setBiometricLoading(true);
+    try {
+      const credentials = await getCredentials();
+      if (credentials) {
+        await loginMutation.mutateAsync(credentials);
+        router.replace('/(customer)/home');
+      }
+    } catch {
+      // Error displayed via mutation state
+    } finally {
+      setBiometricLoading(false);
     }
   }
 
@@ -140,6 +163,32 @@ export default function LoginScreen() {
             fullWidth
             size="lg"
           />
+
+          {/* Biometric login button */}
+          {isAvailable && isEnabled && Platform.OS !== 'web' && (
+            <TouchableOpacity
+              onPress={handleBiometricLogin}
+              disabled={biometricLoading}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                marginTop: 16,
+                paddingVertical: 14,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: '#e36523',
+                backgroundColor: '#fff7ed',
+                opacity: biometricLoading ? 0.6 : 1,
+              }}
+            >
+              <Ionicons name={getBiometricIcon()} size={24} color="#e36523" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#e36523' }}>
+                الدخول بـ{getBiometricLabel()}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <View className="mt-6 flex-row items-center justify-center gap-2">
             <Text className="text-gray-500">{t('auth.noAccount')}</Text>

@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ardalsharq.app"
+      "bundleIdentifier": "com.ardalsharq.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول"
+      }
     },
     "android": {
       "package": "com.ardalsharq.app",
@@ -25,7 +28,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": []
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"]
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +41,13 @@
       "expo-image",
       "expo-localization",
       "expo-image-picker",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول"
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -47,7 +57,8 @@
           "androidMode": "default",
           "androidCollapsedTitle": "ArdAlsharq"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

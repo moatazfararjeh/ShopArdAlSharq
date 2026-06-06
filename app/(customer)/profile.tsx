@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, Platform, TextInput, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Platform, TextInput, ActivityIndicator, Linking, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService';
 import { useToastStore } from '@/stores/toastStore';
+import { useBiometric } from '@/hooks/useBiometric';
 
 
 function NavRow({ icon, ionicon, label, onPress, danger }: { icon?: string; ionicon?: string; label: string; onPress?: () => void; danger?: boolean }) {
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState('');
   const [editCompany, setEditCompany] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const { isAvailable, isEnabled, clearCredentials, getBiometricLabel, getBiometricIcon } = useBiometric();
 
   function openEdit() {
     setEditName(profile?.full_name ?? '');
@@ -440,6 +442,51 @@ export default function ProfileScreen() {
           </View>
           {/* Language toggle hidden */}
         </View>
+
+        {/* Biometric login toggle — only show on native if hardware is available */}
+        {Platform.OS !== 'web' && isAvailable && (
+          <View style={{
+            backgroundColor: '#fff', marginHorizontal: 20, borderRadius: 22,
+            overflow: 'hidden',
+            shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+            marginBottom: 16,
+          }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center',
+              paddingVertical: 16, paddingHorizontal: 20,
+            }}>
+              <View style={{
+                width: 38, height: 38, borderRadius: 12,
+                backgroundColor: '#fff7ed',
+                alignItems: 'center', justifyContent: 'center',
+                marginRight: 14,
+              }}>
+                <Ionicons name={getBiometricIcon()} size={20} color="#e36523" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                  الدخول بـ{getBiometricLabel()}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                  {isEnabled ? 'مفعّل' : 'غير مفعّل'}
+                </Text>
+              </View>
+              <Switch
+                value={isEnabled}
+                onValueChange={async (val) => {
+                  if (!val) {
+                    await clearCredentials();
+                    useToastStore.getState().show('تم إلغاء الدخول بالبصمة', 'success');
+                  } else {
+                    useToastStore.getState().show('سجّل دخولك مرة أخرى لتفعيل البصمة', 'info');
+                  }
+                }}
+                trackColor={{ false: '#e5e7eb', true: '#fdba74' }}
+                thumbColor={isEnabled ? '#e36523' : '#f4f4f5'}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Admin panel — only visible to admins */}
         {isAdmin && (
