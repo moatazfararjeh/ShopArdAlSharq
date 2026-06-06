@@ -67,7 +67,7 @@ RUN npm cache clean --force 2>/dev/null; rm -rf /tmp/* 2>/dev/null; true
 #   so subsequent deploys on the same Coolify host skip re-bundling unchanged modules.
 RUN --mount=type=cache,target=/root/.metro-cache \
     CI=1 \
-    NODE_OPTIONS="--max-old-space-size=2048" \
+    NODE_OPTIONS="--max-old-space-size=1536" \
     EXPO_NO_TELEMETRY=1 \
     EXPO_NO_SOURCEMAPS=1 \
     GENERATE_SOURCEMAP=false \
