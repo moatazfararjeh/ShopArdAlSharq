@@ -61,7 +61,7 @@ function HeroBannerCard({
       style={{ width, borderRadius: 0, overflow: 'hidden', backgroundColor: banner.bg_color ?? '#8B7355', height: 180 }}
     >
       {banner.image_url && (
-        <Image source={{ uri: banner.image_url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
+        <Image source={{ uri: banner.image_url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} contentFit="cover" />
       )}
       {buttonText && (
         <View style={{ position: 'absolute', bottom: 16, right: 22 }}>
@@ -547,7 +547,7 @@ export default function HomeScreen() {
         {/* Hero banner image */}
         <Image
           source={require('@/assets/hero-banner.png')}
-          style={{ width: '100%', aspectRatio: 1580 / 600 }}
+          style={{ width: '100%', aspectRatio: 1080 / 600 }}
           contentFit="cover"
         />
 

@@ -3,9 +3,16 @@ import { supabase } from '@/lib/supabase';
 import { uploadImage, deleteImage } from '@/services/storageService';
 import { PRODUCT_IMAGE_BUCKET } from '@/lib/constants';
 import { ProductImage } from '@/types/models';
+import { productKeys } from '@/hooks/useProducts';
 
 export function useProductImages(productId: string) {
   const qc = useQueryClient();
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['product-images', productId] });
+    qc.invalidateQueries({ queryKey: productKeys.detail(productId) });
+    qc.invalidateQueries({ queryKey: productKeys.lists() });
+  };
 
   const images = useQuery({
     queryKey: ['product-images', productId],
@@ -40,7 +47,7 @@ export function useProductImages(productId: string) {
       });
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['product-images', productId] }),
+    onSuccess: invalidateAll,
   });
 
   const removeImage = useMutation({
@@ -50,7 +57,7 @@ export function useProductImages(productId: string) {
       const { error } = await (supabase as any).from('product_images').delete().eq('id', image.id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['product-images', productId] }),
+    onSuccess: invalidateAll,
   });
 
   const setPrimary = useMutation({
@@ -61,7 +68,7 @@ export function useProductImages(productId: string) {
       const { error } = await (supabase as any).from('product_images').update({ is_primary: true }).eq('id', imageId);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['product-images', productId] }),
+    onSuccess: invalidateAll,
   });
 
   return { images, addImage, removeImage, setPrimary };
