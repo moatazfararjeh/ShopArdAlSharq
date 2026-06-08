@@ -1,7 +1,18 @@
 import '../global.css';
 import '../i18n';
 import { useEffect } from 'react';
-import { I18nManager, LogBox, Platform } from 'react-native';
+import { I18nManager, LogBox, Platform, Text, TextInput } from 'react-native';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Set default font family for all Text and TextInput components
+// Icons override this with their own fontFamily, so they remain unaffected
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
+
+SplashScreen.preventAutoHideAsync();
 
 // Suppress known third-party library warnings
 LogBox.ignoreLogs([
@@ -56,10 +67,26 @@ function PushInitializer() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'NotoSansArabic-Regular': require('../assets/fonts/NotoSansArabic-Regular.ttf'),
+    'NotoSansArabic-SemiBold': require('../assets/fonts/NotoSansArabic-SemiBold.ttf'),
+    'NotoSansArabic-Bold': require('../assets/fonts/NotoSansArabic-Bold.ttf'),
+  });
+
   useEffect(() => {
     // Redundant safety — already set at module level above
     I18nManager.forceRTL(true);
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
