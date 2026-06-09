@@ -99,7 +99,7 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: '#fff', direction: 'rtl' }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero image */}
         <View style={{ position: 'relative', backgroundColor: '#f9f7f5', alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
@@ -161,8 +161,8 @@ export default function ProductDetailScreen() {
         )}
 
         {/* Content */}
-        <View style={{ padding: 20 }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827', lineHeight: 30 }}>
+        <View style={{ padding: 20, direction: 'rtl' }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827', lineHeight: 30, textAlign: 'right', writingDirection: 'rtl' }}>
             {name}
           </Text>
 
@@ -181,7 +181,7 @@ export default function ProductDetailScreen() {
           {/* Unit selector — shown when product has piece/carton prices */}
           {hasUnitOptions && !outOfStock && (
             <View style={{ marginTop: 16, marginBottom: 4 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 }}>اختر الوحدة</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8, textAlign: 'right', writingDirection: 'rtl' }}>اختر الوحدة</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {unitOptions.map((opt) => {
                   const active = effectiveUnit === opt.unit;
@@ -216,7 +216,7 @@ export default function ProductDetailScreen() {
               width: 8, height: 8, borderRadius: 4,
               backgroundColor: outOfStock ? '#ef4444' : '#22c55e',
             }} />
-            <Text style={{ fontSize: 13, color: outOfStock ? '#ef4444' : '#16a34a', fontWeight: '600' }}>
+            <Text style={{ fontSize: 13, color: outOfStock ? '#ef4444' : '#16a34a', fontWeight: '600', writingDirection: 'rtl' }}>
               {outOfStock ? t('products.outOfStock') : `متوفر (${product.stock_quantity})`}
             </Text>
           </View>
@@ -225,7 +225,7 @@ export default function ProductDetailScreen() {
           {product.weight != null && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
               <Text style={{ fontSize: 12, color: '#9ca3af' }}>⚖️</Text>
-              <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>
+              <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500', writingDirection: 'rtl' }}>
                 {product.weight} {product.weight_unit ?? 'كغ'}
               </Text>
             </View>
@@ -234,7 +234,7 @@ export default function ProductDetailScreen() {
           <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 16 }} />
 
           {description && (
-            <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 24, marginBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 24, marginBottom: 20, textAlign: 'right', writingDirection: 'rtl' }}>
               {description}
             </Text>
           )}
@@ -242,7 +242,7 @@ export default function ProductDetailScreen() {
           {/* Quantity stepper */}
           {!outOfStock && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 16 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151', writingDirection: 'rtl' }}>
                 {t('products.quantity')}
               </Text>
               <View style={{
@@ -283,9 +283,10 @@ export default function ProductDetailScreen() {
         borderTopWidth: 1, borderTopColor: '#f3f4f6',
         shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 12,
         flexDirection: 'row', gap: 12, alignItems: 'center',
+        direction: 'rtl',
       }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 13, color: '#9ca3af' }}>الإجمالي</Text>
+          <Text style={{ fontSize: 13, color: '#9ca3af', textAlign: 'right', writingDirection: 'rtl' }}>الإجمالي</Text>
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#f97316' }}>
             {formatPrice(displayPrice * quantity)}
           </Text>
@@ -337,21 +338,20 @@ function SimilarProducts({ categoryId, currentProductId, locale }: { categoryId:
 
   return (
     <View style={{ marginTop: 8, marginBottom: 16 }}>
-      <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917', paddingHorizontal: 20, marginBottom: 12 }}>
+      <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917', paddingHorizontal: 20, marginBottom: 12, textAlign: 'right', writingDirection: 'rtl' }}>
         منتجات مشابهة
       </Text>
-      <FlatList
-        data={products}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={{ width: 155 }}>
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12, flexDirection: 'row-reverse' }}
+      >
+        {products.map((item) => (
+          <View key={item.id} style={{ width: 155 }}>
             <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
           </View>
-        )}
-      />
+        ))}
+      </ScrollView>
     </View>
   );
 }

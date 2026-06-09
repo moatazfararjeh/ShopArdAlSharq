@@ -21,6 +21,9 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
+// Singleton promise to prevent concurrent initialization calls from racing
+let initPromise: Promise<() => void> | null = null;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   profile: null,
@@ -43,63 +46,84 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  initialize: async () => {
+  initialize: () => {
     // Guard against double-initialization
-    if (get().isInitialized) return () => {};
+    if (get().isInitialized) return Promise.resolve(() => {});
 
-    try {
-    // Load current session on app start
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // If initialization is already in progress, return the same promise
+    // to avoid concurrent calls racing.
+    if (initPromise) return initPromise;
 
-    // If we have a session, fetch the profile BEFORE marking as initialized
-    // so that isAdmin is correct the first time isInitialized becomes true.
-    if (session?.user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+    initPromise = new Promise<() => void>((resolve) => {
+      let resolved = false;
 
-      if (data) {
-        get().setProfile(data as Profile);
-      }
-    }
+      const finishInit = async (session: Session | null) => {
+        if (resolved) return;
+        resolved = true;
 
-    set({
-      session,
-      isAuthenticated: !!session,
-      isInitialized: true,
-      isLoading: false,
-    });
-    } catch {
-      // Even on error, mark as initialized so the app doesn't stay stuck on a blank screen
-      set({ isInitialized: true, isLoading: false });
-    }
+        try {
+          if (session?.user) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-    // Subscribe to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      set({
-        session,
-        isAuthenticated: !!session,
+            if (data) {
+              get().setProfile(data as Profile);
+            }
+          }
+        } catch {
+          // profile fetch failed — continue anyway
+        }
+
+        set({
+          session,
+          isAuthenticated: !!session,
+          isInitialized: true,
+          isLoading: false,
+        });
+      };
+
+      // Use onAuthStateChange which fires INITIAL_SESSION without navigator.locks.
+      // This avoids the hanging getSession() issue on web.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!resolved) {
+          // First event is always the initial session
+          await finishInit(session);
+          resolve(() => subscription.unsubscribe());
+        } else {
+          // Subsequent auth changes (sign in/out, token refresh)
+          set({
+            session,
+            isAuthenticated: !!session,
+          });
+
+          if (session?.user) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            get().setProfile(data ? (data as Profile) : null);
+          } else {
+            get().setProfile(null);
+          }
+        }
       });
 
-      if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        get().setProfile(data ? (data as Profile) : null);
-      } else {
-        get().setProfile(null);
-      }
+      // Timeout fallback — if onAuthStateChange doesn't fire within 3s,
+      // mark as initialized anyway so the app is never stuck loading.
+      setTimeout(() => {
+        if (!resolved) {
+          finishInit(null);
+          resolve(() => subscription.unsubscribe());
+        }
+      }, 3000);
     });
 
-    // Return unsubscribe function
-    return () => subscription.unsubscribe();
+    return initPromise;
   },
 
   signOut: async () => {

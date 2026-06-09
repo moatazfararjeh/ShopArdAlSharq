@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
@@ -162,15 +162,31 @@ function printOrderWindow(order: Order, locale: string) {
   </div>
 
   <div class="footer">ArdAlsharq — تم الطباعة من النظام</div>
-
-  <script>window.onload = function() { window.print(); };<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=800,height=900');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
+  // Use a hidden iframe to print without navigating away from the page
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  iframe.style.left = '-9999px';
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (iframeDoc) {
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+    // Wait for content to render then print
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      // Clean up after print dialog closes
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
   }
 }
 
@@ -286,6 +302,7 @@ export default function OrderDetailScreen() {
   const router = useRouter();
 
   function goBack() {
+    console.log('[ORDER DETAIL] goBack called', new Error().stack);
     if (router.canGoBack()) router.back();
     else router.replace('/(customer)/orders/index' as any);
   }
@@ -333,13 +350,23 @@ export default function OrderDetailScreen() {
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {Platform.OS === 'web' && (
-            <TouchableOpacity
-              onPress={() => printOrderWindow(order, locale)}
-              style={{ backgroundColor: '#f3f4f6', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+            <Pressable
+              onPress={(e) => {
+                console.log('[PRINT] Button pressed');
+                e.preventDefault?.();
+                e.stopPropagation?.();
+                try {
+                  printOrderWindow(order, locale);
+                  console.log('[PRINT] printOrderWindow completed');
+                } catch (err) {
+                  console.error('[PRINT] Error:', err);
+                }
+              }}
+              style={{ backgroundColor: '#f3f4f6', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 5, zIndex: 10, position: 'relative' }}
             >
-              <Text style={{ fontSize: 14 }}>🖨️</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151' }}>طباعة</Text>
-            </TouchableOpacity>
+              <Text style={{ fontSize: 14, pointerEvents: 'none' }}>🖨️</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', pointerEvents: 'none' }}>طباعة</Text>
+            </Pressable>
           )}
           <View style={{ backgroundColor: statusConfig.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ fontSize: 12 }}>{statusConfig.label}</Text>
