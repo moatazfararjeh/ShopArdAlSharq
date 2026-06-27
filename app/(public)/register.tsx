@@ -93,9 +93,19 @@ export default function RegisterScreen() {
     defaultValues: { fullName: '', companyName: '', commercialRegisterNumber: '', phone: '', email: '', password: '', confirmPassword: '' },
   });
 
+  // Toast/alert helper that works on both web and native
+  const showAlert = (title: string, message: string, onOk?: () => void) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n${message}`);
+      onOk?.();
+    } else {
+      Alert.alert(title, message, [{ text: 'حسناً', onPress: onOk }]);
+    }
+  };
+
   async function onSubmit(values: RegisterFormValues) {
     if (!docUri) {
-      Alert.alert('السجل التجاري مطلوب', 'يرجى رفع صورة السجل التجاري قبل إكمال التسجيل');
+      showAlert('السجل التجاري مطلوب', 'يرجى رفع صورة السجل التجاري قبل إكمال التسجيل');
       return;
     }
     try {
@@ -106,7 +116,11 @@ export default function RegisterScreen() {
         commercialRegisterMime: docMime || undefined,
       });
       if ((result as any)?.needsConfirmation) {
-        router.replace('/(public)/login?confirmed=1' as any);
+        showAlert(
+          'تم إنشاء الحساب',
+          'تم إرسال رابط التفعيل إلى بريدك الإلكتروني. يرجى تأكيد بريدك قبل تسجيل الدخول.',
+          () => router.replace('/(public)/login?confirmed=1' as any),
+        );
       } else {
         router.replace('/(customer)/home');
       }

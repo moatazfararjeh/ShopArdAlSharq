@@ -532,7 +532,7 @@ export default function HomeScreen() {
       .select('id, label, city')
       .eq('user_id', session.user.id)
       .eq('is_default', true)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setDefaultAddress(data as any ?? null);
       });

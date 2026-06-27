@@ -16,6 +16,9 @@ const NAV_ITEMS = [
   { label: 'حسابي',   icon: 'person-outline'  as const, activeIcon: 'person'  as const, path: '/profile' },
 ];
 
+const ACTIVE_COLOR = '#e36523';
+const INACTIVE_COLOR = '#857d78';
+
 const DESKTOP_BREAKPOINT = 768;
 const HEADER_HEIGHT      = 70;
 const BOTTOM_BAR_HEIGHT  = 64;
@@ -65,8 +68,8 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             activeOpacity={0.75}
             style={[styles.navItem, isActive && styles.navItemActive]}
           >
-            <Ionicons name={isActive ? item.activeIcon : item.icon} size={20} color={isActive ? '#e36523' : '#857d78'} />
-            <Text style={[styles.navLabel, { color: isActive ? '#e36523' : '#5c4a35', fontWeight: isActive ? '700' : '500' }]}>
+            <Ionicons name={isActive ? item.activeIcon : item.icon} size={20} color={isActive ? ACTIVE_COLOR : '#857d78'} />
+            <Text style={[styles.navLabel, { color: isActive ? ACTIVE_COLOR : '#5c4a35', fontWeight: isActive ? '700' : '500' }]}>
               {item.label}
             </Text>
             {item.path === '/cart' && itemCount > 0 && (
@@ -250,13 +253,19 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             bottom: 0,
             left: 0,
             right: 0,
-            height: BOTTOM_BAR_HEIGHT,
-            backgroundColor: 'rgba(253,252,251,0.97)',
-            borderTopWidth: 1,
-            borderTopColor: '#e6e0d8',
+            height: BOTTOM_BAR_HEIGHT + 6,
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 3,
+            borderTopColor: ACTIVE_COLOR,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
             flexDirection: 'row',
             direction: 'rtl' as any,
             zIndex: 100,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
           }}
         >
           {NAV_ITEMS.map((item) => {
@@ -268,14 +277,36 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
                 activeOpacity={0.75}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 6, cursor: 'pointer' as any }}
               >
-                {/* Cart badge */}
-                <View style={{ position: 'relative' }}>
-                  <Ionicons name={isActive ? item.activeIcon : item.icon} size={22} color={isActive ? '#e36523' : '#857d78'} />
+                <View style={{ position: 'relative', ...(
+                  isActive
+                    ? {
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 30,
+                        width: 50,
+                        height: 50,
+                        justifyContent: 'center' as const,
+                        alignItems: 'center' as const,
+                        marginTop: -30,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 6,
+                        // Web box-shadow fallback
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      } as any
+                    : { justifyContent: 'center' as const, alignItems: 'center' as const }
+                  )
+                }}>
+                  <Ionicons
+                    name={isActive ? item.activeIcon : item.icon}
+                    size={isActive ? 26 : 22}
+                    color={isActive ? ACTIVE_COLOR : INACTIVE_COLOR}
+                  />
                   {item.path === '/cart' && itemCount > 0 && (
                     <View style={styles.dot}><Text style={styles.dotText}>{itemCount > 9 ? '9+' : itemCount}</Text></View>
                   )}
                 </View>
-                <Text style={{ fontSize: 10, fontWeight: isActive ? '700' : '500', color: isActive ? '#e36523' : '#857d78' }}>
+                <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR, marginTop: isActive ? 2 : 0 }}>
                   {item.label}
                 </Text>
               </TouchableOpacity>

@@ -9,8 +9,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { loginSchema, LoginFormValues } from '@/schemas/authSchema';
-import { useLogin } from '@/hooks/useAuth';
+import { useLogin, useResendConfirmation } from '@/hooks/useAuth';
 import { useBiometric } from '@/hooks/useBiometric';
+import { isAppError } from '@/lib/errors';
 import { useState, useEffect } from 'react';
 
 const REMEMBER_ME_KEY = 'remember_me_credentials';
@@ -19,11 +20,13 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const loginMutation = useLogin();
+  const resendMutation = useResendConfirmation();
   const params = useLocalSearchParams<{ confirmed?: string }>();
   const showConfirmNotice = params.confirmed === '1';
   const { isAvailable, isEnabled, saveCredentials, getCredentials, getBiometricLabel, getBiometricIcon } = useBiometric();
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [lastEmail, setLastEmail] = useState('');
 
   const {
     control,
@@ -49,6 +52,7 @@ export default function LoginScreen() {
   }, []);
 
   async function onSubmit(values: LoginFormValues) {
+    setLastEmail(values.email);
     try {
       await loginMutation.mutateAsync(values);
       // Offer to save credentials if biometrics available and not already enabled
@@ -128,7 +132,7 @@ export default function LoginScreen() {
           {showConfirmNotice && (
             <View className="mb-4 rounded-xl bg-green-50 px-4 py-3">
               <Text className="text-sm text-green-700">
-                تم إنشاء الحساب بنجاح. يرجى تأكيد بريدك الإلكتروني ثم تسجيل الدخول.
+                تم إنشاء الحساب بنجاح. تم إرسال رابط التفعيل إلى بريدك الإلكتروني. يرجى تأكيد بريدك ثم تسجيل الدخول.
               </Text>
             </View>
           )}
@@ -138,6 +142,17 @@ export default function LoginScreen() {
               <Text className="text-sm text-red-600">
                 {(loginMutation.error as Error).message}
               </Text>
+              {isAppError(loginMutation.error) && loginMutation.error.code === 'EMAIL_NOT_CONFIRMED' && lastEmail && (
+                <TouchableOpacity
+                  onPress={() => resendMutation.mutate(lastEmail)}
+                  disabled={resendMutation.isPending}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#e36523', textDecorationLine: 'underline' }}>
+                    {resendMutation.isPending ? 'جاري الإرسال...' : resendMutation.isSuccess ? 'تم إرسال رابط التفعيل ✓' : 'إعادة إرسال رابط التفعيل'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 

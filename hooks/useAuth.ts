@@ -59,6 +59,12 @@ export function useForgotPassword() {
   });
 }
 
+export function useResendConfirmation() {
+  return useMutation({
+    mutationFn: (email: string) => authService.resendConfirmationEmail(email),
+  });
+}
+
 export function useUpdateProfile() {
   const { profile } = useAuthStore();
   const setProfile = useAuthStore((s) => s.setProfile);

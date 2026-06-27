@@ -1,9 +1,12 @@
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/stores/cartStore';
 import { Ionicons } from '@expo/vector-icons';
+
+const ACTIVE_COLOR = '#e36523';
+const INACTIVE_COLOR = '#857d78';
 
 export default function CustomerLayout() {
   const { isAuthenticated, isInitialized } = useAuth();
@@ -14,7 +17,7 @@ export default function CustomerLayout() {
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#e36523" />
+        <ActivityIndicator size="large" color={ACTIVE_COLOR} />
       </View>
     );
   }
@@ -28,25 +31,79 @@ export default function CustomerLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#e36523',
-        tabBarInactiveTintColor: '#857d78',
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
         tabBarStyle: {
-          backgroundColor: 'rgba(253,252,251,0.92)',
-          borderTopWidth: 1,
-          borderTopColor: '#e6e0d8',
-          height: 64,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 3,
+          borderTopColor: ACTIVE_COLOR,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          height: Platform.OS === 'ios' ? 85 : 70,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+          position: 'absolute',
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginBottom: -2,
         },
       }}
     >
       <Tabs.Screen
-        name="profile"
+        name="home"
         options={{
-          title: 'حسابي',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          title: 'الرئيسية',
+          tabBarIcon: ({ focused, size }) => (
+            <View
+              style={
+                focused
+                  ? {
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 30,
+                      width: 50,
+                      height: 50,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginTop: -25,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 6,
+                      elevation: 6,
+                    }
+                  : { justifyContent: 'center', alignItems: 'center' }
+              }
+            >
+              <Ionicons
+                name={focused ? 'home' : 'home-outline'}
+                size={focused ? 26 : size}
+                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: 'المفضلة',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'heart' : 'heart-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -55,27 +112,44 @@ export default function CustomerLayout() {
           title: 'السلة',
           tabBarBadge: itemCount > 0 ? itemCount : undefined,
           tabBarBadgeStyle: { backgroundColor: '#e36523', color: '#fff', fontSize: 10, fontWeight: '700', minWidth: 18, height: 18 },
-          tabBarIcon: ({ color, size }) => <Ionicons name="bag-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'bag' : 'bag-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
-        name="wishlist"
+        name="orders/index"
         options={{
-          title: 'المفضلة',
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
+          title: 'طلباتي',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'receipt' : 'receipt-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
-        name="home"
+        name="profile"
         options={{
-          title: 'الرئيسية',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          title: 'حسابي',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       {/* Hidden screens — not tabs */}
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="orders/index" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
       <Tabs.Screen name="order-success" options={{ href: null }} />
       <Tabs.Screen name="orders/[id]" options={{ href: null }} />
@@ -83,6 +157,7 @@ export default function CustomerLayout() {
       <Tabs.Screen name="edit-address" options={{ href: null }} />
       <Tabs.Screen name="contact" options={{ href: null }} />
       <Tabs.Screen name="catalog" options={{ href: null }} />
+      <Tabs.Screen name="delete-account" options={{ href: null }} />
     </Tabs>
   );
 }

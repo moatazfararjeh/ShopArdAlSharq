@@ -57,16 +57,8 @@ export async function signUp(
     }
   }
 
-  // The DB trigger (033_auto_confirm_email) sets email_confirmed_at immediately,
-  // but Supabase's signUp() still returns session:null when the "confirm email"
-  // setting is on. Sign in right away — the confirmed email lets it succeed.
-  if (!data.session) {
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInError && signInData.session) {
-      return { ...signInData, needsConfirmation: false };
-    }
-  }
-
+  // Email verification is now required. If Supabase returns no session it means
+  // the user must click the confirmation link sent to their email first.
   if (data.session) return { ...data, needsConfirmation: false };
   return { ...data, needsConfirmation: true };
 }
@@ -81,6 +73,11 @@ export async function sendPasswordResetEmail(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     ...(redirectTo ? { redirectTo } : {}),
   });
+  if (error) throw parseSupabaseError(error);
+}
+
+export async function resendConfirmationEmail(email: string) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
   if (error) throw parseSupabaseError(error);
 }
 
