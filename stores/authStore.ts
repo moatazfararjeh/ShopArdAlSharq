@@ -88,6 +88,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Use onAuthStateChange which fires INITIAL_SESSION without navigator.locks.
       // This avoids the hanging getSession() issue on web.
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        // If token refresh failed, clear local state so the user is sent to login
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          set({
+            session: null,
+            isAuthenticated: false,
+            profile: null,
+            isAdmin: false,
+          });
+          if (!resolved) {
+            set({ isInitialized: true, isLoading: false });
+            resolved = true;
+            resolve(() => subscription.unsubscribe());
+          }
+          return;
+        }
+
         if (!resolved) {
           // First event is always the initial session
           await finishInit(session);

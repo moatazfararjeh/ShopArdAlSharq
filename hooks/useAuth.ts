@@ -30,9 +30,27 @@ export function useAuth() {
 }
 
 export function useLogin() {
+  const setSession = useAuthStore((s) => s.setSession);
+  const setProfile = useAuthStore((s) => s.setProfile);
+
   return useMutation({
     mutationFn: (values: LoginFormValues) =>
       authService.signIn(values.email, values.password),
+    onSuccess: async (data) => {
+      // Immediately update auth store so navigation to protected routes works
+      // without waiting for the async onAuthStateChange event.
+      if (data.session) {
+        setSession(data.session);
+      }
+      if (data.userId) {
+        try {
+          const profile = await authService.getProfile(data.userId);
+          setProfile(profile);
+        } catch {
+          // Profile fetch failure is non-blocking
+        }
+      }
+    },
   });
 }
 
@@ -84,8 +102,8 @@ export function useSignOut() {
   return useMutation({
     mutationFn: () => signOut(),
     onSuccess: () => {
-      // Clear cache after sign-out so stale data isn't shown on next login
-      setTimeout(() => qc.clear(), 300);
+      // Clear all cached queries immediately so stale data isn't shown on next login
+      qc.clear();
     },
   });
 }

@@ -29,6 +29,8 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     '"shadow*" style props are deprecated',
     '[expo-notifications]',
     'Listening to push token changes is not yet fully supported',
+    'Invalid Refresh Token',
+    'Refresh Token Not Found',
   ];
   console.warn = (...args: any[]) => {
     if (SUPPRESSED.some((s) => args[0]?.toString?.().includes?.(s))) return;

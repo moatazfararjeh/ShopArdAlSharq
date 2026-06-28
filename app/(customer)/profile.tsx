@@ -228,7 +228,9 @@ export default function ProfileScreen() {
     if (Platform.OS === 'web') {
       // Alert.alert doesn't work on web
       if (window.confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-        signOut.mutate();
+        signOut.mutate(undefined, {
+          onSuccess: () => router.replace('/(public)/login' as any),
+        });
       }
       return;
     }
@@ -237,7 +239,9 @@ export default function ProfileScreen() {
       {
         text: t('auth.logout'),
         style: 'destructive',
-        onPress: () => signOut.mutate(),
+        onPress: () => signOut.mutate(undefined, {
+          onSuccess: () => router.replace('/(public)/login' as any),
+        }),
       },
     ]);
   }

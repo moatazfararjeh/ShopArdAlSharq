@@ -4,7 +4,6 @@ import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useOrders } from '@/hooks/useOrders';
-import { useAuthStore } from '@/stores/authStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
 import { Order } from '@/types/models';
@@ -85,8 +84,7 @@ function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
 export default function OrdersScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { session } = useAuthStore();
-  const { data: orders, isLoading } = useOrders({ userId: session?.user.id });
+  const { data: orders, isLoading } = useOrders();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }}>

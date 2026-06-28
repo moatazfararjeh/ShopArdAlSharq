@@ -424,13 +424,14 @@ export default function HomeScreen() {
 
   const [search, setSearch]                     = useState('');
   const [selectedBrand, setSelectedBrand]       = useState<string | undefined>();
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [page, setPage]                         = useState(0);
 
-  useEffect(() => { setPage(0); }, [search, selectedBrand]);
+  useEffect(() => { setPage(0); }, [search, selectedBrand, selectedCategory]);
 
   const isDesktop  = windowWidth >= 768;
   const isAllProducts = selectedBrand === '__all__';
-  const browseMode = !!selectedBrand || search.length >= 2;
+  const browseMode = !!selectedBrand || !!selectedCategory || search.length >= 2;
 
   // Layout metrics
   const sidebarW      = isDesktop ? SIDEBAR_W : 0;
@@ -443,11 +444,13 @@ export default function HomeScreen() {
   const { data: categories } = useCategories();
   const { data: brands } = useBrands();
   const selectedBrandObj = brands?.find((b) => b.id === selectedBrand);
+  const selectedCategoryObj = categories?.find((c) => c.id === selectedCategory);
 
   // Browse-mode queries
   const browseParams: GetProductsParams = {
     search: search.length >= 2 ? search : undefined,
     brandId: isAllProducts ? undefined : selectedBrand,
+    categoryId: selectedCategory,
     availableOnly: true,
     sortBy: 'newest',
   };
@@ -498,9 +501,11 @@ export default function HomeScreen() {
   function BrowseHeader() {
     const label = isAllProducts
       ? 'جميع المنتجات'
-      : selectedBrandObj
-        ? selectedBrandObj.name
-        : search.length >= 2 ? `"${search}"` : '';
+      : selectedCategoryObj
+        ? getCategoryName(selectedCategoryObj, locale as any)
+        : selectedBrandObj
+          ? selectedBrandObj.name
+          : search.length >= 2 ? `"${search}"` : '';
     return (
       <View style={{
         flexDirection: 'row', alignItems: 'center',
@@ -511,7 +516,7 @@ export default function HomeScreen() {
           {label}
         </Text>
         <TouchableOpacity
-          onPress={() => { setSelectedBrand(undefined); setSearch(''); }}
+          onPress={() => { setSelectedBrand(undefined); setSelectedCategory(undefined); setSearch(''); }}
           style={{ padding: 6, borderRadius: 10, backgroundColor: '#f5f0eb' }}
         >
           <Ionicons name="arrow-forward" size={20} color="#5c4a35" />
@@ -544,12 +549,12 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero banner image */}
-        <Image
+        {/* Hero banner image — hidden for now */}
+        {/* <Image
           source={require('@/assets/hero-banner.png')}
           style={{ width: '100%', aspectRatio: 1080 / 600 }}
           contentFit="cover"
-        />
+        /> */}
 
         {/* Delivery address selector */}
         <TouchableOpacity
@@ -660,8 +665,35 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* All products section (no category filter) */}
-        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedBrand('__all__')} />
+        {/* الفئات — category circles */}
+        {categories && categories.length > 0 && (
+          <>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
+              paddingHorizontal: 16, marginTop: 20, marginBottom: 14,
+              direction: 'rtl' as any,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>الفئات</Text>
+            </View>
+
+            <View style={{ direction: 'rtl' as any }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 4 }}
+            >
+              {categories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  locale={locale}
+                  onPress={() => setSelectedCategory(category.id)}
+                />
+              ))}
+            </ScrollView>
+            </View>
+          </>
+        )}
 
         {/* Product section per brand */}
         {brands?.map((brand) => (
@@ -675,6 +707,9 @@ export default function HomeScreen() {
 
         {/* Products without brand — أخرى */}
         <NoBrandProductsSection locale={locale} cardWidth={discoverCardW} />
+
+        {/* All products section (no category filter) */}
+        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedBrand('__all__')} />
       </ScrollView>
     );
   }

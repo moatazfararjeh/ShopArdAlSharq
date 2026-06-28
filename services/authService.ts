@@ -7,7 +7,7 @@ import { APP_URL } from '@/lib/constants';
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw parseSupabaseError(error);
-  return data;
+  return { session: data.session, userId: data.user?.id ?? null };
 }
 
 /** Returns `{ session, needsConfirmation: true }` when the server requires email verification. */

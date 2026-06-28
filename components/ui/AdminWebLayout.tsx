@@ -170,7 +170,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
             <Text style={[styles.navLabel, { color: '#a09284' }]}>عرض المتجر</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { signOutMutation.mutate(); setSidebarOpen(false); }}
+            onPress={() => { signOutMutation.mutate(undefined, { onSuccess: () => router.replace('/(public)/login' as any) }); setSidebarOpen(false); }}
             activeOpacity={0.75}
             style={styles.navItem}
           >

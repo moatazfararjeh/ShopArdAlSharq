@@ -14,10 +14,12 @@ export const orderKeys = {
 };
 
 export function useOrders(params: GetOrdersParams = {}) {
+  const userId = useAuthStore((s) => s.session?.user?.id);
+  const effectiveUserId = params.userId || userId;
   return useQuery({
-    queryKey: orderKeys.list(params),
-    queryFn: () => getOrders(params),
-    enabled: !!params.userId,
+    queryKey: orderKeys.list({ ...params, userId: effectiveUserId }),
+    queryFn: () => getOrders({ ...params, userId: effectiveUserId }),
+    enabled: !!effectiveUserId,
   });
 }
 

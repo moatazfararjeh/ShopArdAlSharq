@@ -92,7 +92,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => signOutMutation.mutate()} activeOpacity={0.75} style={styles.navItem}>
+      <TouchableOpacity onPress={() => signOutMutation.mutate(undefined, { onSuccess: () => router.replace('/(public)/login' as any) })} activeOpacity={0.75} style={styles.navItem}>
         <Ionicons name="log-out-outline" size={20} color="#857d78" />
         <Text style={[styles.navLabel, { color: '#857d78' }]}>تسجيل الخروج</Text>
       </TouchableOpacity>
