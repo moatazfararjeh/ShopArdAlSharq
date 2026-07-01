@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'NotoSansArabic-Regular';
+  src: url('./assets/fonts/NotoSansArabic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NotoSansArabic-SemiBold';
+  src: url('./assets/fonts/NotoSansArabic-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NotoSansArabic-Bold';
+  src: url('./assets/fonts/NotoSansArabic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
 @layer base {
   html, body, #root {
     font-family: 'NotoSansArabic-Regular', 'Noto Sans Arabic', sans-serif;
