@@ -37,6 +37,7 @@ export default function Root({ children }: PropsWithChildren) {
               margin: 0;
               padding: 0;
               direction: rtl;
+              font-family: 'NotoSansArabic-Regular', 'Noto Sans Arabic', sans-serif;
             }
             @media print {
               html, body, #root {

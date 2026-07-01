@@ -10,7 +10,8 @@
     "export": "expo export --platform web",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "npx patch-package"
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.6",
