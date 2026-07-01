@@ -372,6 +372,7 @@ export default function ProfileScreen() {
         }}>
           <NavRow icon="📦" label={t('profile.myOrders')} onPress={() => router.push('/(customer)/orders/')} />
           <NavRow icon="📍" label={t('profile.savedAddresses')} onPress={() => router.push('/(customer)/addresses' as any)} />
+          <NavRow ionicon="lock-closed-outline" label="تغيير كلمة المرور" onPress={() => router.push('/(customer)/change-password' as any)} />
           {/* Commercial register */}
           <View style={{
             paddingVertical: 14, paddingHorizontal: 20,
@@ -524,6 +525,7 @@ export default function ProfileScreen() {
         }}>
           <NavRow ionicon="log-out-outline" label={t('auth.logout')} onPress={handleSignOut} danger />
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
