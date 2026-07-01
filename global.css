@@ -28,3 +28,8 @@
     font-family: 'NotoSansArabic-Regular', 'Noto Sans Arabic', sans-serif;
   }
 }
+
+/* Override React Native Web's default system font stack */
+[data-testid], div, span, input, textarea, button, a, p, h1, h2, h3, h4, h5, h6 {
+  font-family: 'NotoSansArabic-Regular', 'Noto Sans Arabic', sans-serif !important;
+}
