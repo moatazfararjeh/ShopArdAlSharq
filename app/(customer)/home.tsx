@@ -58,7 +58,7 @@ function HeroBannerCard({
     <TouchableOpacity
       activeOpacity={hasLink ? 0.88 : 1}
       onPress={hasLink ? onPress : undefined}
-      style={{ width, borderRadius: 0, overflow: 'hidden', backgroundColor: banner.bg_color ?? '#8B7355', height: 180 }}
+      style={{ width, borderRadius: 0, overflow: 'hidden', backgroundColor: banner.bg_color ?? '#8B7355', height: 280 }}
     >
       {banner.image_url && (
         <Image source={{ uri: banner.image_url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} contentFit="cover" />
@@ -556,37 +556,6 @@ export default function HomeScreen() {
           contentFit="cover"
         /> */}
 
-        {/* Delivery address selector */}
-        <TouchableOpacity
-          onPress={() => {
-            if (defaultAddress) {
-              router.push('/(customer)/addresses' as any);
-            } else {
-              router.push('/(customer)/edit-address' as any);
-            }
-          }}
-          activeOpacity={0.7}
-          style={{
-            flexDirection: 'row', alignItems: 'center',
-            gap: 8, marginHorizontal: 16, marginTop: 10, marginBottom: 4,
-            backgroundColor: defaultAddress ? '#fff' : '#fff7f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-            borderWidth: 1, borderColor: defaultAddress ? '#e6e0d8' : '#fde0c8',
-          }}
-        >
-          <Ionicons name="location" size={18} color={BRAND} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, color: '#6b7280' }}>توصيل إلى</Text>
-            <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700', color: defaultAddress ? '#1c1917' : '#c2410c' }}>
-              {defaultAddress ? `${defaultAddress.label} - ${defaultAddress.city}` : 'أضف عنوان توصيل'}
-            </Text>
-          </View>
-          {defaultAddress ? (
-            <Ionicons name="chevron-down" size={16} color="#6b7280" />
-          ) : (
-            <Ionicons name="add-circle" size={20} color={BRAND} />
-          )}
-        </TouchableOpacity>
-
         {/* Banners */}
         <HeroBannerCarousel
           locale={locale}
@@ -712,7 +681,7 @@ export default function HomeScreen() {
         <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedBrand('__all__')} />
       </ScrollView>
     );
-  }
+  } 
 
   // ── Mobile browse ──────────────────────────────────────────────────────────
   function MobileBrowseContent() {
@@ -861,13 +830,6 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           </View>
-        </View>
-      )}
-
-      {/* Web search bar */}
-      {isWeb && (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
-          {SearchBar({ maxWidth: 480 })}
         </View>
       )}
 

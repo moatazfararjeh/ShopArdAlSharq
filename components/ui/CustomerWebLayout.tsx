@@ -120,8 +120,8 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           flexShrink: 0,
         }}
       >
-        <TouchableOpacity onPress={() => router.push('/(customer)/home' as any)} activeOpacity={0.8} style={{ overflow: 'hidden', height: HEADER_HEIGHT - 10, justifyContent: 'center' }}>
-          <Image source={require('@/assets/logo.png')} style={{ width: isDesktop ? 180 : 140, height: HEADER_HEIGHT - 10 }} contentFit="contain" />
+        <TouchableOpacity onPress={() => router.push('/(customer)/home' as any)} activeOpacity={0.8} style={{ overflow: 'hidden', height: HEADER_HEIGHT, justifyContent: 'center' }}>
+          <Image source={require('@/assets/logo.png')} style={{ width: isDesktop ? 300 : 200, height: HEADER_HEIGHT }} contentFit="contain" />
         </TouchableOpacity>
 
         {/* Desktop: action icons */}
@@ -179,6 +179,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>ابقى على تواصل معنا</Text>
                 <View style={{ flexDirection: 'row', gap: 14 }}>
                   <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61587917750474/')}><Text style={footerStyles.socialIcon}>f</Text></TouchableOpacity>
+                  <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.instagram.com/ardalsharq.1/')}><Ionicons name="logo-instagram" size={16} color="#fff" /></TouchableOpacity>
                 </View>
               </View>
 
@@ -207,7 +208,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
 
               {/* Download app */}
               <View style={{ gap: 12, alignItems: isDesktop ? 'flex-start' as any : 'center' as any }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Download Our App</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>حمّل تطبيقنا</Text>
                 <Text style={{ fontSize: 13, color: '#aaa' }}>قريباً على المتاجر</Text>
                 <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' as any, justifyContent: isDesktop ? 'flex-start' as any : 'center' as any, opacity: 0.5 }}>
                   <View style={footerStyles.appBtn}><Text style={footerStyles.appBtnText}>App Store</Text></View>
@@ -221,7 +222,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
               <TouchableOpacity onPress={() => router.push('/(public)/privacy-policy' as any)}>
                 <Text style={{ fontSize: 13, color: '#aaa', textDecorationLine: 'underline' }}>سياسة الخصوصية</Text>
               </TouchableOpacity>
-              <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق جميع الحقوق محفوظة</Text>
+              <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق الحديثة لتجارة المواد الغذائية - جميع الحقوق محفوظة</Text>
             </View>
           </View>}
         </View>

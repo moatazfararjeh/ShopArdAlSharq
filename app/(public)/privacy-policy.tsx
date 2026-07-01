@@ -8,7 +8,7 @@ export default function PrivacyPolicyScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: 'Privacy Policy' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'سياسة الخصوصية' }} />
       <ScrollView
         style={{ flex: 1, backgroundColor: '#ffffff' }}
         contentContainerStyle={{
@@ -16,108 +16,98 @@ export default function PrivacyPolicyScreen() {
           maxWidth: 800,
           width: '100%',
           alignSelf: 'center',
+          direction: 'rtl',
         }}
       >
-        <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 8, color: '#111827' }}>
-          Privacy Policy
+        <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 8, color: '#111827', textAlign: 'right' }}>
+          سياسة الخصوصية
         </Text>
-        <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-          Last updated: {lastUpdated}
+        <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 24, textAlign: 'right' }}>
+          آخر تحديث: {lastUpdated}
         </Text>
 
-        <Section title="1. Introduction">
+        <Section title="1. المقدمة">
           <P>
-            Welcome to {APP_NAME} ("{APP_NAME}", "we", "our", or "us"). We respect your privacy and
-            are committed to protecting your personal data. This Privacy Policy explains how we
-            collect, use, disclose, and safeguard your information when you use our mobile
-            application and website (collectively, the "Service").
+            مرحباً بكم في {APP_NAME} ("نحن" أو "لنا"). نحن نحترم خصوصيتكم ونلتزم بحماية بياناتكم الشخصية. توضح سياسة الخصوصية هذه كيفية جمع واستخدام والإفصاح عن معلوماتكم وحمايتها عند استخدام تطبيقنا وموقعنا الإلكتروني (يُشار إليهما مجتمعين بـ "الخدمة").
           </P>
           <P>
-            By using our Service, you agree to the collection and use of information in accordance
-            with this Privacy Policy.
+            باستخدامكم للخدمة، فإنكم توافقون على جمع واستخدام المعلومات وفقاً لسياسة الخصوصية هذه.
           </P>
         </Section>
 
-        <Section title="2. Information We Collect">
-          <P>We collect the following types of information:</P>
+        <Section title="2. المعلومات التي نجمعها">
+          <P>نقوم بجمع الأنواع التالية من المعلومات:</P>
           <BulletList
             items={[
-              'Account Information: name, email address, phone number, and delivery addresses you provide during registration or profile updates.',
-              'Order Information: products purchased, order history, payment method (we do not store full credit card numbers), and delivery details.',
-              'Device Information: device type, operating system, unique device identifiers, and push notification tokens.',
-              'Usage Data: pages viewed, search queries, interaction with products, and app navigation patterns.',
-              'Location Data: delivery addresses you provide. We do not collect real-time GPS location.',
+              'معلومات الحساب: الاسم، البريد الإلكتروني، رقم الهاتف، وعناوين التوصيل التي تقدمها أثناء التسجيل أو تحديث الملف الشخصي.',
+              'معلومات الطلبات: المنتجات المشتراة، سجل الطلبات، طريقة الدفع (لا نخزن أرقام البطاقات الائتمانية كاملة)، وتفاصيل التوصيل.',
+              'معلومات الجهاز: نوع الجهاز، نظام التشغيل، معرّفات الجهاز الفريدة، ورموز الإشعارات.',
+              'بيانات الاستخدام: الصفحات المعروضة، استعلامات البحث، التفاعل مع المنتجات، وأنماط التنقل في التطبيق.',
+              'بيانات الموقع: عناوين التوصيل التي تقدمها. لا نجمع بيانات الموقع الجغرافي في الوقت الفعلي.',
             ]}
           />
         </Section>
 
-        <Section title="3. How We Use Your Information">
-          <P>We use the information we collect to:</P>
+        <Section title="3. كيف نستخدم معلوماتكم">
+          <P>نستخدم المعلومات التي نجمعها من أجل:</P>
           <BulletList
             items={[
-              'Process and fulfill your orders and deliver products.',
-              'Create and manage your account.',
-              'Send order confirmations, updates, and delivery notifications.',
-              'Send promotional communications (with your consent) that you can opt out of at any time.',
-              'Improve our Service, including personalized product recommendations.',
-              'Provide customer support.',
-              'Detect and prevent fraud or abuse.',
-              'Comply with legal obligations.',
+              'معالجة وتنفيذ طلباتكم وتوصيل المنتجات.',
+              'إنشاء وإدارة حسابكم.',
+              'إرسال تأكيدات الطلبات والتحديثات وإشعارات التوصيل.',
+              'إرسال اتصالات ترويجية (بموافقتكم) يمكنكم إلغاء الاشتراك فيها في أي وقت.',
+              'تحسين خدمتنا، بما في ذلك توصيات المنتجات المخصصة.',
+              'تقديم دعم العملاء.',
+              'كشف ومنع الاحتيال أو سوء الاستخدام.',
+              'الامتثال للالتزامات القانونية.',
             ]}
           />
         </Section>
 
-        <Section title="4. Information Sharing">
+        <Section title="4. مشاركة المعلومات">
           <P>
-            We do not sell your personal information. We may share your data only in the following
-            circumstances:
+            لا نبيع معلوماتكم الشخصية. قد نشارك بياناتكم فقط في الحالات التالية:
           </P>
           <BulletList
             items={[
-              'Service Providers: third-party companies that help us operate our Service (e.g., delivery partners, payment processors, hosting providers).',
-              'Legal Requirements: if required by law, regulation, or legal process.',
-              'Business Transfers: in connection with a merger, acquisition, or sale of assets.',
-              'With Your Consent: when you explicitly agree to the sharing.',
+              'مزودو الخدمة: شركات خارجية تساعدنا في تشغيل خدمتنا (مثل شركاء التوصيل، معالجي الدفع، مزودي الاستضافة).',
+              'المتطلبات القانونية: إذا كان ذلك مطلوباً بموجب القانون أو اللوائح أو الإجراءات القانونية.',
+              'نقل الأعمال: في حالة الاندماج أو الاستحواذ أو بيع الأصول.',
+              'بموافقتكم: عندما توافقون صراحةً على المشاركة.',
             ]}
           />
         </Section>
 
-        <Section title="5. Data Security">
+        <Section title="5. أمن البيانات">
           <P>
-            We implement appropriate technical and organizational security measures to protect your
-            personal data against unauthorized access, alteration, disclosure, or destruction. These
-            include encryption of data in transit (TLS/SSL), secure storage, and access controls.
+            نطبق إجراءات أمنية تقنية وتنظيمية مناسبة لحماية بياناتكم الشخصية من الوصول غير المصرح به أو التعديل أو الإفصاح أو التدمير. تشمل هذه التشفير أثناء النقل (TLS/SSL)، والتخزين الآمن، وضوابط الوصول.
           </P>
           <P>
-            However, no method of electronic transmission or storage is 100% secure. We cannot
-            guarantee absolute security.
+            ومع ذلك، لا توجد طريقة نقل أو تخزين إلكتروني آمنة بنسبة 100%. لا يمكننا ضمان الأمان المطلق.
           </P>
         </Section>
 
-        <Section title="6. Data Retention">
+        <Section title="6. الاحتفاظ بالبيانات">
           <P>
-            We retain your personal information for as long as your account is active or as needed to
-            provide you the Service. We may retain certain information as required by law or for
-            legitimate business purposes (e.g., resolving disputes, enforcing agreements).
+            نحتفظ بمعلوماتكم الشخصية طالما كان حسابكم نشطاً أو حسب الحاجة لتقديم الخدمة لكم. قد نحتفظ ببعض المعلومات وفقاً لما يقتضيه القانون أو لأغراض تجارية مشروعة (مثل حل النزاعات، تنفيذ الاتفاقيات).
           </P>
         </Section>
 
-        <Section title="7. Your Rights">
-          <P>Depending on your jurisdiction, you may have the right to:</P>
+        <Section title="7. حقوقكم">
+          <P>حسب نطاق اختصاصكم القضائي، قد يكون لديكم الحق في:</P>
           <BulletList
             items={[
-              'Access, correct, or delete your personal data.',
-              'Withdraw consent for marketing communications.',
-              'Request a copy of your data in a portable format.',
-              'Object to or restrict certain processing of your data.',
+              'الوصول إلى بياناتكم الشخصية أو تصحيحها أو حذفها.',
+              'سحب الموافقة على الاتصالات التسويقية.',
+              'طلب نسخة من بياناتكم بتنسيق قابل للنقل.',
+              'الاعتراض على أو تقييد معالجة معينة لبياناتكم.',
             ]}
           />
           <P>
-            To exercise any of these rights, please contact us using the information provided below.
+            لممارسة أي من هذه الحقوق، يرجى التواصل معنا باستخدام المعلومات المذكورة أدناه.
           </P>
           <P>
-            To request deletion of your account and all associated data, visit our account deletion
-            page:
+            لطلب حذف حسابكم وجميع البيانات المرتبطة به، قوموا بزيارة صفحة حذف الحساب:
           </P>
           <Pressable onPress={() => router.push('/(customer)/delete-account' as any)}>
             <Text
@@ -128,49 +118,40 @@ export default function PrivacyPolicyScreen() {
                 marginBottom: 12,
               }}
             >
-              Request Account Deletion
+              طلب حذف الحساب
             </Text>
           </Pressable>
         </Section>
 
-        <Section title="8. Children's Privacy">
+        <Section title="8. خصوصية الأطفال">
           <P>
-            Our Service is not directed to children under 13 years of age. We do not knowingly
-            collect personal information from children under 13. If we become aware that we have
-            collected data from a child under 13 without parental consent, we will take steps to
-            delete that information.
+            خدمتنا غير موجهة للأطفال دون سن 13 عاماً. لا نجمع عن قصد معلومات شخصية من الأطفال دون 13 عاماً. إذا علمنا أننا جمعنا بيانات من طفل دون 13 عاماً بدون موافقة الوالدين، سنتخذ خطوات لحذف تلك المعلومات.
           </P>
         </Section>
 
-        <Section title="9. Push Notifications">
+        <Section title="9. الإشعارات">
           <P>
-            We may send push notifications to your device regarding order updates and promotional
-            offers. You can disable push notifications at any time through your device settings or
-            within the app.
+            قد نرسل إشعارات إلى جهازكم بخصوص تحديثات الطلبات والعروض الترويجية. يمكنكم تعطيل الإشعارات في أي وقت من خلال إعدادات جهازكم أو من داخل التطبيق.
           </P>
         </Section>
 
-        <Section title="10. Third-Party Services">
+        <Section title="10. خدمات الطرف الثالث">
           <P>
-            Our Service may use third-party services (e.g., Supabase for authentication and data
-            storage, Expo for push notifications). These services have their own privacy policies,
-            and we encourage you to review them.
+            قد تستخدم خدمتنا خدمات طرف ثالث (مثل Supabase للمصادقة وتخزين البيانات، Expo للإشعارات). لهذه الخدمات سياسات خصوصية خاصة بها، ونشجعكم على مراجعتها.
           </P>
         </Section>
 
-        <Section title="11. Changes to This Policy">
+        <Section title="11. التغييرات على هذه السياسة">
           <P>
-            We may update this Privacy Policy from time to time. We will notify you of any changes
-            by posting the new Privacy Policy within the app and updating the "Last updated" date.
-            Continued use of the Service after changes constitutes acceptance of the revised policy.
+            قد نقوم بتحديث سياسة الخصوصية هذه من وقت لآخر. سنبلغكم بأي تغييرات عن طريق نشر سياسة الخصوصية الجديدة في التطبيق وتحديث تاريخ "آخر تحديث". يعتبر استمرار استخدام الخدمة بعد التغييرات قبولاً للسياسة المعدلة.
           </P>
         </Section>
 
-        <Section title="12. Contact Us">
+        <Section title="12. تواصل معنا">
           <P>
-            If you have any questions or concerns about this Privacy Policy, please contact us at:
+            إذا كانت لديكم أي أسئلة أو استفسارات حول سياسة الخصوصية هذه، يرجى التواصل معنا على:
           </P>
-          <P>Email: support@ardalsharq.com</P>
+          <P>البريد الإلكتروني: support@ardalsharq.com</P>
           <P>{APP_NAME}</P>
         </Section>
 

@@ -105,7 +105,7 @@ export default function ProductDetailScreen() {
         <View style={{ position: 'relative', backgroundColor: '#f9f7f5', alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
           <Image
             source={{ uri: currentImage }}
-            style={{ width: SCREEN_WIDTH * 0.75, aspectRatio: 1, borderRadius: 16 }}
+            style={{ width: Math.min(SCREEN_WIDTH * 0.75, 400), aspectRatio: 1, borderRadius: 16 }}
             contentFit="contain"
           />
           {/* Back button */}
@@ -120,6 +120,19 @@ export default function ProductDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 18, color: '#374151' }}>→</Text>
+          </TouchableOpacity>
+          {/* Home button */}
+          <TouchableOpacity
+            onPress={() => router.replace('/(customer)/home')}
+            style={{
+              position: 'absolute', top: 50, right: 64,
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+            }}
+          >
+            <Text style={{ fontSize: 18, color: '#374151' }}>🏠</Text>
           </TouchableOpacity>
           {/* Discount badge */}
           {discounted && (
