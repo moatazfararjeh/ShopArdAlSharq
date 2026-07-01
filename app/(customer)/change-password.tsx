@@ -25,8 +25,10 @@ export default function ChangePasswordScreen() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      useToastStore.getState().show('تم تغيير كلمة المرور بنجاح', 'success');
-      router.back();
+      useToastStore.getState().show('تم تغيير كلمة المرور بنجاح، سيتم تسجيل خروجك', 'success');
+      // Sign out so user logs in with new password
+      await supabase.auth.signOut();
+      router.replace('/(public)/login' as any);
     } catch (err: any) {
       useToastStore.getState().show(err.message || 'حدث خطأ', 'error');
     } finally {
