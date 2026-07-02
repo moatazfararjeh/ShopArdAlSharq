@@ -26,7 +26,8 @@ export default function PublicIndex() {
   }, [splashDone, isAuthenticated, isInitialized]);
 
   function handleSkip() {
-    if (!isInitialized) return;
+    setSplashDone(true); // ensures the effect fires as soon as auth is ready
+    if (!isInitialized) return; // auth not done yet — effect will navigate when ready
     if (isAuthenticated) {
       router.replace('/(customer)/home');
     } else {
