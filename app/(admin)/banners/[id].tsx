@@ -14,7 +14,7 @@ export default function EditBannerScreen() {
   if (isLoading || !banner) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0' }}>
-        <ActivityIndicator size="large" color="#f97316" />
+        <ActivityIndicator size="large" color="#e36523" />
       </SafeAreaView>
     );
   }

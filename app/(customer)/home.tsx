@@ -22,6 +22,8 @@ import { Product, Banner, Category, Brand } from '@/types/models';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useFavoriteIds, useFavoriteProducts } from '@/hooks/useFavorites';
+import { useCartStore } from '@/stores/cartStore';
+import { formatPrice } from '@/utils/formatPrice';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND     = '#e36523';
@@ -54,22 +56,65 @@ function HeroBannerCard({
 }: { banner: Banner; locale: string; onPress?: () => void; width: number }) {
   const buttonText = getBannerButtonText(banner, locale as any);
   const hasLink    = !!(banner.link_type && banner.link_value);
+  const titleText  = locale === 'ar' ? banner.title_ar : (banner.title_en ?? banner.title_ar);
+  const labelText  = locale === 'ar' ? banner.label_ar : (banner.label_en ?? banner.label_ar);
+
   return (
     <TouchableOpacity
       activeOpacity={hasLink ? 0.88 : 1}
       onPress={hasLink ? onPress : undefined}
-      style={{ width, borderRadius: 0, overflow: 'hidden', backgroundColor: banner.bg_color ?? '#8B7355', height: 280 }}
+      style={{
+        width, overflow: 'hidden',
+        backgroundColor: banner.bg_color ?? '#1e1a17',
+        height: 320,
+        marginHorizontal: 0,
+      }}
     >
-      {banner.image_url && (
-        <Image source={{ uri: banner.image_url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} contentFit="cover" />
+      {/* Background image */}
+      {!!banner.image_url && (
+        <Image
+          source={{ uri: banner.image_url }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+          contentFit="cover"
+        />
       )}
-      {buttonText && (
-        <View style={{ position: 'absolute', bottom: 16, right: 22 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8 }}>
-            <Text style={{ color: '#111827', fontSize: 13, fontWeight: '700' }}>{buttonText}</Text>
+
+      {/* Content overlay */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 22 }}>
+        {/* Label chip */}
+        {!!labelText && (
+          <View style={{
+            alignSelf: 'flex-end', backgroundColor: '#e36523',
+            borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+            marginBottom: 10,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>{labelText}</Text>
           </View>
-        </View>
-      )}
+        )}
+
+        {/* Title */}
+        {!!titleText && (
+          <Text style={{
+            color: '#fff', fontSize: 22, fontWeight: '900',
+            lineHeight: 30, textAlign: 'right', marginBottom: 14,
+            textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+          }}>{titleText}</Text>
+        )}
+
+        {/* CTA button */}
+        {!!buttonText && hasLink && (
+          <View style={{ alignSelf: 'flex-end' }}>
+            <View style={{
+              backgroundColor: '#fff', borderRadius: 24,
+              paddingHorizontal: 22, paddingVertical: 10,
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+            }}>
+              <Text style={{ color: '#1c1917', fontSize: 13, fontWeight: '800' }}>{buttonText}</Text>
+              <Text style={{ color: '#e36523', fontSize: 13 }}>←</Text>
+            </View>
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -92,14 +137,14 @@ function HeroBannerCarousel({
 
   if (list.length === 1) {
     return (
-      <View style={{ marginVertical: 12 }}>
+      <View style={{ marginTop: 8, marginBottom: 4 }}>
         <HeroBannerCard banner={list[0]} locale={locale} onPress={() => handlePress(list[0])} width={bannerWidth} />
       </View>
     );
   }
 
   return (
-    <View style={{ marginVertical: 12 }}>
+    <View style={{ marginTop: 8, marginBottom: 4 }}>
       <FlatList
         ref={flatRef}
         data={list}
@@ -116,12 +161,17 @@ function HeroBannerCarousel({
           setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / bannerWidth));
         }}
       />
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+      {/* Dots — overlaid at bottom of banner */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 12 }}>
         {list.map((_, i) => (
           <TouchableOpacity
             key={i}
             onPress={() => { flatRef.current?.scrollToIndex({ index: i, animated: true }); setActiveIndex(i); }}
-            style={{ width: i === activeIndex ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === activeIndex ? BRAND : '#d1c9bf' }}
+            style={{
+              width: i === activeIndex ? 24 : 7,
+              height: 7, borderRadius: 4,
+              backgroundColor: i === activeIndex ? BRAND : '#d1c9bf',
+            }}
           />
         ))}
       </View>
@@ -129,27 +179,32 @@ function HeroBannerCarousel({
   );
 }
 
-// ─── Category circle card ─────────────────────────────────────────────────────
+// ─── Category pill card ───────────────────────────────────────────────────────
 function CategoryCard({
   category, locale, onPress,
 }: { category: Category; locale: string; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ alignItems: 'center', gap: 7, width: 80 }}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={{ alignItems: 'center', gap: 8, width: 76 }}
+    >
       <View style={{
-        width: 68, height: 68, borderRadius: 34,
-        backgroundColor: '#f5f0eb',
+        width: 72, height: 72, borderRadius: 36,
+        backgroundColor: '#f0ece5',
         overflow: 'hidden',
-        borderWidth: 1.5, borderColor: '#e6e0d8',
+        borderWidth: 2, borderColor: '#e6e0d6',
         alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
       }}>
         {category.image_url ? (
           <Image source={{ uri: category.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
         ) : (
-          <Text style={{ fontSize: 28 }}>🛒</Text>
+          <Text style={{ fontSize: 30 }}>🛒</Text>
         )}
       </View>
       <Text numberOfLines={2} style={{
-        fontSize: 11, fontWeight: '600', color: '#1c1917',
+        fontSize: 11, fontWeight: '700', color: '#2d2320',
         textAlign: 'center', lineHeight: 15,
       }}>
         {getCategoryName(category, locale as any)}
@@ -210,23 +265,30 @@ function CategoryProductsSection({
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 28 }}>
+    <View style={{ marginBottom: 32 }}>
       {/* Section header */}
       <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 10, direction: 'rtl' as any,
+        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any,
       }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
-          {getCategoryName(category, locale as any)}
-        </Text>
-        <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>رؤية الكل</Text>
-          <Ionicons name="chevron-forward" size={13} color={BRAND} />
+        <View>
+          <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>
+            {getCategoryName(category, locale as any)}
+          </Text>
+          <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+        </View>
+        <TouchableOpacity onPress={onSeeAll} style={{
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+          backgroundColor: '#fff7ed', borderRadius: 20,
+          paddingHorizontal: 12, paddingVertical: 5,
+        }}>
+          <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
+          <Ionicons name="chevron-forward" size={12} color={BRAND} />
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={BRAND} />
         </View>
       ) : (
@@ -235,7 +297,7 @@ function CategoryProductsSection({
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -269,17 +331,13 @@ function BrandProductsSection({
   return (
     <View style={{ marginBottom: 28 }}>
       {/* Section header */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 10, direction: 'rtl' as any,
-      }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
-          {brand.name}
-        </Text>
+      <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
+        <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>{brand.name}</Text>
+        <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
       </View>
 
       {isLoading ? (
-        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={BRAND} />
         </View>
       ) : (
@@ -288,7 +346,7 @@ function BrandProductsSection({
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -318,16 +376,14 @@ function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWid
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 28 }}>
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 10, direction: 'rtl' as any,
-      }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>أخرى</Text>
+    <View style={{ marginBottom: 32 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
+        <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>منتجات أخرى</Text>
+        <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
       </View>
 
       {isLoading ? (
-        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={BRAND} />
         </View>
       ) : (
@@ -336,7 +392,7 @@ function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWid
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -366,21 +422,28 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 24, marginBottom: 28 }}>
+    <View style={{ marginTop: 24, marginBottom: 32 }}>
       <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
         paddingHorizontal: 16, marginBottom: 14,
         direction: 'rtl' as any,
       }}>
-        <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>جميع المنتجات</Text>
-        <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>رؤية الكل</Text>
-          <Ionicons name="chevron-forward" size={13} color={BRAND} />
+        <View>
+          <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>جميع المنتجات</Text>
+          <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+        </View>
+        <TouchableOpacity onPress={onSeeAll} style={{
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+          backgroundColor: '#fff7ed', borderRadius: 20,
+          paddingHorizontal: 12, paddingVertical: 5,
+        }}>
+          <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
+          <Ionicons name="chevron-forward" size={12} color={BRAND} />
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <View style={{ height: 210, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={BRAND} />
         </View>
       ) : (
@@ -389,7 +452,7 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -403,7 +466,115 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
   );
 }
 
+// ─── Today's Deals — discounted products horizontal strip ────────────────────
+function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number }) {
+  const router = useRouter();
+  const { data, isLoading } = useProductsPage({
+    availableOnly: true,
+    sortBy: 'price_asc',
+    limit: 30,
+  });
+  const products = (data?.data ?? [])
+    .filter((p) => p.discount_price != null && p.discount_price < p.price)
+    .slice(0, 12);
+
+  if (isLoading || products.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      {/* Section header with flame */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 12, direction: 'rtl' as any,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: '#1c1917' }}>عروض اليوم</Text>
+          <Text style={{ fontSize: 18 }}>🔥</Text>
+        </View>
+        <View style={{
+          backgroundColor: '#fef2f2', borderRadius: 10,
+          paddingHorizontal: 10, paddingVertical: 4,
+        }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: '#ef4444' }}>خصومات حصرية</Text>
+        </View>
+      </View>
+
+      {/* Orange accent bar */}
+      <View style={{
+        marginHorizontal: 16, marginBottom: 14, height: 3, borderRadius: 2,
+        backgroundColor: BRAND, width: 50,
+      }} />
+
+      <FlatList
+        data={products}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={{ width: cardWidth }}>
+            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── Floating mini-cart bar ───────────────────────────────────────────────────
+function MiniCartBar() {
+  const router = useRouter();
+  const itemCount = useCartStore((s) => s.summary.itemCount);
+  const total     = useCartStore((s) => s.summary.total);
+
+  if (itemCount === 0 || Platform.OS === 'web') return null;
+
+  return (
+    <TouchableOpacity
+      onPress={() => router.push('/(customer)/cart')}
+      activeOpacity={0.9}
+      style={{
+        position: 'absolute',
+        bottom: 14,
+        left: 16,
+        right: 16,
+        backgroundColor: '#1c1917',
+        borderRadius: 20,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+        elevation: 12,
+      }}
+    >
+      {/* Left: count badge */}
+      <View style={{
+        backgroundColor: '#e36523',
+        borderRadius: 14,
+        minWidth: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{itemCount}</Text>
+      </View>
+
+      {/* Center: label */}
+      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>عرض السلة</Text>
+
+      {/* Right: total */}
+      <Text style={{ color: '#e36523', fontSize: 15, fontWeight: '800' }}>{formatPrice(total)}</Text>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function HomeScreen() {
@@ -544,17 +715,62 @@ export default function HomeScreen() {
   }, [session?.user?.id]));
 
   function DiscoverContent() {
+    // Derive a friendly greeting from the session
+    const userName = session?.user?.user_metadata?.full_name
+      ?? session?.user?.user_metadata?.name
+      ?? session?.user?.email?.split('@')[0]
+      ?? null;
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'صباح الخير' : hour < 17 ? 'مرحباً' : 'مساء الخير';
+
     return (
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
+        contentContainerStyle={{ paddingBottom: 120, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero banner image — hidden for now */}
-        {/* <Image
-          source={require('@/assets/hero-banner.png')}
-          style={{ width: '100%', aspectRatio: 1080 / 600 }}
-          contentFit="cover"
-        /> */}
+        {/* ── Greeting header (mobile only) ── */}
+        {!isWeb && userName && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
+            direction: 'rtl' as any,
+          }}>
+            <View>
+              <Text style={{ fontSize: 13, color: '#a09284', fontWeight: '600', letterSpacing: 0.3 }}>
+                {greeting} 👋
+              </Text>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#1c1917', marginTop: 2, letterSpacing: -0.3 }}>
+                {userName}
+              </Text>
+            </View>
+            {defaultAddress ? (
+              <TouchableOpacity
+                onPress={() => router.push('/(customer)/profile' as any)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: '#fff7ed', borderRadius: 20,
+                  paddingHorizontal: 12, paddingVertical: 7,
+                  borderWidth: 1, borderColor: '#fed7aa',
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={13} color={BRAND} />
+                <Text style={{ fontSize: 12, color: '#1c1917', fontWeight: '700' }} numberOfLines={1}>
+                  {defaultAddress.city}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{
+                width: 44, height: 44, borderRadius: 22,
+                backgroundColor: '#fff7ed',
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: '#fed7aa',
+              }}>
+                <Text style={{ fontSize: 20 }}>🛍️</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Banners */}
         <HeroBannerCarousel
@@ -564,15 +780,15 @@ export default function HomeScreen() {
         />
 
 
+        {/* ── Today's Deals ── */}
+        <DealsSection locale={locale} cardWidth={discoverCardW} />
+
         {/* الأقسام — brand circles */}
         {brands && brands.length > 0 && (
           <>
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              paddingHorizontal: 16, marginTop: 20, marginBottom: 14,
-              direction: 'rtl' as any,
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>الأقسام</Text>
+            <View style={{ paddingHorizontal: 16, marginTop: 24, marginBottom: 16, direction: 'rtl' as any }}>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>الأقسام</Text>
+              <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 6 }} />
             </View>
 
             <View style={{ direction: 'rtl' as any }}>
@@ -582,21 +798,22 @@ export default function HomeScreen() {
               contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 4 }}
             >
               {/* All products icon */}
-              <TouchableOpacity onPress={() => { setSelectedBrand('__all__'); }} activeOpacity={0.8} style={{ alignItems: 'center', gap: 7, width: 80 }}>
+              <TouchableOpacity onPress={() => { setSelectedBrand('__all__'); }} activeOpacity={0.8} style={{ alignItems: 'center', gap: 8, width: 76 }}>
                 <View style={{
-                  width: 68, height: 68, borderRadius: 34,
+                  width: 72, height: 72, borderRadius: 36,
                   backgroundColor: '#fff7ed',
                   overflow: 'hidden',
-                  borderWidth: 1.5, borderColor: BRAND,
+                  borderWidth: 2, borderColor: BRAND,
                   alignItems: 'center', justifyContent: 'center',
+                  shadowColor: BRAND, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
                 }}>
-                  <Ionicons name="grid" size={28} color={BRAND} />
+                  <Ionicons name="grid" size={30} color={BRAND} />
                 </View>
                 <Text numberOfLines={2} style={{
-                  fontSize: 11, fontWeight: '600', color: '#1c1917',
+                  fontSize: 11, fontWeight: '700', color: '#1c1917',
                   textAlign: 'center', lineHeight: 15,
                 }}>
-                  جميع المنتجات
+                  الكل
                 </Text>
               </TouchableOpacity>
               {brands.map((brand) => (
@@ -604,25 +821,26 @@ export default function HomeScreen() {
                   key={brand.id}
                   onPress={() => setSelectedBrand(brand.id)}
                   activeOpacity={0.8}
-                  style={{ alignItems: 'center', gap: 7, width: 80 }}
+                  style={{ alignItems: 'center', gap: 8, width: 76 }}
                 >
                   <View style={{
-                    width: 68, height: 68, borderRadius: 34,
-                    backgroundColor: '#f5f0eb',
+                    width: 72, height: 72, borderRadius: 36,
+                    backgroundColor: '#f0ece5',
                     overflow: 'hidden',
-                    borderWidth: 1.5, borderColor: '#e6e0d8',
+                    borderWidth: 2, borderColor: '#e6e0d6',
                     alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
                   }}>
                     {brand.image_url ? (
                       <Image source={{ uri: brand.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     ) : (
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#1c1917', textAlign: 'center', paddingHorizontal: 4 }} numberOfLines={2}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#1c1917', textAlign: 'center', paddingHorizontal: 4 }} numberOfLines={2}>
                         {brand.name}
                       </Text>
                     )}
                   </View>
                   <Text numberOfLines={2} style={{
-                    fontSize: 11, fontWeight: '600', color: '#1c1917',
+                    fontSize: 11, fontWeight: '700', color: '#2d2320',
                     textAlign: 'center', lineHeight: 15,
                   }}>
                     {brand.name}
@@ -637,12 +855,9 @@ export default function HomeScreen() {
         {/* الفئات — category circles */}
         {categories && categories.length > 0 && (
           <>
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
-              paddingHorizontal: 16, marginTop: 20, marginBottom: 14,
-              direction: 'rtl' as any,
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917' }}>الفئات</Text>
+            <View style={{ paddingHorizontal: 16, marginTop: 24, marginBottom: 16, direction: 'rtl' as any }}>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>الفئات</Text>
+              <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 6 }} />
             </View>
 
             <View style={{ direction: 'rtl' as any }}>
@@ -809,22 +1024,34 @@ export default function HomeScreen() {
 
       {/* Mobile header */}
       {!isWeb && (
-        <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, direction: 'rtl' as any }}>
+        <View style={{
+          backgroundColor: '#fff',
+          paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12,
+          direction: 'rtl' as any,
+          borderBottomWidth: 1, borderBottomColor: '#f0ece6',
+          shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 3,
+        }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {SearchBar({})}
             <TouchableOpacity
               onPress={() => router.push('/(customer)/notifications' as any)}
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ede8e1', alignItems: 'center', justifyContent: 'center' }}
+              style={{
+                width: 46, height: 46, borderRadius: 23,
+                backgroundColor: '#f5f0ea',
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: '#e6e0d8',
+              }}
             >
               <View style={{ position: 'relative' }}>
                 <Ionicons name="notifications-outline" size={22} color="#1c1917" />
                 {unreadCount > 0 && (
                   <View style={{
-                    position: 'absolute', top: -3, right: -4,
-                    minWidth: 16, height: 16, borderRadius: 8,
+                    position: 'absolute', top: -4, right: -5,
+                    minWidth: 17, height: 17, borderRadius: 9,
                     backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+                    borderWidth: 1.5, borderColor: '#fff',
                   }}>
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: '#fff' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                   </View>
                 )}
               </View>
@@ -841,6 +1068,9 @@ export default function HomeScreen() {
         ? isWeb ? WebBrowseContent() : MobileBrowseContent()
         : DiscoverContent()
       }
+
+      {/* ── Floating mini-cart bar ── */}
+      <MiniCartBar />
     </SafeAreaView>
   );
 }

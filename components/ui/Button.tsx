@@ -9,7 +9,7 @@ interface ButtonProps extends TouchableOpacityProps {
 }
 
 const variantBg: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: '#f97316',
+  primary: '#e36523',
   secondary: '#22c55e',
   outline: 'transparent',
   danger: '#ef4444',
@@ -19,7 +19,7 @@ const variantBg: Record<NonNullable<ButtonProps['variant']>, string> = {
 const variantBorder: Record<NonNullable<ButtonProps['variant']>, string | undefined> = {
   primary: undefined,
   secondary: undefined,
-  outline: '#f97316',
+  outline: '#e36523',
   danger: undefined,
   ghost: undefined,
 };
@@ -27,7 +27,7 @@ const variantBorder: Record<NonNullable<ButtonProps['variant']>, string | undefi
 const variantTextColor: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary: '#ffffff',
   secondary: '#ffffff',
-  outline: '#f97316',
+  outline: '#e36523',
   danger: '#ffffff',
   ghost: '#6b7280',
 };
@@ -83,7 +83,7 @@ export function Button({
           borderColor: borderColor ?? undefined,
           ...padding,
           ...(fullWidth ? { width: '100%' } : {}),
-          shadowColor: variant === 'primary' && !isDisabled ? '#f97316' : 'transparent',
+          shadowColor: variant === 'primary' && !isDisabled ? '#e36523' : 'transparent',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.25,
           shadowRadius: 8,

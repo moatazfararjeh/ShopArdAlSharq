@@ -16,7 +16,7 @@ import { formatPrice } from '@/utils/formatPrice';
 // ── Design constants matching the professional catalog look ───────────────────
 const ITEMS_PER_PAGE = 9; // 3 columns × 3 rows per page
 const HEADER_COLOR = '#2C2F34'; // App secondary blue
-const ACCENT = '#f97316'; // App primary orange
+const ACCENT = '#e36523'; // App primary orange
 const DARK = '#1c1917';
 
 function useWindowSize() {

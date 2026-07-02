@@ -313,7 +313,7 @@ export default function OrderDetailScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-        <ActivityIndicator size="large" color="#f97316" />
+        <ActivityIndicator size="large" color="#e36523" />
       </View>
     );
   }
@@ -323,7 +323,7 @@ export default function OrderDetailScreen() {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
         <Text style={{ fontSize: 48, marginBottom: 12 }}>😕</Text>
         <Text style={{ fontSize: 16, color: '#6b7280' }}>{t('errors.notFound')}</Text>
-        <TouchableOpacity onPress={() => goBack()} style={{ marginTop: 20, backgroundColor: '#f97316', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 }}>
+        <TouchableOpacity onPress={() => goBack()} style={{ marginTop: 20, backgroundColor: '#e36523', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 }}>
           <Text style={{ color: '#fff', fontWeight: '700' }}>{t('common.back', { defaultValue: 'رجوع' })}</Text>
         </TouchableOpacity>
       </View>
@@ -430,7 +430,7 @@ export default function OrderDetailScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#f97316', marginEnd: 4 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523', marginEnd: 4 }}>
                   {formatPrice(item.total_price)}
                 </Text>
                 <View style={{ flex: 1, marginEnd: 12 }}>
@@ -494,7 +494,7 @@ export default function OrderDetailScreen() {
           )}
           <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 10 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: '#f97316' }}>
+            <Text style={{ fontSize: 20, fontWeight: '900', color: '#e36523' }}>
               {formatPrice(order.total_amount)}
             </Text>
             <Text style={{ fontSize: 15, color: '#6b7280', fontWeight: '600' }}>{t('cart.total')}</Text>

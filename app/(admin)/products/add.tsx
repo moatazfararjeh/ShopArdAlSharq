@@ -311,7 +311,7 @@ export default function AddProductScreen() {
           render={({ field: { onChange, value } }) => (
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-sm font-medium text-gray-700">متوفر للبيع</Text>
-              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#f97316' }} />
+              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#e36523' }} />
             </View>
           )}
         />
@@ -319,7 +319,7 @@ export default function AddProductScreen() {
           render={({ field: { onChange, value } }) => (
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-sm font-medium text-gray-700">منتج مميز</Text>
-              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#f97316' }} />
+              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#e36523' }} />
             </View>
           )}
         />

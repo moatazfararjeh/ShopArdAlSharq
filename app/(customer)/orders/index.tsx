@@ -73,7 +73,7 @@ function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
             {itemCount} {t('orders.items', { defaultValue: 'منتجات' })}
           </Text>
         </View>
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#f97316' }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: '#e36523' }}>
           {formatPrice(order.total_amount)}
         </Text>
       </View>
@@ -102,7 +102,7 @@ export default function OrdersScreen() {
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#f97316" />
+          <ActivityIndicator size="large" color="#e36523" />
         </View>
       ) : (
         <FlatList

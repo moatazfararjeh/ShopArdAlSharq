@@ -8,6 +8,7 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (productId: string, selectedUnit?: CartItem['selected_unit']) => void;
   updateQuantity: (productId: string, quantity: number, selectedUnit?: CartItem['selected_unit']) => void;
+  changeUnit: (productId: string, oldUnit: CartItem['selected_unit'], newUnit: CartItem['selected_unit']) => void;
   clearCart: () => void;
   hydrateCart: (items: CartItem[]) => void;
 }
@@ -78,6 +79,26 @@ export const useCartStore = create<CartState>((set, get) => ({
         ? { ...i, quantity: clamped }
         : i,
     );
+    set({ items: updated, summary: computeSummary(updated) });
+  },
+
+  changeUnit: (productId, oldUnit, newUnit) => {
+    const { items } = get();
+    const source = items.find((i) => i.product_id === productId && i.selected_unit === oldUnit);
+    if (!source) return;
+    const qty = source.quantity;
+    const withoutSource = items.filter((i) => !(i.product_id === productId && i.selected_unit === oldUnit));
+    const existingNew = withoutSource.find((i) => i.product_id === productId && i.selected_unit === newUnit);
+    let updated: CartItem[];
+    if (existingNew) {
+      updated = withoutSource.map((i) =>
+        i.product_id === productId && i.selected_unit === newUnit
+          ? { ...i, quantity: Math.min(i.quantity + qty, MAX_CART_ITEM_QUANTITY) }
+          : i,
+      );
+    } else {
+      updated = [...withoutSource, { ...source, selected_unit: newUnit }];
+    }
     set({ items: updated, summary: computeSummary(updated) });
   },
 

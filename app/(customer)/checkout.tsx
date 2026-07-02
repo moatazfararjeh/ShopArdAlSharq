@@ -1,14 +1,15 @@
-﻿import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useRef } from 'react';
+import { Image } from 'expo-image';
 import { checkoutSchema, CheckoutFormValues } from '@/schemas/checkoutSchema';
 import { usePlaceOrder } from '@/hooks/useOrders';
 import { useCart } from '@/hooks/useCart';
-import { useCartStore } from '@/stores/cartStore';
+import { useCartStore, getCartItemPrice } from '@/stores/cartStore';
 import { upsertCartItem } from '@/services/cartService';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -16,6 +17,10 @@ import { formatPrice } from '@/utils/formatPrice';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
+import { getProductName } from '@/types/models';
+import { getCurrentLocale } from '@/i18n';
+
+const BRAND = '#e36523';
 
 interface SavedAddress {
   id: string;
@@ -28,6 +33,152 @@ interface SavedAddress {
   is_default?: boolean;
 }
 
+// ─── Step progress indicator ──────────────────────────────────────────────────
+function StepBar({ step }: { step: 1 | 2 | 3 }) {
+  const steps = ['العنوان', 'الطلب', 'تأكيد'];
+  return (
+    <View style={{ backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f0ece6' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {steps.map((label, i) => {
+          const num = i + 1;
+          const done = num < step;
+          const active = num === step;
+          const isLast = i === steps.length - 1;
+          return (
+            <View key={label} style={{ flex: isLast ? 0 : 1, flexDirection: 'row', alignItems: 'center' }}>
+              {/* Circle */}
+              <View style={{ alignItems: 'center' }}>
+                <View style={{
+                  width: 28, height: 28, borderRadius: 14,
+                  backgroundColor: done || active ? BRAND : '#f3f4f6',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {done
+                    ? <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>
+                    : <Text style={{ color: active ? '#fff' : '#9ca3af', fontSize: 12, fontWeight: '800' }}>{num}</Text>
+                  }
+                </View>
+                <Text style={{
+                  fontSize: 10, fontWeight: '600', marginTop: 4,
+                  color: done || active ? BRAND : '#9ca3af',
+                }}>
+                  {label}
+                </Text>
+              </View>
+              {/* Connector line */}
+              {!isLast && (
+                <View style={{
+                  flex: 1, height: 2, marginBottom: 16, marginHorizontal: 6,
+                  backgroundColor: done ? BRAND : '#e6e0d8',
+                }} />
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Order items summary ───────────────────────────────────────────────────────
+function OrderSummarySection({ subtotal, discount, total }: { subtotal: number; discount: number; total: number }) {
+  const cartItems = useCartStore((s) => s.items);
+  const locale = getCurrentLocale();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={{ borderRadius: 16, backgroundColor: '#fff', padding: 16, borderWidth: 1, borderColor: '#e6e0d8', marginBottom: 16 }}>
+      {/* Header row */}
+      <TouchableOpacity
+        onPress={() => setExpanded((e) => !e)}
+        activeOpacity={0.8}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: expanded ? 12 : 0 }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>🛒 ملخص الطلب</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 13, color: BRAND, fontWeight: '700' }}>{formatPrice(total)}</Text>
+          <Text style={{ fontSize: 14, color: '#9ca3af' }}>{expanded ? '▲' : '▼'}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Collapsed: just item count */}
+      {!expanded && (
+        <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+          {cartItems.length} {cartItems.length === 1 ? 'منتج' : 'منتجات'} — اضغط للتفاصيل
+        </Text>
+      )}
+
+      {/* Expanded: full item list */}
+      {expanded && (
+        <>
+          {cartItems.map((item, idx) => {
+            const price = getCartItemPrice(item);
+            const imgUrl = (item.product.images?.[0] ?? item.product.product_images?.[0])?.url;
+            const unitLabel = item.selected_unit
+              ? ({ piece: 'حبة', carton: 'كرتون', kg: 'كيلو' } as Record<string, string>)[item.selected_unit]
+              : null;
+            return (
+              <View
+                key={`${item.product_id}-${item.selected_unit}`}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10,
+                  paddingVertical: 8,
+                  borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: '#f5f0eb',
+                }}
+              >
+                <Image
+                  source={{ uri: imgUrl }}
+                  style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#ede8e1' }}
+                  contentFit="cover"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1c1917' }} numberOfLines={1}>
+                    {getProductName(item.product, locale)}
+                  </Text>
+                  {unitLabel && (
+                    <Text style={{ fontSize: 11, color: '#857d78', marginTop: 1 }}>
+                      {unitLabel} × {item.quantity}
+                    </Text>
+                  )}
+                  {!unitLabel && (
+                    <Text style={{ fontSize: 11, color: '#857d78', marginTop: 1 }}>× {item.quantity}</Text>
+                  )}
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: BRAND }}>
+                  {formatPrice(price * item.quantity)}
+                </Text>
+              </View>
+            );
+          })}
+
+          {/* Totals */}
+          <View style={{ borderTopWidth: 1, borderTopColor: '#e6e0d8', marginTop: 8, paddingTop: 10, gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ color: '#857d78', fontSize: 13 }}>المجموع</Text>
+              <Text style={{ fontWeight: '600', color: '#1c1917', fontSize: 13 }}>{formatPrice(subtotal)}</Text>
+            </View>
+            {discount > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ color: '#16a34a', fontSize: 13 }}>خصم</Text>
+                <Text style={{ fontWeight: '600', color: '#16a34a', fontSize: 13 }}>-{formatPrice(discount)}</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ color: '#857d78', fontSize: 13 }}>التوصيل</Text>
+              <Text style={{ fontWeight: '600', color: '#16a34a', fontSize: 13 }}>مجاني</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f0ece6' }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#1c1917' }}>الإجمالي</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(total)}</Text>
+            </View>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -41,6 +192,9 @@ export default function CheckoutScreen() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveThisAddress, setSaveThisAddress] = useState(true);
+
+  // Derive current step for progress bar
+  const step: 1 | 2 | 3 = selectedAddressId !== null || savedAddresses.length === 0 ? 2 : 1;
 
   const {
     control,
@@ -73,10 +227,8 @@ export default function CheckoutScreen() {
     setSelectedAddressId(id);
     setValue('address_id', id ?? 'new');
     if (id) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue('new_address', undefined as any);
     } else {
-      // Restore default new_address values when switching back to "new"
       setValue('new_address', {
         label: 'المنزل',
         recipient_name: '',
@@ -93,7 +245,6 @@ export default function CheckoutScreen() {
     }
   }
 
-  // Load saved addresses on mount
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
@@ -108,7 +259,6 @@ export default function CheckoutScreen() {
           const def = (data as SavedAddress[]).find((a) => a.is_default) ?? data[0];
           setSelectedAddressId(def.id);
           setValue('address_id', def.id);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setValue('new_address', undefined as any);
         }
       });
@@ -120,8 +270,6 @@ export default function CheckoutScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
 
-      // Sync local Zustand cart → DB before placing order.
-      // Handles the case where a prior DB write failed silently.
       if (cartItems.length === 0) {
         const msg = 'السلة فارغة. يرجى إضافة منتجات أولاً.';
         setSubmitError(msg);
@@ -138,12 +286,9 @@ export default function CheckoutScreen() {
       let tempAddressId: string | null = null;
 
       if (selectedAddressId) {
-        // Use existing saved address
         finalAddressId = selectedAddressId;
       } else {
-        // New address — insert it temporarily to obtain an id for the order snapshot
         const addr = values.new_address!;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: addrRow, error: addrError } = await (supabase as any)
           .from('addresses')
           .insert({
@@ -165,8 +310,6 @@ export default function CheckoutScreen() {
 
         if (addrError) { setSubmitError(addrError.message); return; }
         finalAddressId = addrRow.id;
-        // Track it so we can clean up if the user chose not to save AND if
-        // the order placement fails for any reason.
         if (!saveThisAddress) tempAddressId = finalAddressId;
       }
 
@@ -178,17 +321,13 @@ export default function CheckoutScreen() {
           notes: values.notes ?? null,
         });
       } catch (orderErr) {
-        // If a throwaway address was inserted, delete it now to avoid orphans
         if (tempAddressId) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
         }
         throw orderErr;
       }
 
-      // Order succeeded — delete address if the user chose not to save it
       if (tempAddressId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
       }
 
@@ -207,10 +346,20 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
-      <ScrollView ref={scrollRef} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#1c1917', marginBottom: 16 }}>{t('checkout.title')}</Text>
+      {/* Header + Step bar */}
+      <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0ece6' }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 }}>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1c1917' }}>{t('checkout.title')}</Text>
+        </View>
+        <StepBar step={step} />
+      </View>
 
-        {/* Errors */}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 130 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Error banner */}
         {(submitError || placeOrder.error) && (
           <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: '#fef2f2', padding: 12 }}>
             <Text style={{ color: '#dc2626', fontSize: 13 }}>
@@ -234,14 +383,14 @@ export default function CheckoutScreen() {
                   backgroundColor: selectedAddressId === addr.id ? '#fff7ed' : '#ffffff',
                   borderRadius: 14, padding: 14, marginBottom: 8,
                   borderWidth: 1.5,
-                  borderColor: selectedAddressId === addr.id ? '#e36523' : '#e6e0d8',
+                  borderColor: selectedAddressId === addr.id ? BRAND : '#e6e0d8',
                 }}
                 activeOpacity={0.8}
               >
                 <View style={{
                   width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-                  borderColor: selectedAddressId === addr.id ? '#e36523' : '#d1d5db',
-                  backgroundColor: selectedAddressId === addr.id ? '#e36523' : '#fff',
+                  borderColor: selectedAddressId === addr.id ? BRAND : '#d1d5db',
+                  backgroundColor: selectedAddressId === addr.id ? BRAND : '#fff',
                   alignItems: 'center', justifyContent: 'center',
                   marginLeft: 12,
                 }}>
@@ -269,14 +418,14 @@ export default function CheckoutScreen() {
                 backgroundColor: selectedAddressId === null ? '#fff7ed' : '#ffffff',
                 borderRadius: 14, padding: 14,
                 borderWidth: 1.5,
-                borderColor: selectedAddressId === null ? '#e36523' : '#e6e0d8',
+                borderColor: selectedAddressId === null ? BRAND : '#e6e0d8',
               }}
               activeOpacity={0.8}
             >
               <View style={{
                 width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-                borderColor: selectedAddressId === null ? '#e36523' : '#d1d5db',
-                backgroundColor: selectedAddressId === null ? '#e36523' : '#fff',
+                borderColor: selectedAddressId === null ? BRAND : '#d1d5db',
+                backgroundColor: selectedAddressId === null ? BRAND : '#fff',
                 alignItems: 'center', justifyContent: 'center',
                 marginLeft: 12,
               }}>
@@ -284,12 +433,12 @@ export default function CheckoutScreen() {
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
                 )}
               </View>
-              <Text style={{ fontWeight: '600', color: '#e36523' }}>＋ إضافة عنوان جديد</Text>
+              <Text style={{ fontWeight: '600', color: BRAND }}>＋ إضافة عنوان جديد</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* ── NEW ADDRESS FORM ── shown when no saved addresses OR user picked "new" */}
+        {/* ── NEW ADDRESS FORM ── */}
         {selectedAddressId === null && (
           <View style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e6e0d8' }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917', marginBottom: 12 }}>
@@ -309,27 +458,38 @@ export default function CheckoutScreen() {
                   error={errors.new_address?.phone?.message} />
               )} />
 
+            {/* ── City selector — now uses brand orange ── */}
             <Controller control={control} name="new_address.city"
               render={({ field: { onChange, value } }) => (
                 <View style={{ marginBottom: 14 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'right' }}>المدينة *</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, textAlign: 'right' }}>المدينة *</Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {(['الزرقاء', 'عمان'] as const).map((city) => (
-                      <TouchableOpacity
-                        key={city}
-                        onPress={() => onChange(city)}
-                        style={{
-                          flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
-                          backgroundColor: value === city ? '#1c1917' : '#f3f4f6',
-                          borderWidth: 1.5,
-                          borderColor: value === city ? '#1c1917' : '#e5e7eb',
-                        }}
-                      >
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: value === city ? '#fff' : '#374151' }}>{city}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {(['الزرقاء', 'عمان'] as const).map((city) => {
+                      const isSelected = value === city;
+                      return (
+                        <TouchableOpacity
+                          key={city}
+                          onPress={() => onChange(city)}
+                          style={{
+                            flex: 1, paddingVertical: 13, borderRadius: 14,
+                            alignItems: 'center',
+                            backgroundColor: isSelected ? BRAND : '#f3f4f6',
+                            borderWidth: 1.5,
+                            borderColor: isSelected ? BRAND : '#e5e7eb',
+                          }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: isSelected ? '#fff' : '#374151' }}>
+                            {city}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                  {errors.new_address?.city && <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, textAlign: 'right' }}>{errors.new_address.city.message}</Text>}
+                  {errors.new_address?.city && (
+                    <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, textAlign: 'right' }}>
+                      {errors.new_address.city.message}
+                    </Text>
+                  )}
                 </View>
               )} />
 
@@ -353,8 +513,8 @@ export default function CheckoutScreen() {
             >
               <View style={{
                 width: 22, height: 22, borderRadius: 6, borderWidth: 2,
-                borderColor: saveThisAddress ? '#e36523' : '#d1d5db',
-                backgroundColor: saveThisAddress ? '#e36523' : '#fff',
+                borderColor: saveThisAddress ? BRAND : '#d1d5db',
+                backgroundColor: saveThisAddress ? BRAND : '#fff',
                 alignItems: 'center', justifyContent: 'center',
               }}>
                 {saveThisAddress && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>}
@@ -376,30 +536,36 @@ export default function CheckoutScreen() {
             )} />
         </View>
 
-        {/* Order summary */}
-        <View style={{ borderRadius: 16, backgroundColor: '#ffffff', padding: 16, borderWidth: 1, borderColor: '#e6e0d8' }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917', marginBottom: 12 }}>ملخص الطلب</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ color: '#857d78' }}>{t('cart.subtotal')}</Text>
-            <Text style={{ fontWeight: '600', color: '#1c1917' }}>{formatPrice(summary.subtotal)}</Text>
+        {/* ── ORDER SUMMARY ── */}
+        <OrderSummarySection
+          subtotal={summary.subtotal}
+          discount={summary.discount}
+          total={summary.total}
+        />
+
+        {/* Payment method note */}
+        <View style={{ borderRadius: 12, backgroundColor: '#fff7ed', padding: 12, borderWidth: 1, borderColor: '#fed7aa', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={{ fontSize: 20 }}>💵</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1c1917' }}>{t('checkout.cashOnDelivery')}</Text>
+            <Text style={{ fontSize: 11, color: '#857d78', marginTop: 2 }}>الدفع عند الاستلام — طريقة الدفع الوحيدة المتاحة</Text>
           </View>
-          {summary.discount > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: '#16a34a' }}>{t('cart.discount')}</Text>
-              <Text style={{ fontWeight: '600', color: '#16a34a' }}>-{formatPrice(summary.discount)}</Text>
-            </View>
-          )}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e6e0d8', paddingTop: 10, marginTop: 4 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917' }}>{t('cart.total')}</Text>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#e36523' }}>{formatPrice(summary.total)}</Text>
-          </View>
-          <Text style={{ fontSize: 11, color: '#857d78', marginTop: 8 }}>
-            طريقة الدفع: {t('checkout.cashOnDelivery')}
-          </Text>
         </View>
       </ScrollView>
 
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#e6e0d8' }}>
+      {/* Sticky place-order button */}
+      <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        backgroundColor: '#ffffff',
+        paddingHorizontal: 16, paddingVertical: 14,
+        borderTopWidth: 1, borderTopColor: '#e6e0d8',
+        shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 10,
+      }}>
+        {/* Total row above the button */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+          <Text style={{ fontSize: 14, color: '#857d78' }}>الإجمالي</Text>
+          <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(summary.total)}</Text>
+        </View>
         <Button
           title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
           onPress={handleSubmit(onSubmit, (fieldErrors) => {
@@ -419,4 +585,3 @@ export default function CheckoutScreen() {
     </SafeAreaView>
   );
 }
-

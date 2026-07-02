@@ -46,7 +46,7 @@ export default function AdminBannersScreen() {
               {getBannerTitle(item, locale)}
             </Text>
             {item.label_ar ? (
-              <Text style={{ fontSize: 12, color: '#f97316', marginTop: 2 }}>{item.label_ar}</Text>
+              <Text style={{ fontSize: 12, color: '#e36523', marginTop: 2 }}>{item.label_ar}</Text>
             ) : null}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
               <Text style={{ fontSize: 11, color: item.is_active ? '#10b981' : '#ef4444' }}>

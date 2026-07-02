@@ -15,7 +15,7 @@ interface StatCardProps {
   color?: string;
 }
 
-function StatCard({ label, value, color = '#f97316' }: StatCardProps) {
+function StatCard({ label, value, color = '#e36523' }: StatCardProps) {
   return (
     <View className="flex-1 rounded-2xl bg-white p-4 shadow-sm" style={{ borderTopColor: color, borderTopWidth: 3 }}>
       <Text className="mb-1 text-xs text-gray-500">{label}</Text>

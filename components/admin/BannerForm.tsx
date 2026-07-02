@@ -211,7 +211,7 @@ export default function BannerFormScreen({ initial, onSubmit, submitLabel, isLoa
         <View><FieldLabel label="الترتيب" /><StyledInput value={sortOrder} onChangeText={setSortOrder} placeholder="0" keyboardType="numeric" /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 14, color: '#374151', fontWeight: '600' }}>نشط</Text>
-          <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: '#f97316', false: '#d1d5db' }} thumbColor="#fff" />
+          <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: '#e36523', false: '#d1d5db' }} thumbColor="#fff" />
         </View>
       </View>
 
