@@ -1,4 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,9 @@ import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, hasDiscount, Product } from '@/types/models';
 import { useCart } from '@/hooks/useCart';
+import { WishlistItemSkeleton } from '@/components/ui/Skeleton';
+
+const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
 function WishlistItem({ product }: { product: Product }) {
   const locale = getCurrentLocale();
@@ -18,10 +22,21 @@ function WishlistItem({ product }: { product: Product }) {
   const discounted = hasDiscount(product);
   const mainImage = (product.images?.[0] ?? (product as any).product_images?.[0])?.url;
 
+  const scale = useRef(new Animated.Value(1)).current;
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }
+
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity
       onPress={() => router.push(`/(public)/products/${product.id}` as any)}
-      activeOpacity={0.92}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={1}
       style={{
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: '#fff', borderRadius: 20,
@@ -34,6 +49,8 @@ function WishlistItem({ product }: { product: Product }) {
         source={{ uri: mainImage }}
         style={{ width: 80, height: 80, borderRadius: 14 }}
         contentFit="cover"
+        placeholder={{ blurhash: PLACEHOLDER_HASH }}
+        transition={250}
       />
       <View style={{ flex: 1, marginHorizontal: 12 }}>
         <Text numberOfLines={2} style={{ fontSize: 14, fontWeight: '700', color: '#1c1917', lineHeight: 20 }}>
@@ -75,6 +92,7 @@ function WishlistItem({ product }: { product: Product }) {
         <Ionicons name="heart" size={18} color="#e36523" />
       </TouchableOpacity>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -98,8 +116,8 @@ export default function WishlistScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#e36523" />
+        <View style={{ paddingTop: 8 }}>
+          {[1, 2, 3, 4].map((i) => <WishlistItemSkeleton key={i} />)}
         </View>
       ) : products.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>

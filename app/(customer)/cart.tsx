@@ -16,6 +16,8 @@ import { CartItem as CartItemType } from '@/types/models';
 import { Image } from 'expo-image';
 import { getCartItemPrice } from '@/stores/cartStore';
 
+const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
+
 const BRAND = '#e36523';
 const SWIPE_THRESHOLD = -80;
 const DELETE_BG = '#ef4444';
@@ -104,6 +106,8 @@ function CartItemRow({ item }: { item: CartItemType }) {
             source={{ uri: (item.product.images?.[0] ?? item.product.product_images?.[0])?.url }}
             style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }}
             contentFit="cover"
+            placeholder={{ blurhash: PLACEHOLDER_HASH }}
+            transition={250}
           />
 
           <View style={{ flex: 1, marginStart: 12 }}>

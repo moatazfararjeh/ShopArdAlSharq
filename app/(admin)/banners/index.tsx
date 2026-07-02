@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert, FlatList, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useBanners, useDeleteBanner } from '@/hooks/useBanners';
@@ -93,7 +93,7 @@ export default function AdminBannersScreen() {
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#6b7280' }}>جاري التحميل...</Text>
+          <ActivityIndicator size="large" color="#e36523" />
         </View>
       ) : (banners?.length ?? 0) === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>

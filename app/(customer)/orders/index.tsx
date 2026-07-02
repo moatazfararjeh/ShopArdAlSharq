@@ -1,9 +1,11 @@
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useOrders } from '@/hooks/useOrders';
+import { OrderCardSkeleton } from '@/components/ui/Skeleton';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
 import { Order } from '@/types/models';
@@ -33,51 +35,62 @@ function StatusBadge({ status }: { status: string }) {
 function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
   const { t } = useTranslation();
   const itemCount = order.items?.length ?? 0;
+
+  const scale = useRef(new Animated.Value(1)).current;
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 15 }).start();
+  }
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={{
-        marginHorizontal: 16,
-        marginVertical: 7,
-        backgroundColor: '#ffffff',
-        borderRadius: 20,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
-        elevation: 3,
-      }}
-    >
-      {/* Top row */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827' }}>
-          #{order.order_number}
-        </Text>
-        <StatusBadge status={order.status} />
-      </View>
-
-      {/* Date */}
-      <Text style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>
-        🗓 {formatDate(order.created_at)}
-      </Text>
-
-      {/* Divider */}
-      <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 12 }} />
-
-      {/* Footer row */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ backgroundColor: '#f3f4f6', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>
-            {itemCount} {t('orders.items', { defaultValue: 'منتجات' })}
+    <Animated.View style={{ transform: [{ scale }], marginHorizontal: 16, marginVertical: 7 }}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={1}
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 20,
+          padding: 16,
+          shadowColor: '#1c1917',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.07,
+          shadowRadius: 8,
+          elevation: 3,
+        }}
+      >
+        {/* Top row — RTL: status badge right, order number left */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, direction: 'rtl' as any }}>
+          <StatusBadge status={order.status} />
+          <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827' }}>
+            #{order.order_number}
           </Text>
         </View>
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#e36523' }}>
-          {formatPrice(order.total_amount)}
+
+        {/* Date */}
+        <Text style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12, textAlign: 'right' }}>
+          🗓 {formatDate(order.created_at)}
         </Text>
-      </View>
-    </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 12 }} />
+
+        {/* Footer row — RTL: price right, items count left */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' as any }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#e36523' }}>
+            {formatPrice(order.total_amount)}
+          </Text>
+          <View style={{ backgroundColor: '#f3f4f6', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>
+              {itemCount} {t('orders.items', { defaultValue: 'منتجات' })}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -87,10 +100,10 @@ export default function OrdersScreen() {
   const { data: orders, isLoading } = useOrders();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: '#111827' }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, direction: 'rtl' as any }}>
+        <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>
           {t('orders.title')}
         </Text>
         {orders && orders.length > 0 && (
@@ -101,8 +114,8 @@ export default function OrdersScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#e36523" />
+        <View style={{ paddingTop: 4 }}>
+          {[1, 2, 3, 4].map((i) => <OrderCardSkeleton key={i} />)}
         </View>
       ) : (
         <FlatList
@@ -115,9 +128,11 @@ export default function OrdersScreen() {
             />
           )}
           ListEmptyComponent={
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100 }}>
-              <Text style={{ fontSize: 64, marginBottom: 16 }}>📋</Text>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#374151', marginBottom: 6 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 100 }}>
+              <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 44 }}>📋</Text>
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1c1917', marginBottom: 6 }}>
                 {t('orders.noOrders')}
               </Text>
               <Text style={{ fontSize: 14, color: '#9ca3af', textAlign: 'center' }}>

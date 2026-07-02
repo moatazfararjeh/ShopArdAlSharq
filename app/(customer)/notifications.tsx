@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import { Notification } from '@/types/models';
+import { NotificationRowSkeleton } from '@/components/ui/Skeleton';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useNotifications';
 import { formatDateTime } from '@/utils/formatDate';
 
@@ -123,8 +124,8 @@ export default function NotificationsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#e36523" />
+        <View>
+          {[1, 2, 3, 4, 5].map((i) => <NotificationRowSkeleton key={i} />)}
         </View>
       ) : notifications.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>

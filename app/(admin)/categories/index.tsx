@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -69,12 +70,30 @@ export default function AdminCategoriesScreen() {
             </View>
           </View>
         )}
-        ListEmptyComponent={
-          isLoading ? null : (
-            <View className="mt-20 items-center">
-              <Text className="text-gray-400">{t('categories.noCategories')}</Text>
+        ListHeaderComponent={
+          isLoading ? (
+            <View style={{ padding: 16, gap: 8 }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Skeleton width={52} height={28} borderRadius={8} />
+                    <Skeleton width={52} height={28} borderRadius={8} />
+                  </View>
+                  <View style={{ gap: 6 }}>
+                    <Skeleton width={100} height={13} borderRadius={5} />
+                    <Skeleton width={50} height={11} borderRadius={5} />
+                  </View>
+                </View>
+              ))}
             </View>
-          )
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={{ marginTop: 80, alignItems: 'center' }}>
+              <Text style={{ color: '#9ca3af' }}>{t('categories.noCategories')}</Text>
+            </View>
+          ) : null
         }
         contentContainerStyle={{ paddingBottom: 16 }}
       />

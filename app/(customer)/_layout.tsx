@@ -5,19 +5,45 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/stores/cartStore';
 import { Ionicons } from '@expo/vector-icons';
 
-const ACTIVE_COLOR = '#e36523';
-const INACTIVE_COLOR = '#857d78';
+const BRAND    = '#e36523';
+const INACTIVE = '#b0a89e';
+
+function TabIcon({
+  name,
+  focusedName,
+  focused,
+}: {
+  name: string;
+  focusedName: string;
+  focused: boolean;
+}) {
+  return (
+    <View style={{
+      backgroundColor: focused ? '#fff7ed' : 'transparent',
+      borderRadius: 14,
+      width: 46,
+      height: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <Ionicons
+        name={(focused ? focusedName : name) as any}
+        size={22}
+        color={focused ? BRAND : INACTIVE}
+      />
+    </View>
+  );
+}
 
 export default function CustomerLayout() {
   const { isAuthenticated, isInitialized } = useAuth();
-
   const { t } = useTranslation();
   const itemCount = useCartStore((s) => s.summary.itemCount);
 
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={ACTIVE_COLOR} />
+        <ActivityIndicator size="large" color={BRAND} />
       </View>
     );
   }
@@ -25,37 +51,33 @@ export default function CustomerLayout() {
   if (!isAuthenticated) {
     return <Redirect href="/(public)/login" />;
   }
-  // Note: catalog is accessible without login via web layout bypass
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: ACTIVE_COLOR,
-        tabBarInactiveTintColor: INACTIVE_COLOR,
+        tabBarActiveTintColor: BRAND,
+        tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 3,
-          borderTopColor: ACTIVE_COLOR,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          height: Platform.OS === 'ios' ? 85 : 70,
+          backgroundColor: '#fff',
+          borderTopWidth: 0,
+          height: Platform.OS === 'ios' ? 88 : 72,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
           position: 'absolute',
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
+          elevation: 20,
+          shadowColor: '#1c1917',
+          shadowOffset: { width: 0, height: -8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 24,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 4,
+          fontSize: 10,
+          fontWeight: '700',
+          marginTop: 2,
         },
-        tabBarIconStyle: {
-          marginBottom: -2,
+        tabBarItemStyle: {
+          paddingTop: 2,
         },
       }}
     >
@@ -63,33 +85,8 @@ export default function CustomerLayout() {
         name="home"
         options={{
           title: 'الرئيسية',
-          tabBarIcon: ({ focused, size }) => (
-            <View
-              style={
-                focused
-                  ? {
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: 30,
-                      width: 50,
-                      height: 50,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginTop: -25,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 6,
-                      elevation: 6,
-                    }
-                  : { justifyContent: 'center', alignItems: 'center' }
-              }
-            >
-              <Ionicons
-                name={focused ? 'home' : 'home-outline'}
-                size={focused ? 26 : size}
-                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
-              />
-            </View>
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="home-outline" focusedName="home" focused={focused} />
           ),
         }}
       />
@@ -97,12 +94,8 @@ export default function CustomerLayout() {
         name="wishlist"
         options={{
           title: 'المفضلة',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'heart' : 'heart-outline'}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="heart-outline" focusedName="heart" focused={focused} />
           ),
         }}
       />
@@ -111,13 +104,16 @@ export default function CustomerLayout() {
         options={{
           title: 'السلة',
           tabBarBadge: itemCount > 0 ? itemCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#e36523', color: '#fff', fontSize: 10, fontWeight: '700', minWidth: 18, height: 18 },
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'bag' : 'bag-outline'}
-              size={size}
-              color={color}
-            />
+          tabBarBadgeStyle: {
+            backgroundColor: BRAND,
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 18,
+            height: 18,
+          },
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="bag-outline" focusedName="bag" focused={focused} />
           ),
         }}
       />
@@ -125,12 +121,8 @@ export default function CustomerLayout() {
         name="orders/index"
         options={{
           title: 'طلباتي',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'receipt' : 'receipt-outline'}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="receipt-outline" focusedName="receipt" focused={focused} />
           ),
         }}
       />
@@ -138,28 +130,23 @@ export default function CustomerLayout() {
         name="profile"
         options={{
           title: 'حسابي',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'person' : 'person-outline'}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="person-outline" focusedName="person" focused={focused} />
           ),
         }}
       />
+
       {/* Hidden screens — not tabs */}
-      <Tabs.Screen name="search" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="checkout" options={{ href: null }} />
-      <Tabs.Screen name="order-success" options={{ href: null }} />
-      <Tabs.Screen name="orders/[id]" options={{ href: null }} />
-      <Tabs.Screen name="addresses" options={{ href: null }} />
-      <Tabs.Screen name="edit-address" options={{ href: null }} />
-      <Tabs.Screen name="contact" options={{ href: null }} />
-      <Tabs.Screen name="catalog" options={{ href: null }} />
-      <Tabs.Screen name="delete-account" options={{ href: null }} />
+      <Tabs.Screen name="search"          options={{ href: null }} />
+      <Tabs.Screen name="notifications"   options={{ href: null }} />
+      <Tabs.Screen name="checkout"        options={{ href: null }} />
+      <Tabs.Screen name="order-success"   options={{ href: null }} />
+      <Tabs.Screen name="orders/[id]"     options={{ href: null }} />
+      <Tabs.Screen name="addresses"       options={{ href: null }} />
+      <Tabs.Screen name="edit-address"    options={{ href: null }} />
+      <Tabs.Screen name="contact"         options={{ href: null }} />
+      <Tabs.Screen name="catalog"         options={{ href: null }} />
+      <Tabs.Screen name="delete-account"  options={{ href: null }} />
     </Tabs>
   );
 }
-
-

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
@@ -8,6 +8,9 @@ import { formatPrice } from '@/utils/formatPrice';
 import { formatDateTime } from '@/utils/formatDate';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, Order } from '@/types/models';
+import { Skeleton } from '@/components/ui/Skeleton';
+
+const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
 function printOrderWindow(order: Order, locale: string) {
   const addr = (order.delivery_address ?? {}) as Record<string, string | null>;
@@ -302,7 +305,6 @@ export default function OrderDetailScreen() {
   const router = useRouter();
 
   function goBack() {
-    console.log('[ORDER DETAIL] goBack called', new Error().stack);
     if (router.canGoBack()) router.back();
     else router.replace('/(customer)/orders/index' as any);
   }
@@ -312,15 +314,20 @@ export default function OrderDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-        <ActivityIndicator size="large" color="#e36523" />
+      <View style={{ flex: 1, backgroundColor: '#f8f7f5', padding: 16, paddingTop: insets.top + 60 }}>
+        <Skeleton width="60%" height={22} borderRadius={8} style={{ marginBottom: 8 }} />
+        <Skeleton width="40%" height={14} borderRadius={6} style={{ marginBottom: 24 }} />
+        <Skeleton height={180} borderRadius={20} style={{ marginBottom: 16 }} />
+        <Skeleton height={120} borderRadius={20} style={{ marginBottom: 16 }} />
+        <Skeleton height={80} borderRadius={20} style={{ marginBottom: 16 }} />
+        <Skeleton height={100} borderRadius={20} />
       </View>
     );
   }
 
   if (!order) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f7f5' }}>
         <Text style={{ fontSize: 48, marginBottom: 12 }}>😕</Text>
         <Text style={{ fontSize: 16, color: '#6b7280' }}>{t('errors.notFound')}</Text>
         <TouchableOpacity onPress={() => goBack()} style={{ marginTop: 20, backgroundColor: '#e36523', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 }}>
@@ -333,8 +340,8 @@ export default function OrderDetailScreen() {
   const statusConfig = STATUS_COLORS[order.status] ?? { bg: '#f3f4f6', text: '#6b7280', label: '•' };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-      {/* Header */}
+    <View style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
+      {/* Header — RTL: back button left, order info right, status+print far right */}
       <View style={{
         backgroundColor: '#ffffff',
         paddingTop: insets.top + 8,
@@ -342,25 +349,37 @@ export default function OrderDetailScreen() {
         paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: '#000',
+        direction: 'rtl' as any,
+        shadowColor: '#1c1917',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
         elevation: 3,
       }}>
+        {/* Right side: order number + date */}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
+            {t('orders.orderNumber')} #{order.order_number}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>
+            🗓 {formatDateTime(order.created_at)}
+          </Text>
+        </View>
+
+        {/* Left side: status badge + print */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ backgroundColor: statusConfig.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontSize: 12 }}>{statusConfig.label}</Text>
+            <Text style={{ color: statusConfig.text, fontSize: 12, fontWeight: '700' }}>
+              {t(`orders.status.${order.status}`, { defaultValue: order.status })}
+            </Text>
+          </View>
           {Platform.OS === 'web' && (
             <Pressable
               onPress={(e) => {
-                console.log('[PRINT] Button pressed');
                 e.preventDefault?.();
                 e.stopPropagation?.();
-                try {
-                  printOrderWindow(order, locale);
-                  console.log('[PRINT] printOrderWindow completed');
-                } catch (err) {
-                  console.error('[PRINT] Error:', err);
-                }
+                try { printOrderWindow(order, locale); } catch (err) { console.error('[PRINT]', err); }
               }}
               style={{ backgroundColor: '#f3f4f6', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 5, zIndex: 10, position: 'relative' }}
             >
@@ -368,27 +387,13 @@ export default function OrderDetailScreen() {
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', pointerEvents: 'none' }}>طباعة</Text>
             </Pressable>
           )}
-          <View style={{ backgroundColor: statusConfig.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 12 }}>{statusConfig.label}</Text>
-            <Text style={{ color: statusConfig.text, fontSize: 12, fontWeight: '700' }}>
-              {t(`orders.status.${order.status}`, { defaultValue: order.status })}
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={() => goBack()}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+          </TouchableOpacity>
         </View>
-        <View style={{ flex: 1, alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 17, fontWeight: '800', color: '#111827' }}>
-            {t('orders.orderNumber')} #{order.order_number}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>
-            🗓 {formatDateTime(order.created_at)}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => goBack()}
-          style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginStart: 12 }}
-        >
-          <Text style={{ fontSize: 18 }}>›</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -399,7 +404,7 @@ export default function OrderDetailScreen() {
         <OrderTimeline status={order.status} />
 
         {/* Items section */}
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 12, marginTop: 4 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', marginBottom: 12, marginTop: 4, textAlign: 'right' }}>
           {t('orders.orderItems')}
         </Text>
 
@@ -456,6 +461,8 @@ export default function OrderDetailScreen() {
                     source={{ uri: imgUrl }}
                     style={{ width: 72, height: 72, borderRadius: 14 }}
                     contentFit="cover"
+                    placeholder={{ blurhash: PLACEHOLDER_HASH }}
+                    transition={250}
                   />
                 ) : (
                   <View style={{ width: 72, height: 72, borderRadius: 14, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
@@ -481,23 +488,23 @@ export default function OrderDetailScreen() {
           elevation: 3,
         }}>
           {order.delivery_fee > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, color: '#374151', fontWeight: '600' }}>{formatPrice(order.delivery_fee)}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, direction: 'rtl' as any }}>
               <Text style={{ fontSize: 13, color: '#6b7280' }}>رسوم التوصيل</Text>
+              <Text style={{ fontSize: 13, color: '#374151', fontWeight: '600' }}>{formatPrice(order.delivery_fee)}</Text>
             </View>
           )}
           {order.discount_amount > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>- {formatPrice(order.discount_amount)}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, direction: 'rtl' as any }}>
               <Text style={{ fontSize: 13, color: '#6b7280' }}>الخصم</Text>
+              <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>- {formatPrice(order.discount_amount)}</Text>
             </View>
           )}
           <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 10 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', direction: 'rtl' as any }}>
+            <Text style={{ fontSize: 15, color: '#6b7280', fontWeight: '600' }}>{t('cart.total')}</Text>
             <Text style={{ fontSize: 20, fontWeight: '900', color: '#e36523' }}>
               {formatPrice(order.total_amount)}
             </Text>
-            <Text style={{ fontSize: 15, color: '#6b7280', fontWeight: '600' }}>{t('cart.total')}</Text>
           </View>
         </View>
 

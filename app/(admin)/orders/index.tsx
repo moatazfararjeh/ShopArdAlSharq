@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -29,24 +30,25 @@ function OrderCard({ item }: { item: Order }) {
 
   return (
     <View style={{
-      backgroundColor: '#ffffff', borderRadius: 16,
+      backgroundColor: '#ffffff', borderRadius: 20,
       marginHorizontal: 16, marginVertical: 6,
       padding: 16,
-      borderWidth: 1, borderColor: '#e6e0d8',
+      shadowColor: '#1c1917', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
     }}>
-      {/* Header row */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      {/* Header row — RTL: status badge right, order number left */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, direction: 'rtl' as any }}>
+        <OrderStatusBadge status={item.status} />
         <TouchableOpacity onPress={() => router.push(`/(customer)/orders/${item.id}`)}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: '#1c1917' }}>#{item.order_number}</Text>
         </TouchableOpacity>
-        <OrderStatusBadge status={item.status} />
       </View>
 
-      {/* Date + items */}
-      <Text style={{ fontSize: 12, color: '#857d78', marginBottom: 4 }}>{formatDate(item.created_at)}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <Text style={{ fontSize: 13, color: '#857d78' }}>{item.items?.length ?? 0} منتجات</Text>
+      {/* Date + items — RTL: price right, count left */}
+      <Text style={{ fontSize: 12, color: '#857d78', marginBottom: 4, textAlign: 'right' }}>{formatDate(item.created_at)}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, direction: 'rtl' as any }}>
         <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523' }}>{formatPrice(item.total_amount)}</Text>
+        <Text style={{ fontSize: 13, color: '#857d78' }}>{item.items?.length ?? 0} منتجات</Text>
       </View>
 
       {/* Status action buttons */}
@@ -112,16 +114,28 @@ export default function AdminOrdersScreen() {
         data={orders ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <OrderCard item={item} />}
-        ListEmptyComponent={
+        ListHeaderComponent={
           isLoading ? (
-            <View style={{ paddingTop: 80, alignItems: 'center' }}>
-              <ActivityIndicator color="#e36523" />
+            <View style={{ padding: 16, gap: 10 }}>
+              {[1, 2, 3, 4].map((i) => (
+                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 20, padding: 16, gap: 10, shadowColor: '#1c1917', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Skeleton width={70} height={24} borderRadius={20} />
+                    <Skeleton width={80} height={14} borderRadius={5} />
+                  </View>
+                  <Skeleton width={100} height={11} borderRadius={5} />
+                  <Skeleton height={40} borderRadius={10} />
+                </View>
+              ))}
             </View>
-          ) : (
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
             <View style={{ paddingTop: 80, alignItems: 'center' }}>
               <Text style={{ color: '#857d78', fontSize: 15 }}>لا توجد طلبات</Text>
             </View>
-          )
+          ) : null
         }
         contentContainerStyle={{ paddingVertical: 10, paddingBottom: 32 }}
       />

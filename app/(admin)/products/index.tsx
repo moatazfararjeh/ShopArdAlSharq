@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -96,9 +97,21 @@ export default function AdminProductsScreen() {
       )}
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#e36523" />
-        </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width="65%" height={13} borderRadius={5} />
+                <Skeleton width="40%" height={11} borderRadius={5} />
+                <Skeleton width="30%" height={11} borderRadius={5} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Skeleton width={52} height={30} borderRadius={8} />
+                <Skeleton width={52} height={30} borderRadius={8} />
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
           {Object.entries(grouped).map(([brandId, items]) => (

@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   ActivityIndicator, Dimensions, FlatList, Platform, I18nManager,
 } from 'react-native';
+import { ProductRowSkeleton, SectionHeaderSkeleton, BannerSkeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -272,10 +273,10 @@ function CategoryProductsSection({
         paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any,
       }}>
         <View>
-          <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>
+          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>
             {getCategoryName(category, locale as any)}
           </Text>
-          <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
         </View>
         <TouchableOpacity onPress={onSeeAll} style={{
           flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -288,9 +289,7 @@ function CategoryProductsSection({
       </View>
 
       {isLoading ? (
-        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND} />
-        </View>
+        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
       ) : (
         <View style={{ direction: 'rtl' as any }}>
         <FlatList
@@ -332,14 +331,12 @@ function BrandProductsSection({
     <View style={{ marginBottom: 28 }}>
       {/* Section header */}
       <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>{brand.name}</Text>
-        <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+        <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>{brand.name}</Text>
+        <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
       </View>
 
       {isLoading ? (
-        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND} />
-        </View>
+        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
       ) : (
         <View style={{ direction: 'rtl' as any }}>
         <FlatList
@@ -378,14 +375,12 @@ function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWid
   return (
     <View style={{ marginBottom: 32 }}>
       <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>منتجات أخرى</Text>
-        <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+        <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>منتجات أخرى</Text>
+        <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
       </View>
 
       {isLoading ? (
-        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND} />
-        </View>
+        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
       ) : (
         <View style={{ direction: 'rtl' as any }}>
         <FlatList
@@ -429,8 +424,8 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
         direction: 'rtl' as any,
       }}>
         <View>
-          <Text style={{ fontSize: 19, fontWeight: '900', color: '#1c1917' }}>جميع المنتجات</Text>
-          <View style={{ width: 32, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>جميع المنتجات</Text>
+          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
         </View>
         <TouchableOpacity onPress={onSeeAll} style={{
           flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -443,9 +438,7 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
       </View>
 
       {isLoading ? (
-        <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND} />
-        </View>
+        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
       ) : (
         <View style={{ direction: 'rtl' as any }}>
         <FlatList
@@ -478,7 +471,7 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
     .filter((p) => p.discount_price != null && p.discount_price < p.price)
     .slice(0, 12);
 
-  if (isLoading || products.length === 0) return null;
+  if (!isLoading && products.length === 0) return null;
 
   return (
     <View style={{ marginBottom: 8 }}>
@@ -488,7 +481,7 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
         paddingHorizontal: 16, marginBottom: 12, direction: 'rtl' as any,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={{ fontSize: 18, fontWeight: '900', color: '#1c1917' }}>عروض اليوم</Text>
+          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>عروض اليوم</Text>
           <Text style={{ fontSize: 18 }}>🔥</Text>
         </View>
         <View style={{
@@ -505,18 +498,22 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
         backgroundColor: BRAND, width: 50,
       }} />
 
-      <FlatList
-        data={products}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={{ width: cardWidth }}>
-            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
-          </View>
-        )}
-      />
+      {isLoading ? (
+        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
+      ) : (
+        <FlatList
+          data={products}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
