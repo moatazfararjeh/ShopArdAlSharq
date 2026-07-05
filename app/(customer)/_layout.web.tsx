@@ -4,9 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { CustomerWebLayout } from '@/components/ui/CustomerWebLayout';
 
 // Pages accessible without login
-const PUBLIC_PAGES = ['/catalog'];
+const PUBLIC_PAGES: string[] = [];
 // Pages rendered without the CustomerWebLayout chrome (header/footer/menu)
-const STANDALONE_PAGES = ['/catalog'];
+const STANDALONE_PAGES: string[] = [];
 
 export default function CustomerWebLayoutRoute() {
   const { isAuthenticated, isInitialized } = useAuth();
