@@ -23,6 +23,10 @@ const DESKTOP_BREAKPOINT = 768;
 const HEADER_HEIGHT      = 70;
 const BOTTOM_BAR_HEIGHT  = 64;
 
+// CSS env() helpers for safe-area-insets (notch / home indicator on mobile web)
+const SAI_TOP    = 'env(safe-area-inset-top, 0px)';
+const SAI_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
+
 function getBrowserWidth(): number {
   if (typeof window !== 'undefined') return window.innerWidth;
   return 1200;
@@ -109,7 +113,10 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           borderBottomWidth: 1,
           borderBottomColor: '#e6e0d8',
           paddingHorizontal: isDesktop ? 32 : 16,
-          height: HEADER_HEIGHT,
+          // On mobile web with viewport-fit=cover the header sits behind the
+          // status bar unless we pad by the safe-area-inset-top.
+          paddingTop: SAI_TOP as any,
+          minHeight: HEADER_HEIGHT,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -165,7 +172,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
       <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
 
         {/* Content — extra bottom padding on mobile so it clears the bottom bar */}
-        <View style={{ flex: 1, overflowY: 'auto' as any, paddingBottom: isDesktop ? 0 : BOTTOM_BAR_HEIGHT }}>
+        <View style={{ flex: 1, overflowY: 'auto' as any, paddingBottom: isDesktop ? 0 : `calc(${BOTTOM_BAR_HEIGHT}px + ${SAI_BOTTOM})` as any }}>
           <View style={{ minHeight: `calc(100vh - ${HEADER_HEIGHT}px)` as any }}>
             {children}
           </View>
@@ -254,7 +261,10 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
             bottom: 0,
             left: 0,
             right: 0,
-            height: BOTTOM_BAR_HEIGHT + 6,
+            // minHeight covers the bar; paddingBottom pushes content above
+            // the iOS home indicator (safe-area-inset-bottom).
+            minHeight: BOTTOM_BAR_HEIGHT + 6,
+            paddingBottom: SAI_BOTTOM as any,
             backgroundColor: '#FFFFFF',
             borderTopWidth: 3,
             borderTopColor: ACTIVE_COLOR,

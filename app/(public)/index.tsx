@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SPLASH_DURATION = 10000; // 10 seconds
 
@@ -10,6 +11,7 @@ export default function PublicIndex() {
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
   const [splashDone, setSplashDone] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const timer = setTimeout(() => setSplashDone(true), SPLASH_DURATION);
@@ -37,12 +39,17 @@ export default function PublicIndex() {
 
   return (
     <View style={styles.container}>
+      {/* absoluteFill keeps the image out of layout flow so it can't block touches */}
       <Image
         source={require('@/assets/splash-screen.png')}
-        style={styles.image}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
       />
-      <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={[styles.skipButton, { top: insets.top + 12 }]}
+        onPress={handleSkip}
+        activeOpacity={0.8}
+      >
         <Text style={styles.skipText}>تخطي</Text>
       </TouchableOpacity>
     </View>
@@ -53,11 +60,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#e8f0f8',
-  },
-  image: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
   },
   skipButton: {
     position: 'absolute',

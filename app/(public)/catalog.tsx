@@ -368,7 +368,10 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
   ).current;
 
   const bookW = isDesktop ? winW - 160 : winW;
-  const bookH = isDesktop ? Math.min(winH - 120, 820) : winH - 80;
+  // On mobile: subtract toolbar (~60px), dots+indicator (~52px), and a buffer
+  // for the safe-area-inset-top (approx 50px max on iPhone).  Using a generous
+  // constant keeps the book within the viewport on all phone sizes.
+  const bookH = isDesktop ? Math.min(winH - 120, 820) : winH - 160;
   const pageW = isDesktop ? bookW / 2 : bookW;
 
   const [leftPage, rightPage] = spreads[spreadIdx];
@@ -392,6 +395,8 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
       <View style={{
         width: '100%', flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 8,
+        // Push content below the status bar on mobile web (viewport-fit=cover)
+        paddingTop: Platform.OS === 'web' ? 'env(safe-area-inset-top, 8px)' as any : 8,
         backgroundColor: '#111',
       }}>
         <TouchableOpacity
@@ -460,11 +465,13 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
           )}
 
           {/* Nav arrows */}
-          <View style={{
-            position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            pointerEvents: 'box-none',
-          }}>
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            }}
+          >
             <NavBtn side="left"  onPress={goNext}  onLongPress={goLast}  disabled={!canNext} />
             <NavBtn side="right" onPress={goPrev}  onLongPress={goFirst} disabled={!canPrev} />
           </View>

@@ -145,8 +145,9 @@ export default function CustomerLayout() {
       <Tabs.Screen name="addresses"       options={{ href: null }} />
       <Tabs.Screen name="edit-address"    options={{ href: null }} />
       <Tabs.Screen name="contact"         options={{ href: null }} />
-      <Tabs.Screen name="catalog"         options={{ href: null }} />
+      <Tabs.Screen name="catalog"          options={{ href: null }} />
       <Tabs.Screen name="delete-account"  options={{ href: null }} />
+      <Tabs.Screen name="change-password" options={{ href: null }} />
     </Tabs>
   );
 }
