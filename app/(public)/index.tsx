@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { Image } from 'expo-image';
@@ -44,14 +44,14 @@ export default function PublicIndex() {
         source={require('@/assets/splash-screen.png')}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
+        pointerEvents="none"
       />
-      <TouchableOpacity
+      <Pressable
         style={[styles.skipButton, { top: insets.top + 12 }]}
         onPress={handleSkip}
-        activeOpacity={0.8}
       >
         <Text style={styles.skipText}>تخطي</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
@@ -65,6 +65,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     left: 20,
+    zIndex: 999,
+    cursor: 'pointer' as any,
     backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 20,
     paddingVertical: 8,
