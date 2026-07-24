@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity, Image, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -15,18 +15,22 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName } from '@/types/models';
+import { useStockAlertSubscriberCount } from '@/hooks/useStockAlerts';
+import { sendStockAvailableNotifications } from '@/services/pushNotificationService';
 
 export default function EditProductScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id, page: pageParam } = useLocalSearchParams<{ id: string; page?: string }>();
   const locale = getCurrentLocale();
+  const [notifyingStock, setNotifyingStock] = useState(false);
 
   const { data: product, isLoading } = useProduct(id);
   const updateMutation = useUpdateProduct(id);
   const { data: categories } = useCategories(false);
   const { data: brands } = useBrands(false);
   const { images, addImage, removeImage, setPrimary } = useProductImages(id);
+  const { data: stockAlertCount = 0 } = useStockAlertSubscriberCount(id);
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,6 +74,8 @@ export default function EditProductScreen() {
       price_per_carton: '',
       price_per_kg: '',
       pieces_per_carton: '',
+      flash_sale_price: '',
+      flash_sale_ends_at: '',
     },
   });
 
@@ -95,10 +101,21 @@ export default function EditProductScreen() {
       price_per_carton: product.price_per_carton != null ? String(product.price_per_carton) : '',
       price_per_kg: product.price_per_kg != null ? String(product.price_per_kg) : '',
       pieces_per_carton: product.pieces_per_carton != null ? String(product.pieces_per_carton) : '',
+      flash_sale_price: product.flash_sale_price != null ? String(product.flash_sale_price) : '',
+      flash_sale_ends_at: product.flash_sale_ends_at
+        ? new Date(product.flash_sale_ends_at).toISOString().slice(0, 16).replace('T', ' ')
+        : '',
     });
   }, [product]);
 
   async function onSubmit(values: ProductFormValues) {
+    // Parse flash sale end time (format "YYYY-MM-DD HH:MM")
+    let flashEndsAt: string | null = null;
+    if (values.flash_sale_ends_at && values.flash_sale_ends_at.trim()) {
+      const parsed = new Date(values.flash_sale_ends_at.trim().replace(' ', 'T'));
+      if (!isNaN(parsed.getTime())) flashEndsAt = parsed.toISOString();
+    }
+
     await updateMutation.mutateAsync({
       name_ar: values.name_ar,
       name_en: values.name_en || null,
@@ -118,6 +135,8 @@ export default function EditProductScreen() {
       price_per_carton: values.price_per_carton ? parseFloat(values.price_per_carton) : null,
       price_per_kg: values.price_per_kg ? parseFloat(values.price_per_kg) : null,
       pieces_per_carton: values.pieces_per_carton ? parseInt(values.pieces_per_carton) : null,
+      flash_sale_price: values.flash_sale_price ? parseFloat(values.flash_sale_price) : null,
+      flash_sale_ends_at: flashEndsAt,
     } as Parameters<typeof updateMutation.mutateAsync>[0]);
     const returnPage = pageParam ? parseInt(pageParam, 10) : 0;
     router.replace(`/(admin)/products?page=${returnPage}` as any);
@@ -387,6 +406,98 @@ export default function EditProductScreen() {
             </View>
           )}
         />
+
+        {/* ── Flash Sale ── */}
+        <View style={{
+          borderWidth: 2, borderColor: '#fed7aa', borderRadius: 16,
+          backgroundColor: '#fff7ed', overflow: 'hidden', marginBottom: 16,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12 }}>
+            <Text style={{ fontSize: 18 }}>⚡</Text>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#ea580c' }}>عرض فلاش</Text>
+          </View>
+          <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 0 }}>
+            <Controller control={control} name="flash_sale_price"
+              render={({ field: { onChange, value, onBlur } }) => (
+                <Input
+                  label="سعر الفلاش (د.أ)"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="decimal-pad"
+                  placeholder="مثال: 1.500"
+                  error={(errors as any).flash_sale_price?.message}
+                />
+              )}
+            />
+            <Controller control={control} name="flash_sale_ends_at"
+              render={({ field: { onChange, value, onBlur } }) => (
+                <Input
+                  label="تاريخ انتهاء العرض (YYYY-MM-DD HH:MM)"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="2025-12-31 23:59"
+                  error={(errors as any).flash_sale_ends_at?.message}
+                />
+              )}
+            />
+            {watch('flash_sale_price') || watch('flash_sale_ends_at') ? (
+              <TouchableOpacity
+                onPress={() => { setValue('flash_sale_price', ''); setValue('flash_sale_ends_at', ''); }}
+                style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 10 }}
+              >
+                <Text style={{ fontSize: 12, color: '#dc2626', fontWeight: '700' }}>إلغاء الفلاش سيل ✕</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+
+        {/* ── Stock Alerts ── */}
+        <View style={{
+          borderWidth: 1.5, borderColor: '#e0e7ff', borderRadius: 16,
+          backgroundColor: '#eef2ff', paddingHorizontal: 16, paddingVertical: 14,
+          marginBottom: 16,
+        }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: '#4338ca', marginBottom: 8 }}>
+            🔔 إشعارات توفر المنتج
+          </Text>
+          <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+            {stockAlertCount > 0
+              ? `يوجد ${stockAlertCount} مستخدم ينتظر توفر هذا المنتج`
+              : 'لا يوجد مستخدمون ينتظرون توفر هذا المنتج حالياً'}
+          </Text>
+          {stockAlertCount > 0 && (
+            <TouchableOpacity
+              onPress={async () => {
+                setNotifyingStock(true);
+                try {
+                  const sent = await sendStockAvailableNotifications(id!, product!.name_ar);
+                  Alert.alert('تم الإرسال', `تم إشعار ${sent} مستخدم بتوفر المنتج`);
+                } catch (e) {
+                  Alert.alert('خطأ', (e as Error).message ?? 'فشل الإرسال');
+                } finally {
+                  setNotifyingStock(false);
+                }
+              }}
+              disabled={notifyingStock}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                backgroundColor: '#4338ca', borderRadius: 12, paddingVertical: 12,
+                opacity: notifyingStock ? 0.6 : 1,
+              }}
+            >
+              {notifyingStock ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Text style={{ fontSize: 16 }}>📢</Text>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>إشعار المشتركين</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
 
         <Button
           title={t('common.save')}

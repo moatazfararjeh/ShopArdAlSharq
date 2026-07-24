@@ -51,8 +51,16 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const discounted   = hasDiscount(product);
   const outOfStock   = product.stock_quantity === 0;
   const bgColor      = BG_POOL[(product.id.charCodeAt(0) ?? 0) % BG_POOL.length];
-  const salePercent  = discounted ? getDiscountPercent(product.price, product.discount_price!) : 0;
-  const displayPrice = discounted ? product.discount_price! : product.price;
+
+  // Flash sale wins over regular discount
+  const flashActive  = !!product.flash_sale_price && !!product.flash_sale_ends_at &&
+                       new Date(product.flash_sale_ends_at) > new Date();
+  const salePercent  = flashActive
+    ? getDiscountPercent(product.price, product.flash_sale_price!)
+    : discounted ? getDiscountPercent(product.price, product.discount_price!) : 0;
+  const displayPrice = flashActive
+    ? product.flash_sale_price!
+    : discounted ? product.discount_price! : product.price;
   const priceNum     = Number(displayPrice).toFixed(3);
 
   const unitCount = [product.price_per_piece, product.price_per_kg, product.price_per_carton].filter(Boolean).length;
@@ -106,8 +114,20 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
             </View>
           )}
 
-          {/* Sale badge — top right */}
-          {discounted && !outOfStock && salePercent > 0 && (
+          {/* Flash sale badge — top right */}
+          {flashActive && !outOfStock && (
+            <View style={{
+              position: 'absolute', top: 10, right: 10,
+              backgroundColor: '#f97316',
+              borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4,
+              flexDirection: 'row', alignItems: 'center', gap: 3,
+            }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>⚡ -{salePercent}%</Text>
+            </View>
+          )}
+
+          {/* Regular sale badge — top right */}
+          {!flashActive && discounted && !outOfStock && salePercent > 0 && (
             <View style={{
               position: 'absolute', top: 10, right: 10,
               backgroundColor: '#ef4444',

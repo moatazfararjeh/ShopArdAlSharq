@@ -17,6 +17,67 @@ import { ProductCard } from '@/components/product/ProductCard';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
+import { useStockAlertStatus, useToggleStockAlert } from '@/hooks/useStockAlerts';
+
+// ─── Flash Sale Countdown ─────────────────────────────────────────────────────
+function useCountdown(endsAt: string | null | undefined) {
+  const [remaining, setRemaining] = useState('');
+
+  useEffect(() => {
+    if (!endsAt) { setRemaining(''); return; }
+
+    function tick() {
+      const diff = new Date(endsAt!).getTime() - Date.now();
+      if (diff <= 0) { setRemaining(''); return; }
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setRemaining(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  return remaining;
+}
+
+// ─── Back-in-Stock Alert Button ───────────────────────────────────────────────
+function StockAlertButton({ productId }: { productId: string }) {
+  const { session } = useAuthStore();
+  const { data: isSubscribed, isLoading } = useStockAlertStatus(productId);
+  const toggle = useToggleStockAlert(productId);
+  const showToast = useToastStore((s) => s.show);
+
+  if (!session) return null;
+
+  function handlePress() {
+    const next = !isSubscribed;
+    toggle.mutate(next, {
+      onSuccess: () => showToast(next ? 'سنُخطرك عند توفر المنتج 🔔' : 'تم إلغاء الإشعار'),
+    });
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      disabled={isLoading || toggle.isPending}
+      activeOpacity={0.8}
+      style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        borderRadius: 18, paddingVertical: 16,
+        borderWidth: 2,
+        borderColor: isSubscribed ? '#6b7280' : '#e36523',
+        backgroundColor: isSubscribed ? '#f9fafb' : '#fff7ed',
+      }}
+    >
+      <Text style={{ fontSize: 18 }}>{isSubscribed ? '🔕' : '🔔'}</Text>
+      <Text style={{ fontSize: 15, fontWeight: '800', color: isSubscribed ? '#6b7280' : '#e36523' }}>
+        {isSubscribed ? 'إلغاء الإشعار' : 'أخبرني عند التوفر'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BRAND = '#e36523';
@@ -312,6 +373,11 @@ export default function ProductDetailScreen() {
   const images      = product.images?.length ? product.images : (product.product_images ?? []);
   const outOfStock  = product.stock_quantity === 0;
 
+  // Flash sale
+  const flashActive    = !!product.flash_sale_price && !!product.flash_sale_ends_at &&
+                         new Date(product.flash_sale_ends_at) > new Date();
+  const flashCountdown = useCountdown(flashActive ? product.flash_sale_ends_at : null);
+
   // Unit options
   const unitOptions: { unit: 'piece' | 'kg' | 'carton'; label: string; price: number }[] = [];
   if (product.price_per_piece != null)   unitOptions.push({ unit: 'piece',  label: 'بالحبة',   price: product.price_per_piece });
@@ -323,9 +389,10 @@ export default function ProductDetailScreen() {
   });
   const hasUnitOptions = unitOptions.length > 0;
   const effectiveUnit  = selectedUnit ?? (unitOptions[0]?.unit ?? null) as 'piece' | 'kg' | 'carton' | null;
-  const displayPrice   = hasUnitOptions
+  const basePrice      = hasUnitOptions
     ? (unitOptions.find((o) => o.unit === effectiveUnit)?.price ?? product.price)
     : (discounted ? product.discount_price! : product.price);
+  const displayPrice   = (!hasUnitOptions && flashActive) ? product.flash_sale_price! : basePrice;
 
   function handleAddToCart() {
     if (outOfStock) return;
@@ -399,12 +466,37 @@ export default function ProductDetailScreen() {
             {name}
           </Text>
 
+          {/* Flash sale countdown banner */}
+          {flashActive && flashCountdown ? (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: '#fff7ed', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+              marginTop: 10, borderWidth: 1.5, borderColor: '#fed7aa',
+            }}>
+              <Text style={{ fontSize: 20 }}>⚡</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#ea580c' }}>عرض فلاش — ينتهي خلال</Text>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#c2410c', letterSpacing: 2 }}>
+                  {flashCountdown}
+                </Text>
+              </View>
+              <View style={{
+                backgroundColor: '#ea580c', borderRadius: 10,
+                paddingHorizontal: 8, paddingVertical: 4,
+              }}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>
+                  -{getDiscountPercent(product.price, product.flash_sale_price!)}%
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* Price row */}
           <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, gap: 10 }}>
-            <Text style={{ fontSize: 28, fontWeight: '900', color: BRAND }}>
+            <Text style={{ fontSize: 28, fontWeight: '900', color: flashActive ? '#ea580c' : BRAND }}>
               {formatPrice(displayPrice)}
             </Text>
-            {!hasUnitOptions && discounted && (
+            {!hasUnitOptions && (flashActive || discounted) && (
               <Text style={{ fontSize: 16, color: '#c9bfb6', textDecorationLine: 'line-through' }}>
                 {formatPrice(product.price)}
               </Text>
@@ -550,11 +642,17 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
-        <AddToCartButton
-          onPress={handleAddToCart}
-          outOfStock={outOfStock}
-          totalPrice={formatPrice(displayPrice * quantity)}
-        />
+        {outOfStock ? (
+          <View style={{ flex: 2 }}>
+            <StockAlertButton productId={product.id} />
+          </View>
+        ) : (
+          <AddToCartButton
+            onPress={handleAddToCart}
+            outOfStock={false}
+            totalPrice={formatPrice(displayPrice * quantity)}
+          />
+        )}
       </View>
     </View>
   );

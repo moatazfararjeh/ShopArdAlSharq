@@ -65,6 +65,8 @@ export default function AdminDashboardScreen() {
         <Text style={{ fontSize: 13, fontWeight: '700', color: '#9ca3af', textAlign: 'right', marginTop: 4, letterSpacing: 0.5 }}>إدارة سريعة</Text>
         {[
           { label: 'لوحة التحليلات', route: '/(admin)/analytics' as const, icon: 'bar-chart-outline', highlight: true },
+          { label: 'إرسال إشعار ترويجي', route: '/(admin)/send-notification' as const, icon: 'megaphone-outline' },
+          { label: 'إحصائيات الإشعارات', route: '/(admin)/notification-stats' as const, icon: 'stats-chart-outline' },
           { label: t('admin.manageProducts'), route: '/(admin)/products/' as const, icon: 'cube-outline' },
           { label: t('admin.manageCategories'), route: '/(admin)/categories/' as const, icon: 'grid-outline' },
           { label: 'إدارة الماركات', route: '/(admin)/brands/' as const, icon: 'ribbon-outline' },

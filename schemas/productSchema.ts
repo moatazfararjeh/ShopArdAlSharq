@@ -68,6 +68,13 @@ export const productSchema = z.object({
     .refine((val) => !val || val === '' || (!isNaN(parseInt(val)) && parseInt(val) > 0), {
       message: 'عدد الحبات في الكرتون يجب أن يكون رقمًا موجبًا',
     }),
+  flash_sale_price: z
+    .string()
+    .optional()
+    .refine((val) => !val || val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) > 0), {
+      message: 'سعر الفلاش سيل يجب أن يكون رقمًا موجبًا',
+    }),
+  flash_sale_ends_at: z.string().optional().or(z.literal('')),
 }).refine(
   (data) => {
     if (!data.discount_price || data.discount_price === '') return true;

@@ -19,7 +19,7 @@ export async function markNotificationRead(notificationId: string, userId: strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('notifications')
-    .update({ is_read: true })
+    .update({ is_read: true, read_at: new Date().toISOString() })
     .eq('id', notificationId)
     .eq('user_id', userId);
   if (error) throw error;

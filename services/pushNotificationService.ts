@@ -37,6 +37,128 @@ const ORDER_STATUS_MESSAGES: Partial<Record<OrderStatus, { titleAr: string; titl
   cancelled:  { titleAr: '❌ تم إلغاء الطلب',          titleEn: '❌ Order Cancelled',           bodyAr: 'للمزيد من التفاصيل راجع تفاصيل الطلب.',     bodyEn: 'See order details for more information.',     type: 'order_cancelled' },
 };
 
+// ─── Stock back-in-stock notifications ───────────────────────────────────────
+
+export async function sendStockAvailableNotifications(
+  productId: string,
+  productName: string,
+): Promise<number> {
+  const { data: rows } = await (supabase as any)
+    .from('stock_alerts')
+    .select('user_id, profiles!inner(expo_push_token)')
+    .eq('product_id', productId)
+    .eq('is_notified', false);
+
+  if (!rows || rows.length === 0) return 0;
+
+  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+  const titleAr = `✅ ${productName} أصبح متاحاً!`;
+  const bodyAr  = 'المنتج الذي طلبت إشعاراً عنه أصبح متوفراً في المخزون.';
+
+  // Batch insert in-app notifications
+  const userIds: string[] = rows.map((r: any) => r.user_id);
+  try {
+    await (supabase as any).from('notifications').insert(
+      userIds.map((uid) => ({
+        user_id:  uid,
+        title_ar: titleAr,
+        title_en: `✅ ${productName} is now available!`,
+        body_ar:  bodyAr,
+        body_en:  'The product you requested a notification for is now in stock.',
+        type:     'system',
+        is_read:  false,
+        data:     { productId },
+      }))
+    );
+  } catch { /* best-effort */ }
+
+  // Send push messages in batches of 100
+  const messages: PushMessage[] = rows
+    .filter((r: any) => {
+      const token = r.profiles?.expo_push_token;
+      return token && EXPO_TOKEN_RE.test(token);
+    })
+    .map((r: any) => ({
+      to:    r.profiles.expo_push_token as string,
+      title: titleAr,
+      body:  bodyAr,
+      sound: 'default' as const,
+      data:  { productId },
+    }));
+
+  for (let i = 0; i < messages.length; i += 100) {
+    await sendExpoPushNotification(messages.slice(i, i + 100));
+  }
+
+  // Mark alerts as notified
+  await (supabase as any)
+    .from('stock_alerts')
+    .update({ is_notified: true, notified_at: new Date().toISOString() })
+    .eq('product_id', productId)
+    .in('user_id', userIds);
+
+  return userIds.length;
+}
+
+// ─── Admin broadcast notification ────────────────────────────────────────────
+
+export async function sendBroadcastNotification(
+  titleAr: string,
+  bodyAr: string,
+): Promise<{ sentCount: number; campaignId: string }> {
+  const { data: profiles } = await (supabase as any)
+    .from('profiles')
+    .select('id, expo_push_token');
+
+  if (!profiles || profiles.length === 0) return { sentCount: 0, campaignId: '' };
+
+  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+
+  // Generate a campaign UUID to group all these notifications
+  const campaignId = generateUUID();
+
+  // Batch insert in-app notifications for all users
+  try {
+    await (supabase as any).from('notifications').insert(
+      (profiles as Array<{ id: string }>).map((p) => ({
+        user_id:     p.id,
+        title_ar:    titleAr,
+        title_en:    titleAr,
+        body_ar:     bodyAr,
+        body_en:     bodyAr,
+        type:        'promo',
+        is_read:     false,
+        campaign_id: campaignId,
+        data:        {},
+      }))
+    );
+  } catch { /* best-effort */ }
+
+  const messages: PushMessage[] = (profiles as Array<{ id: string; expo_push_token: string | null }>)
+    .filter((p) => p.expo_push_token && EXPO_TOKEN_RE.test(p.expo_push_token))
+    .map((p) => ({
+      to:    p.expo_push_token as string,
+      title: titleAr,
+      body:  bodyAr,
+      sound: 'default' as const,
+    }));
+
+  for (let i = 0; i < messages.length; i += 100) {
+    await sendExpoPushNotification(messages.slice(i, i + 100));
+  }
+
+  return { sentCount: profiles.length, campaignId };
+}
+
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+// ─── Order status notification ────────────────────────────────────────────────
+
 /**
  * Saves a notification row to the DB and sends a push notification (best-effort).
  */
