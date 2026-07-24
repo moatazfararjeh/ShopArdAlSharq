@@ -1,10 +1,10 @@
 import {
   View, Text, ScrollView, TouchableOpacity, Dimensions,
-  FlatList, ActivityIndicator, Animated, Easing, Platform,
+  FlatList, ActivityIndicator, Animated, Easing, Platform, Share,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProduct, useProductsPage } from '@/hooks/useProducts';
@@ -16,6 +16,7 @@ import { formatPrice, getDiscountPercent } from '@/utils/formatPrice';
 import { ProductCard } from '@/components/product/ProductCard';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
 import { useAuthStore } from '@/stores/authStore';
+import { useRecordProductEvent } from '@/hooks/useAnalytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BRAND = '#e36523';
@@ -135,6 +136,7 @@ function WishlistButton({ productId }: { productId: string }) {
   const { session } = useAuthStore();
   const { data: favIds } = useFavoriteIds();
   const toggleFav = useToggleFavorite();
+  const recordEvent = useRecordProductEvent();
   const isFav = favIds?.includes(productId) ?? false;
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -145,6 +147,9 @@ function WishlistButton({ productId }: { productId: string }) {
       Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
     ]).start();
     toggleFav.mutate({ productId, isFavorited: isFav });
+    if (!isFav) {
+      recordEvent.mutate({ productId, eventType: 'wishlist', userId: session.user.id });
+    }
   }
 
   if (!session) return null;
@@ -164,6 +169,54 @@ function WishlistButton({ productId }: { productId: string }) {
         <Text style={{ fontSize: 18 }}>{isFav ? '❤️' : '🤍'}</Text>
       </TouchableOpacity>
     </Animated.View>
+  );
+}
+
+// ─── Share button ─────────────────────────────────────────────────────────────
+function ShareButton({ productId, productName }: { productId: string; productName: string }) {
+  const recordEvent = useRecordProductEvent();
+  const { session } = useAuthStore();
+
+  async function handleShare() {
+    const url = Platform.OS === 'web'
+      ? window.location.href
+      : `https://ardalsharq.com/products/${productId}`;
+
+    // Record the share event immediately
+    recordEvent.mutate({
+      productId,
+      eventType: 'share',
+      userId: session?.user?.id ?? undefined,
+    });
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({ title: productName, url });
+        } else {
+          await navigator.clipboard.writeText(url);
+        }
+      } else {
+        await Share.share({ message: `${productName}\n${url}` });
+      }
+    } catch (_) {
+      // User cancelled or clipboard failed — event already recorded
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handleShare}
+      style={{
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+      }}
+      activeOpacity={0.75}
+    >
+      <Text style={{ fontSize: 18 }}>📤</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -227,6 +280,15 @@ export default function ProductDetailScreen() {
   const showToast = useToastStore((s) => s.show);
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<'piece' | 'kg' | 'carton' | null>(null);
+  const recordEvent = useRecordProductEvent();
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  // Track product view
+  useEffect(() => {
+    if (id) {
+      recordEvent.mutate({ productId: id, eventType: 'view', userId });
+    }
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -267,6 +329,7 @@ export default function ProductDetailScreen() {
 
   function handleAddToCart() {
     if (outOfStock) return;
+    recordEvent.mutate({ productId: product!.id, eventType: 'add_to_cart', userId: userId ?? undefined });
     addItem({
       id: '',
       cart_id: '',
@@ -319,11 +382,13 @@ export default function ProductDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Wishlist button — top left */}
+          {/* Wishlist + Share buttons — top left */}
           <View style={{
             position: 'absolute', top: (insets.top || 0) + 10, left: 16,
+            flexDirection: 'row', gap: 8,
           }}>
             <WishlistButton productId={product.id} />
+            <ShareButton productId={product.id} productName={name} />
           </View>
         </View>
 

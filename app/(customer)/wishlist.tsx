@@ -10,6 +10,8 @@ import { getCurrentLocale } from '@/i18n';
 import { getProductName, hasDiscount, Product } from '@/types/models';
 import { useCart } from '@/hooks/useCart';
 import { WishlistItemSkeleton } from '@/components/ui/Skeleton';
+import { useRecordProductEvent } from '@/hooks/useAnalytics';
+import { useAuthStore } from '@/stores/authStore';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
@@ -18,6 +20,8 @@ function WishlistItem({ product }: { product: Product }) {
   const router = useRouter();
   const { addItem } = useCart();
   const toggleFavorite = useToggleFavorite();
+  const recordEvent = useRecordProductEvent();
+  const userId = useAuthStore((s) => s.profile?.id);
   const name = getProductName(product, locale);
   const discounted = hasDiscount(product);
   const mainImage = (product.images?.[0] ?? (product as any).product_images?.[0])?.url;
@@ -67,7 +71,10 @@ function WishlistItem({ product }: { product: Product }) {
           )}
         </View>
         <TouchableOpacity
-          onPress={() => addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, product })}
+          onPress={() => {
+            recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
+            addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, product });
+          }}
           disabled={product.stock_quantity === 0}
           style={{
             marginTop: 8, backgroundColor: product.stock_quantity === 0 ? '#e6e0d8' : '#e36523',

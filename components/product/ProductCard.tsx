@@ -6,6 +6,8 @@ import { useCart } from '@/hooks/useCart';
 import { useCartStore } from '@/stores/cartStore';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
 import { useToastStore } from '@/stores/toastStore';
+import { useRecordProductEvent } from '@/hooks/useAnalytics';
+import { useAuthStore } from '@/stores/authStore';
 import { Product } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, hasDiscount } from '@/types/models';
@@ -31,6 +33,8 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const { data: favoriteIds = [] } = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
   const showToast     = useToastStore((s) => s.show);
+  const recordEvent   = useRecordProductEvent();
+  const userId        = useAuthStore((s) => s.profile?.id);
 
   // ── Press-scale animation ──────────────────────────────────────────────────
   const scale = useRef(new Animated.Value(1)).current;
@@ -55,6 +59,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
   function handleAddToCart() {
     if (outOfStock) return;
+    recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
     addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, selected_unit: null, product });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }

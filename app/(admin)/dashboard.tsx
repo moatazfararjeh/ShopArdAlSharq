@@ -64,6 +64,7 @@ export default function AdminDashboardScreen() {
         {/* Quick nav */}
         <Text style={{ fontSize: 13, fontWeight: '700', color: '#9ca3af', textAlign: 'right', marginTop: 4, letterSpacing: 0.5 }}>إدارة سريعة</Text>
         {[
+          { label: 'لوحة التحليلات', route: '/(admin)/analytics' as const, icon: 'bar-chart-outline', highlight: true },
           { label: t('admin.manageProducts'), route: '/(admin)/products/' as const, icon: 'cube-outline' },
           { label: t('admin.manageCategories'), route: '/(admin)/categories/' as const, icon: 'grid-outline' },
           { label: 'إدارة الماركات', route: '/(admin)/brands/' as const, icon: 'ribbon-outline' },
@@ -76,19 +77,28 @@ export default function AdminDashboardScreen() {
             onPress={() => router.push(item.route)}
             style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              backgroundColor: '#fff', borderRadius: 18, padding: 16,
+              backgroundColor: (item as any).highlight ? '#eff6ff' : '#fff',
+              borderRadius: 18, padding: 16,
+              borderWidth: (item as any).highlight ? 1.5 : 0,
+              borderColor: (item as any).highlight ? '#bfdbfe' : 'transparent',
               shadowColor: '#1c1917', shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
               direction: 'rtl' as any,
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={item.icon as any} size={18} color="#e36523" />
+              <View style={{
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: (item as any).highlight ? '#dbeafe' : '#fff7ed',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name={item.icon as any} size={18} color={(item as any).highlight ? '#2563eb' : '#e36523'} />
               </View>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#1c1917' }}>{item.label}</Text>
+              <Text style={{ fontSize: 15, fontWeight: (item as any).highlight ? '700' : '600', color: (item as any).highlight ? '#1d4ed8' : '#1c1917' }}>
+                {item.label}
+              </Text>
             </View>
-            <Ionicons name="chevron-back" size={18} color="#d1c9bf" />
+            <Ionicons name="chevron-back" size={18} color={(item as any).highlight ? '#93c5fd' : '#d1c9bf'} />
           </TouchableOpacity>
         ))}
       </ScrollView>

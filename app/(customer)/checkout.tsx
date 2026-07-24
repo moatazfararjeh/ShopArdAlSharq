@@ -17,6 +17,7 @@ import { formatPrice } from '@/utils/formatPrice';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
+import { useRecordProductEvent } from '@/hooks/useAnalytics';
 import { getProductName } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 
@@ -187,6 +188,7 @@ export default function CheckoutScreen() {
   const placeOrder = usePlaceOrder();
   const { session } = useAuthStore();
   const { show: showToast } = useToastStore();
+  const recordEvent = useRecordProductEvent();
   const scrollRef = useRef<any>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -329,6 +331,11 @@ export default function CheckoutScreen() {
 
       if (tempAddressId) {
         await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
+      }
+
+      // Track purchase event for each product
+      for (const item of cartItems) {
+        recordEvent.mutate({ productId: item.product_id, eventType: 'purchase', userId: session?.user?.id ?? undefined });
       }
 
       clearCart();

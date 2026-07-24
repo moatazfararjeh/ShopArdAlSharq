@@ -162,6 +162,12 @@ export default function AdminProductsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
+                      onPress={() => router.push(`/(admin)/products/${item.id}/analytics` as any)}
+                      style={{ backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                    >
+                      <Text style={{ fontSize: 13, color: '#2563eb' }}>📊</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                       onPress={() => router.push(`/(admin)/products/${item.id}/edit` as any)}
                       style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                     >

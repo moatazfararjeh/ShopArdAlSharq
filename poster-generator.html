@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منشئ الإعلانات — أرض الشرق</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --orange: #e36523;
+  --orange-dark: #c8551a;
+  --blue: #1e3a8a;
+  --sidebar: #0f172a;
+  --sidebar-card: #1e293b;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --text-on-dark: #f1f5f9;
+  --muted-on-dark: #94a3b8;
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  background: #0f172a;
+  direction: rtl;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ════════════════ SIDEBAR ════════════════ */
+.sidebar {
+  width: 380px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 20px 24px 18px;
+  background: linear-gradient(135deg, var(--orange) 0%, #c8551a 100%);
+  flex-shrink: 0;
+}
+.sidebar-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.sidebar-logo {
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.sidebar-title { font-size: 18px; font-weight: 800; color: #fff; }
+.sidebar-sub   { font-size: 12px; color: rgba(255,255,255,0.75); margin-right: 52px; }
+
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.sidebar-body::-webkit-scrollbar { width: 4px; }
+.sidebar-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--sidebar-border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  background: var(--sidebar-card);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+.card-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: rgba(227,101,35,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.card-title  { font-size: 13px; font-weight: 700; color: var(--text-on-dark); }
+.card-badge  {
+  margin-right: auto;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px;
+}
+.card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 11px; font-weight: 600; color: var(--muted-on-dark); letter-spacing: 0.3px; }
+
+.field select,
+.field input[type="text"] {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Cairo', inherit;
+  color: var(--text-on-dark);
+  outline: none;
+  direction: rtl;
+  transition: border-color 0.15s, background 0.15s;
+}
+.field input[type="text"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.field select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  padding-left: 32px;
+}
+.field select:focus,
+.field input:focus { border-color: var(--orange); background: rgba(227,101,35,0.08); }
+.field select:disabled { opacity: 0.4; cursor: not-allowed; }
+.field select option { background: #1e293b; color: #f1f5f9; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Product preview card */
+.product-preview {
+  display: none;
+  background: rgba(227,101,35,0.1);
+  border: 1px solid rgba(227,101,35,0.3);
+  border-radius: 10px;
+  padding: 12px;
+  gap: 12px;
+  align-items: center;
+}
+.product-preview.show { display: flex; }
+.product-preview-img {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.product-preview-img-placeholder {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.product-preview-info { flex: 1; min-width: 0; }
+.product-preview-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.product-preview-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font-size: 10px; font-weight: 600;
+  background: rgba(255,255,255,0.1);
+  color: var(--muted-on-dark);
+  padding: 2px 8px; border-radius: 20px;
+}
+.chip.orange { background: rgba(227,101,35,0.25); color: #fb923c; }
+
+/* Toggle */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+}
+.toggle-label { font-size: 12px; font-weight: 600; color: var(--text-on-dark); }
+.toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.12);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-track:before {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggle input:checked + .toggle-track { background: var(--orange); }
+.toggle input:checked + .toggle-track:before { transform: translateX(20px); }
+
+/* Color swatches */
+.color-section { display: flex; flex-direction: column; gap: 6px; }
+.color-row-label { font-size: 11px; font-weight: 600; color: var(--muted-on-dark); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch {
+  width: 28px; height: 28px; border-radius: 6px;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+.swatch:hover { transform: scale(1.15); }
+.swatch.active { border-color: #fff; }
+.color-custom {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+}
+.color-custom input[type="color"] {
+  width: 34px; height: 34px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  cursor: pointer; padding: 2px;
+  background: transparent;
+}
+.color-custom input[type="text"] {
+  flex: 1; padding: 7px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  font-size: 12px; font-family: monospace;
+  color: var(--text-on-dark);
+  outline: none;
+}
+.color-custom input[type="text"]:focus { border-color: var(--orange); }
+
+/* ── Range slider controls ── */
+.ctrl-slider-row {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ctrl-slider-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; font-weight: 600; color: var(--muted-on-dark);
+}
+.ctrl-slider-label span:last-child {
+  background: rgba(227,101,35,0.2);
+  color: #fb923c; font-size: 11px; padding: 1px 8px; border-radius: 10px;
+}
+.ctrl-slider {
+  width: 100%; accent-color: var(--orange); cursor: pointer; height: 4px;
+}
+.btn-reset-pos {
+  width: 100%; margin-top: 4px; padding: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: var(--muted-on-dark);
+  font-size: 12px; font-family: 'Cairo',inherit; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.btn-reset-pos:hover { background: rgba(255,255,255,0.1); color: var(--text-on-dark); }
+
+/* Bg notice */
+.bg-notice {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: rgba(227,101,35,0.1);
+  border: 1px solid rgba(227,101,35,0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px; color: #fb923c; line-height: 1.5;
+}
+.bg-notice.ready {
+  background: rgba(22,163,74,0.1);
+  border-color: rgba(22,163,74,0.3);
+  color: #4ade80;
+}
+
+/* Buttons */
+.btn-download {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+  color: #fff; border: none; border-radius: var(--radius);
+  font-size: 15px; font-weight: 800;
+  font-family: 'Cairo', inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 20px rgba(227,101,35,0.4);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-download:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(227,101,35,0.5); }
+.btn-download:active { transform: translateY(0); }
+.btn-download:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-print {
+  width: 100%; padding: 11px;
+  background: transparent;
+  color: var(--muted-on-dark);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  font-size: 13px; font-weight: 600;
+  font-family: 'Cairo', inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-print:hover { background: rgba(255,255,255,0.06); color: var(--text-on-dark); }
+
+.loading-row {
+  display: none;
+  align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  font-size: 12px; color: var(--orange);
+}
+.loading-row.show { display: flex; }
+.dot-pulse { width: 6px; height: 6px; background: var(--orange); border-radius: 50%; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
+
+/* ════════════════ PREVIEW PANEL ════════════════ */
+.preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #080f1a;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.poster-frame {
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 20px 60px rgba(0,0,0,0.7),
+    0 4px 16px rgba(0,0,0,0.5);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Scale wrapper — fits 1280×720 into the preview */
+.poster-scale-wrapper {
+  width: 700px;
+  height: 394px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ════════════════ THE POSTER (1280 × 720) ════════════════ */
+#poster {
+  width: 1280px; height: 720px;
+  position: absolute; top: 0; right: 0;
+  transform-origin: top right;
+  transform: scale(0.547);
+  overflow: hidden;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  direction: rtl;
+}
+
+/* ── Background layers ── */
+/* CSS gradient fallback (shown when bg image not found) */
+.p-bg-fallback {
+  position: absolute; inset: 0;
+  background: linear-gradient(160deg,#0c1a3a 0%,#0e2250 50%,#0a1628 100%);
+  z-index: 0;
+}
+.p-snow {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle,rgba(255,255,255,.55) 2px,transparent 2px),
+    radial-gradient(circle,rgba(255,255,255,.3) 1.5px,transparent 1.5px),
+    radial-gradient(circle,rgba(255,255,255,.45) 2px,transparent 2px),
+    radial-gradient(circle,rgba(255,255,255,.25) 1.5px,transparent 1.5px),
+    radial-gradient(circle,rgba(255,255,255,.4) 2.5px,transparent 2.5px),
+    radial-gradient(circle,rgba(255,255,255,.2) 1.5px,transparent 1.5px);
+  background-size: 300px 200px;
+  background-position: 40px 30px,140px 80px,220px 40px,60px 130px,270px 60px,170px 150px;
+  z-index: 1;
+  transition: opacity 0.3s;
+}
+/* Actual background photo */
+.p-bg-img {
+  position: absolute; inset: 0;
+  background-image: url('assets/poster-bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  z-index: 2;
+  opacity: 0;  /* revealed by JS once image loads */
+  transition: opacity 0.4s;
+}
+
+/* Overlay: darken left side for text + subtle top vignette */
+.p-overlay {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to left,
+      transparent 30%,
+      rgba(0,4,18,0.22) 48%,
+      rgba(0,4,18,0.60) 65%,
+      rgba(0,4,18,0.85) 82%,
+      rgba(0,4,18,0.92) 100%
+    ),
+    linear-gradient(to bottom,
+      rgba(0,0,0,0.18) 0%,
+      transparent 22%
+    );
+  z-index: 3;
+}
+
+/* ── Offer badge — top right (left-based for drag) ── */
+.p-offer-badge {
+  position: absolute;
+  top: 32px; left: 956px; /* ≈ 1280-44-280 */
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: flex-end;
+}
+.p-badge-offer {
+  background: #e36523; color: #fff;
+  font-size: 52px; font-weight: 900;
+  padding: 8px 30px; border-radius: 16px;
+  line-height: 1;
+  box-shadow: 0 6px 28px rgba(227,101,35,0.55);
+}
+.p-badge-type {
+  background: #1e3a8a; color: #fff;
+  font-size: 34px; font-weight: 900;
+  padding: 8px 22px; border-radius: 12px;
+  line-height: 1;
+  box-shadow: 0 4px 16px rgba(30,58,138,0.4);
+  text-align: center;
+}
+
+/* ── Ice surface overlay: duplicate of bg image clipped to ice zone ──
+   Sits on top of product (z:6) so the product appears submerged in ice  */
+.p-ice-overlay {
+  position: absolute; inset: 0;
+  background-image: url('assets/poster-bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 0.4s;
+  /* Transparent above ice surface (~52%), solid below */
+  -webkit-mask-image: linear-gradient(to bottom,
+    transparent 0%,
+    transparent 49%,
+    rgba(0,0,0,0.55) 54%,
+    rgba(0,0,0,0.85) 58%,
+    black 64%
+  );
+  mask-image: linear-gradient(to bottom,
+    transparent 0%,
+    transparent 49%,
+    rgba(0,0,0,0.55) 54%,
+    rgba(0,0,0,0.85) 58%,
+    black 64%
+  );
+  pointer-events: none;
+}
+
+/* ── Elliptical ice shadow beneath the product ── */
+.p-ice-shadow {
+  position: absolute;
+  /* sits just above the orange banner (~y 555) */
+  bottom: 148px;
+  left: 50%; transform: translateX(-50%);
+  width: 380px; height: 70px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, transparent 70%);
+  z-index: 4; /* below product (z:5), above bg */
+  pointer-events: none;
+}
+
+/* ── Draggable elements ── */
+.p-draggable {
+  cursor: grab;
+  user-select: none;
+}
+.p-draggable:hover { outline: 2px dashed rgba(227,101,35,0.55); outline-offset: 6px; border-radius: 6px; }
+.p-draggable.is-dragging { cursor: grabbing !important; outline: 2px solid rgba(227,101,35,0.9); }
+
+/* Drag hint tooltip */
+.drag-hint {
+  position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+  background: rgba(227,101,35,0.92);
+  color: #fff; font-size: 18px; font-family: 'Cairo',sans-serif; font-weight: 700;
+  padding: 4px 14px; border-radius: 8px;
+  white-space: nowrap; pointer-events: none; z-index: 999;
+  opacity: 0; transition: opacity 0.18s;
+}
+.p-draggable:hover .drag-hint { opacity: 1; }
+
+/* ── Product image — inside the ice box ── */
+/* Explicit left=(1280-400)/2=440 so drag can use left/top directly */
+.p-img-wrap {
+  position: absolute;
+  top: 80px; left: 440px;
+  z-index: 5;
+  width: 400px; height: 520px;
+}
+/* Inner container receives rotation + scale, keeps positioning clean */
+.p-img-inner {
+  width: 100%; height: 100%;
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: center;
+  transform-origin: center center;
+}
+/* Subtle cool-light backglow from the ice */
+.p-img-glow {
+  position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 340px; height: 260px;
+  background: radial-gradient(ellipse at 50% 100%,
+    rgba(160,210,255,0.22) 0%,
+    rgba(160,210,255,0.08) 50%,
+    transparent 75%);
+  z-index: 0;
+  pointer-events: none;
+}
+.p-img-wrap img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  /* multiply removes white background against the light ice surface */
+  mix-blend-mode: multiply;
+  /* downward shadow + cool rim light from ice */
+  filter:
+    drop-shadow(0 28px 20px rgba(0,0,0,0.55))
+    drop-shadow(0 6px 6px rgba(0,0,0,0.35));
+  position: relative; z-index: 1;
+}
+/* Frost/ice-melt gradient at bottom of product image */
+.p-img-ice-blend {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 130px;
+  background: linear-gradient(to top,
+    rgba(170,215,255,0.28) 0%,
+    rgba(170,215,255,0.10) 40%,
+    transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 0 0 10px 10px;
+}
+.p-img-placeholder {
+  width: 100%; height: 100%;
+  border: 3px dashed rgba(255,255,255,0.2);
+  border-radius: 20px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  background: rgba(255,255,255,0.04);
+  position: relative; z-index: 1;
+}
+.p-img-placeholder span { font-size: 70px; opacity: 0.5; }
+.p-img-placeholder p { font-size: 26px; color: rgba(255,255,255,0.3); font-weight: 600; }
+
+/* ── Product info — left truck-door area ── */
+.p-info {
+  position: absolute;
+  top: 70px; left: 36px;
+  z-index: 10;
+  max-width: 340px;
+  text-align: right;
+}
+.p-product-name {
+  font-size: 62px; font-weight: 900; color: #fff;
+  line-height: 1.18;
+  text-shadow: 0 3px 20px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.95);
+}
+.p-product-sub {
+  font-size: 24px; color: rgba(255,255,255,0.7);
+  margin-top: 6px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+}
+.p-price-wrap {
+  margin-top: 22px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.p-price-main {
+  background: #e36523;
+  padding: 14px 34px;
+  border-radius: 20px; display: inline-block;
+  box-shadow: 0 6px 28px rgba(227,101,35,0.55);
+}
+.p-price-number {
+  font-size: 70px; font-weight: 900; color: #fff;
+  line-height: 1; white-space: nowrap;
+}
+.p-price-unit {
+  background: #1e3a8a; color: #fff;
+  font-size: 30px; font-weight: 800;
+  padding: 9px 24px; border-radius: 14px; display: inline-block;
+  box-shadow: 0 4px 16px rgba(30,58,138,0.4);
+}
+
+/* ── Company logo chip (top left) ── */
+.p-company-chip {
+  position: absolute;
+  top: 30px; left: 44px;
+  z-index: 10;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 8px 18px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+.p-company-name { font-size: 22px; font-weight: 900; color: #fff; }
+.p-company-sub  { font-size: 14px; color: rgba(255,255,255,0.65); }
+.p-company-divider {
+  width: 40px; height: 2px; border-radius: 1px;
+  background: #e36523;
+  margin-top: 3px;
+}
+
+/* ── Tagline pill — bottom-left, clears the orange banner ── */
+.p-tagline {
+  position: absolute;
+  bottom: 160px; left: 36px;
+  z-index: 10;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.p-tagline-icon { font-size: 24px; }
+.p-tagline-text { font-size: 22px; font-weight: 800; color: #fff; }
+
+/* ── Footer (shown when no bg image, or user opts in) ── */
+.p-footer {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
+  background: #e36523; z-index: 20;
+  display: flex; align-items: center; justify-content: space-around; padding: 0 40px; gap: 20px;
+}
+.p-footer-sep  { width: 1px; height: 44px; background: rgba(255,255,255,0.3); flex-shrink: 0; }
+.p-footer-item { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.p-footer-icon { font-size: 28px; }
+.p-footer-text { font-size: 26px; font-weight: 800; color: #fff; direction: ltr; white-space: nowrap; }
+.p-footer-addr { display: flex; flex-direction: column; align-items: flex-end; }
+.p-footer-addr-label { font-size: 14px; color: rgba(255,255,255,0.75); }
+.p-footer-addr-val   { font-size: 22px; font-weight: 800; color: #fff; }
+
+/* ── Selected products list (sidebar) ── */
+.selected-products { display:flex; flex-direction:column; gap:6px; }
+.sel-prod-item {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px; padding:8px 10px;
+}
+.sel-prod-num {
+  width:20px; height:20px; background:var(--orange); color:#fff;
+  border-radius:50%; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.sel-prod-img { width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0; }
+.sel-prod-icon { width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+.sel-prod-name {
+  flex:1; font-size:12px; font-weight:700; color:var(--text-on-dark);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sel-prod-remove {
+  width:24px; height:24px;
+  background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);
+  border-radius:50%; color:#f87171; font-size:16px; line-height:1;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:background 0.15s;
+}
+.sel-prod-remove:hover { background:rgba(239,68,68,0.35); }
+.btn-add-product {
+  width:100%; padding:10px;
+  background:rgba(227,101,35,0.1); border:1.5px dashed rgba(227,101,35,0.4);
+  border-radius:8px; color:#fb923c;
+  font-size:13px; font-weight:700; font-family:'Cairo',inherit;
+  cursor:pointer; transition:background 0.15s;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-add-product:hover:not(:disabled) { background:rgba(227,101,35,0.22); }
+.btn-add-product:disabled { opacity:0.35; cursor:not-allowed; }
+.max-products-note { font-size:11px; color:var(--orange); text-align:center; padding:4px 0; display:none; }
+
+/* ── Poster multi-product slots ── */
+.p-products-area { position:absolute; inset:0; z-index:5; display:none; pointer-events:none; }
+.p-product-slot {
+  position:absolute;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  pointer-events:auto;
+}
+.p-slot-img {
+  object-fit:contain; flex-shrink:0;
+  mix-blend-mode:multiply;
+  filter: drop-shadow(0 20px 16px rgba(0,0,0,0.6)) drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+.p-slot-placeholder-sm {
+  width:80%; height:60%;
+  display:flex; align-items:center; justify-content:center; font-size:48px; opacity:0.4;
+}
+.p-slot-info-bar {
+  width:100%;
+  background:rgba(0,0,0,0.72); backdrop-filter:blur(8px);
+  border-radius:10px; padding:8px 12px; text-align:center; margin-top:6px; flex-shrink:0;
+}
+.p-slot-name { font-weight:900; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.p-slot-price { font-weight:800; color:#fb923c; margin-top:2px; }
+
+/* Print */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .sidebar, .preview-panel { display: none !important; }
+  #poster {
+    transform: none !important;
+    width: 1280px !important; height: 720px !important;
+    position: static !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<div class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-header-top">
+      <div class="sidebar-logo">🎨</div>
+      <div><div class="sidebar-title">منشئ الإعلانات</div></div>
+    </div>
+    <div class="sidebar-sub">أرض الشرق الحديثة للمواد الغذائية</div>
+  </div>
+
+  <div class="sidebar-body">
+
+    <!-- Step 0: Background status -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🖼️</div>
+        <div class="card-title">الصورة الخلفية</div>
+      </div>
+      <div class="card-body">
+        <div class="bg-notice" id="bg-notice">
+          ⚠️ ضع صورة الشركة في مجلد <strong>assets/poster-bg.jpg</strong> داخل مجلد المشروع ليظهر الخلفية الحقيقية
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">إظهار معلومات الشركة أسفل الإعلان</div>
+          <label class="toggle">
+            <input type="checkbox" id="f-show-footer" checked onchange="sync()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Product (multi-select) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🏷️</div>
+        <div class="card-title">اختيار المنتجات</div>
+        <div class="card-badge">حتى 4 منتجات</div>
+      </div>
+      <div class="card-body">
+        <!-- Selected products list -->
+        <div class="selected-products" id="selected-products-list"></div>
+        <div class="max-products-note" id="max-note">✅ وصلت للحد الأقصى (4 منتجات)</div>
+
+        <!-- Add product section -->
+        <div id="add-product-section">
+          <div class="field">
+            <label>الماركة</label>
+            <select id="f-brand" onchange="onBrandChange()">
+              <option value="">— اختر الماركة —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>المنتج</label>
+            <select id="f-product" onchange="onProductChange()" disabled>
+              <option value="">— اختر المنتج —</option>
+            </select>
+          </div>
+          <div class="loading-row" id="loading">
+            <div class="dot-pulse"></div>
+            <span>جاري التحميل...</span>
+          </div>
+          <div class="product-preview" id="product-preview">
+            <div class="product-preview-img-placeholder" id="pp-img-wrap">📦</div>
+            <div class="product-preview-info">
+              <div class="product-preview-name" id="pp-name"></div>
+              <div class="product-preview-chips" id="pp-chips"></div>
+            </div>
+          </div>
+          <button class="btn-add-product" id="btn-add-product" onclick="addProduct()" disabled>
+            ➕ أضف المنتج للإعلان
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image & Position controls -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🕹️</div>
+        <div class="card-title">التحكم بالعناصر</div>
+        <div class="card-badge">اسحب في المعاينة</div>
+      </div>
+      <div class="card-body">
+        <div style="font-size:11px;color:var(--muted-on-dark);line-height:1.6;padding:2px 0 6px;">
+          🖱️ اسحب <strong style="color:var(--text-on-dark)">صورة المنتج</strong> أو <strong style="color:var(--text-on-dark)">عنوان العرض</strong> أو <strong style="color:var(--text-on-dark)">اسم المنتج</strong> مباشرةً في المعاينة لتغيير موقعهم
+        </div>
+        <div class="ctrl-slider-row">
+          <div class="ctrl-slider-label"><span>دوران الصورة</span><span id="img-rot-val">0°</span></div>
+          <input type="range" class="ctrl-slider" id="f-img-rot" min="-45" max="45" value="0" oninput="applyImgTransform()">
+        </div>
+        <div class="ctrl-slider-row">
+          <div class="ctrl-slider-label"><span>حجم الصورة</span><span id="img-scale-val">100%</span></div>
+          <input type="range" class="ctrl-slider" id="f-img-scale" min="40" max="200" value="100" oninput="applyImgTransform()">
+        </div>
+        <button class="btn-reset-pos" onclick="resetPositions()">↺ إعادة تعيين مواضع العناصر</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Offer -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">💰</div>
+        <div class="card-title">تفاصيل العرض</div>
+        <div class="card-badge">خطوة 2</div>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>نوع العرض</label>
+          <select id="f-type" onchange="sync()">
+            <option value="المجمدات">عرض المجمدات</option>
+            <option value="الأجبان">عرض الأجبان</option>
+            <option value="الدجاج">عرض الدجاج</option>
+            <option value="اللحوم">عرض اللحوم</option>
+            <option value="الخضار">عرض الخضار</option>
+            <option value="خاص">عرض خاص</option>
+            <option value="تخفيضات">تخفيضات</option>
+          </select>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">إظهار السعر</div>
+          <label class="toggle">
+            <input type="checkbox" id="f-show-price" checked onchange="sync()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div id="price-fields">
+          <div class="row2">
+            <div class="field">
+              <label>الكمية</label>
+              <input type="text" id="f-qty" value="1" oninput="sync()" placeholder="مثال: 3">
+            </div>
+            <div class="field">
+              <label>السعر</label>
+              <input type="text" id="f-price" value="" oninput="sync()" placeholder="تلقائي">
+            </div>
+          </div>
+          <div class="field">
+            <label>العملة</label>
+            <select id="f-cur" onchange="sync()">
+              <option value="دينار">دينار أردني</option>
+              <option value="شيكل">شيكل</option>
+              <option value="ريال">ريال</option>
+              <option value="درهم">درهم</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Company info -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🏢</div>
+        <div class="card-title">معلومات الشركة</div>
+        <div class="card-badge">خطوة 3</div>
+      </div>
+      <div class="card-body">
+        <div class="row2">
+          <div class="field">
+            <label>اسم الشركة</label>
+            <input type="text" id="f-company" value="أرض الشرق" oninput="sync()">
+          </div>
+          <div class="field">
+            <label>الشعار الفرعي</label>
+            <input type="text" id="f-company-sub" value="للمواد الغذائية" oninput="sync()">
+          </div>
+        </div>
+        <div class="field">
+          <label>الشعار / الوصف</label>
+          <input type="text" id="f-tagline" value="جودتنا ثقتك وتفرق" oninput="sync()">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>رقم 1</label>
+            <input type="text" id="f-p1" value="0795277537" oninput="sync()">
+          </div>
+          <div class="field">
+            <label>رقم 2</label>
+            <input type="text" id="f-p2" value="0792881832" oninput="sync()">
+          </div>
+        </div>
+        <div class="field">
+          <label>العنوان</label>
+          <input type="text" id="f-addr" value="عمان - الأردن" oninput="sync()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Colors -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🎨</div>
+        <div class="card-title">الألوان</div>
+        <div class="card-badge">خطوة 4</div>
+      </div>
+      <div class="card-body">
+        <div class="color-section">
+          <div class="color-row-label">اللون الرئيسي</div>
+          <div class="swatches" id="swatches-c1">
+            <div class="swatch active" style="background:#e36523" data-color="#e36523" onclick="pickSwatch('c1','#e36523',this)"></div>
+            <div class="swatch" style="background:#dc2626" data-color="#dc2626" onclick="pickSwatch('c1','#dc2626',this)"></div>
+            <div class="swatch" style="background:#16a34a" data-color="#16a34a" onclick="pickSwatch('c1','#16a34a',this)"></div>
+            <div class="swatch" style="background:#7c3aed" data-color="#7c3aed" onclick="pickSwatch('c1','#7c3aed',this)"></div>
+            <div class="swatch" style="background:#0891b2" data-color="#0891b2" onclick="pickSwatch('c1','#0891b2',this)"></div>
+          </div>
+          <div class="color-custom">
+            <input type="color" id="f-c1" value="#e36523" oninput="onColorPicker('c1')">
+            <input type="text"  id="f-c1t" value="#e36523" placeholder="#e36523" oninput="onColorText('c1')">
+          </div>
+        </div>
+        <div class="color-section">
+          <div class="color-row-label">اللون الثانوي</div>
+          <div class="swatches" id="swatches-c2">
+            <div class="swatch active" style="background:#1e3a8a" data-color="#1e3a8a" onclick="pickSwatch('c2','#1e3a8a',this)"></div>
+            <div class="swatch" style="background:#1f2937" data-color="#1f2937" onclick="pickSwatch('c2','#1f2937',this)"></div>
+            <div class="swatch" style="background:#065f46" data-color="#065f46" onclick="pickSwatch('c2','#065f46',this)"></div>
+            <div class="swatch" style="background:#4c1d95" data-color="#4c1d95" onclick="pickSwatch('c2','#4c1d95',this)"></div>
+            <div class="swatch" style="background:#7f1d1d" data-color="#7f1d1d" onclick="pickSwatch('c2','#7f1d1d',this)"></div>
+          </div>
+          <div class="color-custom">
+            <input type="color" id="f-c2" value="#1e3a8a" oninput="onColorPicker('c2')">
+            <input type="text"  id="f-c2t" value="#1e3a8a" placeholder="#1e3a8a" oninput="onColorText('c2')">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .sidebar-body -->
+
+  <div class="sidebar-footer">
+    <button class="btn-download" id="btn-dl" onclick="download()">
+      ⬇&nbsp;&nbsp;تحميل الإعلان PNG
+    </button>
+    <button class="btn-print" onclick="window.print()">
+      🖨&nbsp;&nbsp;طباعة / حفظ PDF
+    </button>
+  </div>
+
+</div><!-- .sidebar -->
+
+<!-- ═══════════════ PREVIEW ═══════════════ -->
+<div class="preview-panel">
+  <div class="preview-label">PREVIEW • 1280 × 720</div>
+
+  <div class="poster-frame">
+    <div class="poster-scale-wrapper">
+      <div id="poster">
+
+        <!-- BG layers -->
+        <div class="p-bg-fallback"></div>
+        <div class="p-snow" id="p-snow"></div>
+        <div class="p-bg-img" id="p-bg-img"></div>
+        <!-- bg image is probed via JS after functions are defined -->
+
+        <!-- Gradient overlay (always present) -->
+        <div class="p-overlay"></div>
+
+        <!-- Offer badge — draggable -->
+        <div class="p-offer-badge p-draggable" id="p-offer-badge">
+          <div class="drag-hint">⠿ اسحب</div>
+          <div class="p-badge-offer" id="p-offer-bg">عرض</div>
+          <div class="p-badge-type"  id="p-type-bg">المجمدات</div>
+        </div>
+
+        <!-- Company chip — top left -->
+        <div class="p-company-chip">
+          <div class="p-company-name" id="p-company">أرض الشرق</div>
+          <div class="p-company-sub"  id="p-company-sub">للمواد الغذائية</div>
+          <div class="p-company-divider" id="p-logo-divider"></div>
+        </div>
+
+        <!-- Elliptical shadow on the ice surface -->
+        <div class="p-ice-shadow" id="p-ice-shadow"></div>
+
+        <!-- Multi-product area (shown when ≥2 products) -->
+        <div class="p-products-area" id="p-products-area"></div>
+
+        <!-- Ice surface overlay (bg image duplicate, clips over lower product) -->
+        <div class="p-ice-overlay" id="p-ice-overlay"></div>
+
+        <!-- Product image — draggable, inside the ice box -->
+        <div class="p-img-wrap p-draggable" id="p-img-wrap">
+          <div class="drag-hint">⠿ اسحب / استخدم شريط الدوران</div>
+          <div class="p-img-inner" id="p-img-inner">
+            <div class="p-img-glow"></div>
+            <div class="p-img-placeholder" id="p-placeholder">
+              <span>📦</span>
+              <p>اختر منتجاً من القائمة</p>
+            </div>
+            <img id="p-img" src="" alt=""
+              style="display:none;position:absolute;bottom:0;max-width:100%;max-height:100%;object-fit:contain;">
+            <!-- Frost overlay blends product bottom into ice -->
+            <div class="p-img-ice-blend"></div>
+          </div>
+        </div>
+
+        <!-- Product info — draggable, left side -->
+        <div class="p-info p-draggable" id="p-info">
+          <div class="drag-hint">⠿ اسحب</div>
+          <div class="p-product-name" id="p-name">اختر منتجاً</div>
+          <div class="p-product-sub"  id="p-sub" style="display:none;"></div>
+          <div class="p-price-wrap" id="p-price-wrap">
+            <div class="p-price-main" id="p-price-bg">
+              <div class="p-price-number" id="p-price">—</div>
+            </div>
+            <div class="p-price-unit" id="p-unit-bg">دينار أردني</div>
+          </div>
+        </div>
+
+        <!-- Tagline -->
+        <div class="p-tagline">
+          <div class="p-tagline-icon">❄️</div>
+          <div class="p-tagline-text" id="p-tagline">جودتنا ثقتك وتفرق</div>
+        </div>
+
+        <!-- Footer (company info bar) -->
+        <div class="p-footer" id="p-footer-el">
+          <div class="p-footer-item">
+            <span class="p-footer-icon">📍</span>
+            <div class="p-footer-addr">
+              <div class="p-footer-addr-label">العنوان:</div>
+              <div class="p-footer-addr-val" id="p-addr">عمان - الأردن</div>
+            </div>
+          </div>
+          <div class="p-footer-sep"></div>
+          <div class="p-footer-item">
+            <span class="p-footer-icon">📞</span>
+            <span class="p-footer-text" id="p-p1">0795277537</span>
+          </div>
+          <div class="p-footer-sep"></div>
+          <div class="p-footer-item">
+            <span class="p-footer-icon">📱</span>
+            <span class="p-footer-text" id="p-p2">0792881832</span>
+          </div>
+        </div>
+
+      </div><!-- #poster -->
+    </div>
+  </div>
+
+  <div class="preview-label" id="preview-status">اختر ماركة ومنتجاً للبدء</div>
+
+  <!-- Zoom control -->
+  <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+    <span style="font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:1px;font-weight:600;">تكبير المعاينة</span>
+    <input type="range" id="zoom-slider" min="30" max="80" value="54"
+      oninput="setZoom(this.value)"
+      style="width:120px;accent-color:#e36523;cursor:pointer;">
+    <span id="zoom-label" style="font-size:11px;color:rgba(255,255,255,0.4);min-width:32px;">54%</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://supabasemobile.ardalsharq.com';
+const SUPABASE_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzI2OTI4MCwiZXhwIjo0OTI4OTQyODgwLCJyb2xlIjoiYW5vbiJ9.veK9gm5UJT-0cLAIyzY_-AEhclyOwMzQXrWkNDbWUxA';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let selectedProducts = []; // array of product objects (max 4)
+let pendingProduct   = null; // selected in dropdown, not yet added
+let slotPositions    = [];   // saved left/top per slot so re-renders don't reset drag
+let c1 = '#e36523', c2 = '#1e3a8a';
+let bgImageReady = false;
+
+/* ── Background image detection ── */
+function bgLoaded() {
+  bgImageReady = true;
+  $('p-bg-img').style.opacity = '1';
+  $('p-ice-overlay').style.opacity = '1';
+  $('p-snow').style.opacity = '0';
+  // bg image has company info baked in — hide our chip + uncheck footer
+  document.querySelector('.p-company-chip').style.display = 'none';
+  $('f-show-footer').checked = false;
+  const notice = $('bg-notice');
+  notice.className = 'bg-notice ready';
+  notice.textContent = '✅ صورة الخلفية محملة — معلومات الشركة موجودة في الصورة';
+  sync();
+}
+function bgFailed() {
+  bgImageReady = false;
+  $('p-bg-img').style.opacity = '0';
+  $('p-ice-overlay').style.opacity = '0';
+  $('p-snow').style.opacity = '1';
+  document.querySelector('.p-company-chip').style.display = '';
+  $('f-show-footer').checked = true;
+  sync();
+}
+
+/* ── Init: load brands ── */
+async function init() {
+  setLoading(true);
+  try {
+    const { data: brands, error } = await db
+      .from('brands').select('id, name')
+      .eq('is_active', true).order('sort_order', { ascending: true });
+    if (error) throw error;
+    const sel = $('f-brand');
+    (brands || []).forEach(b => {
+      const o = document.createElement('option');
+      o.value = b.id; o.textContent = b.name; sel.appendChild(o);
+    });
+  } catch(e) { console.error(e); }
+  finally { setLoading(false); }
+}
+
+/* ── Brand → products ── */
+async function onBrandChange() {
+  const bid = $('f-brand').value;
+  const ps  = $('f-product');
+  ps.innerHTML = '<option value="">— اختر المنتج —</option>';
+  ps.disabled = true;
+  pendingProduct = null;
+  $('product-preview').classList.remove('show');
+  $('btn-add-product').disabled = true;
+  if (!bid) return;
+
+  setLoading(true);
+  try {
+    const { data, error } = await db
+      .from('products')
+      .select('id,name_ar,name_en,price,discount_price,weight,weight_unit,unit_type,price_per_piece,price_per_carton,price_per_kg,pieces_per_carton,product_images(*)')
+      .eq('brand_id', bid).eq('is_available', true)
+      .order('name_ar', { ascending: true });
+    if (error) throw error;
+    (data || []).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = p.name_ar; o._d = p; ps.appendChild(o);
+    });
+    ps.disabled = false;
+    // Force browser to re-render the select so options are visible immediately
+    ps.style.display = 'none';
+    ps.offsetHeight; // trigger reflow
+    ps.style.display = '';
+    ps.focus();
+  } catch(e) { console.error(e); }
+  finally { setLoading(false); }
+}
+
+/* ── Product selected in dropdown (pending, not yet added) ── */
+function onProductChange() {
+  const opt  = $('f-product').options[$('f-product').selectedIndex];
+  const prod = opt._d;
+  pendingProduct = prod || null;
+  if (!prod) { $('product-preview').classList.remove('show'); $('btn-add-product').disabled = true; return; }
+
+  /* mini preview */
+  const price = prod.discount_price ?? prod.price;
+  $('pp-name').textContent = prod.name_ar + (prod.name_en ? ` / ${prod.name_en}` : '');
+  const chips = [];
+  if (price)                  chips.push({ label: `${price} دينار`, orange: true });
+  if (prod.weight)            chips.push({ label: `${prod.weight} ${prod.weight_unit||'كغ'}` });
+  if (prod.pieces_per_carton) chips.push({ label: `${prod.pieces_per_carton} حبة/كرتون` });
+  if (prod.discount_price && prod.price !== prod.discount_price)
+                              chips.push({ label: `كان ${prod.price}` });
+  $('pp-chips').innerHTML = chips.map(c =>
+    `<span class="chip${c.orange?' orange':''}">${c.label}</span>`).join('');
+  const imgs = prod.product_images || [];
+  const primary = imgs.find(i => i.is_primary) || imgs[0];
+  const wrap = $('pp-img-wrap');
+  wrap.innerHTML = primary?.url
+    ? `<img class="product-preview-img" src="${primary.url}" onerror="this.outerHTML='<div class=\\"product-preview-img-placeholder\\">📦</div>'">`
+    : `<div class="product-preview-img-placeholder">📦</div>`;
+  $('product-preview').classList.add('show');
+  $('btn-add-product').disabled = selectedProducts.length >= 4 || !!selectedProducts.find(p=>p.id===prod.id);
+}
+
+/* ── Add pending product to list ── */
+function addProduct() {
+  if (!pendingProduct || selectedProducts.length >= 4) return;
+  if (selectedProducts.find(p => p.id === pendingProduct.id)) return;
+
+  // Auto-fill price from first product only
+  if (selectedProducts.length === 0) {
+    const price = pendingProduct.discount_price ?? pendingProduct.price;
+    $('f-price').value = price ? price.toFixed(2) : '';
+  }
+
+  selectedProducts.push(pendingProduct);
+  pendingProduct = null;
+
+  // Reset selectors for next product
+  $('f-product').value = '';
+  $('f-product').disabled = true;
+  $('f-brand').value = '';
+  $('product-preview').classList.remove('show');
+  $('btn-add-product').disabled = true;
+
+  renderSelectedList();
+  renderProductSlots();
+  sync();
+}
+
+/* ── Remove a product from list ── */
+function removeProduct(idx) {
+  selectedProducts.splice(idx, 1);
+  renderSelectedList();
+  renderProductSlots();
+  sync();
+}
+
+/* ── Sidebar: selected products list ── */
+function renderSelectedList() {
+  const list = $('selected-products-list');
+  const maxNote = $('max-note');
+  const addSection = $('add-product-section');
+  const full = selectedProducts.length >= 4;
+  maxNote.style.display = full ? 'block' : 'none';
+  addSection.style.display = full ? 'none' : 'block';
+
+  list.innerHTML = selectedProducts.map((p, i) => {
+    const imgs = p.product_images || [];
+    const primary = imgs.find(img=>img.is_primary) || imgs[0];
+    const imgHtml = primary?.url
+      ? `<img class="sel-prod-img" src="${primary.url}">`
+      : `<div class="sel-prod-icon">📦</div>`;
+    return `<div class="sel-prod-item">
+      <div class="sel-prod-num">${i+1}</div>
+      ${imgHtml}
+      <div class="sel-prod-name">${p.name_ar}</div>
+      <button class="sel-prod-remove" onclick="removeProduct(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+/* ── Poster: compute slot positions ── */
+function getSlotLayout(count) {
+  const IW = 1280;
+  if (count === 1)  {
+    const w=400,h=500; return [{x:(IW-w)/2,y:80,w,h}];
+  }
+  if (count === 2)  {
+    const w=300,h=420,gap=80,total=2*w+gap,sx=(IW-total)/2;
+    return [{x:sx,y:90,w,h},{x:sx+w+gap,y:90,w,h}];
+  }
+  if (count === 3)  {
+    const w=240,h=360,gap=60,total=3*w+2*gap,sx=(IW-total)/2;
+    return [{x:sx,y:120,w,h},{x:sx+w+gap,y:80,w,h},{x:sx+2*(w+gap),y:120,w,h}];
+  }
+  /* 4 */ {
+    const w=220,h=260,cg=60,rg=18,total=2*w+cg,sx=(IW-total)/2;
+    return [
+      {x:sx,       y:40,      w,h}, {x:sx+w+cg,y:40,     w,h},
+      {x:sx,       y:40+h+rg, w,h}, {x:sx+w+cg,y:40+h+rg,w,h},
+    ];
+  }
+}
+
+/* ── Poster: render product slots ── */
+function renderProductSlots() {
+  const area  = $('p-products-area');
+  const wrap  = $('p-img-wrap');
+  const info  = $('p-info');
+  const count = selectedProducts.length;
+
+  $('preview-status').textContent = count
+    ? selectedProducts.map(p=>p.name_ar).join(' + ')
+    : 'اختر ماركة ومنتجاً للبدء';
+
+  if (count === 0) {
+    area.style.display = 'none';
+    wrap.style.display = ''; info.style.display = '';
+    $('p-img').style.display = 'none';
+    $('p-placeholder').style.display = 'flex';
+    $('p-ice-shadow').style.opacity = '0';
+    return;
+  }
+
+  if (count === 1) {
+    area.style.display = 'none';
+    wrap.style.display = ''; info.style.display = '';
+    const prod = selectedProducts[0];
+    const imgs = prod.product_images || [];
+    const primary = imgs.find(i=>i.is_primary) || imgs[0];
+    if (primary?.url) {
+      const img = $('p-img');
+      img.onload  = () => { $('p-placeholder').style.display='none'; img.style.display='block'; $('p-ice-shadow').style.opacity='1'; };
+      img.onerror = () => { img.style.display='none'; $('p-placeholder').style.display='flex'; $('p-ice-shadow').style.opacity='0'; };
+      img.src = primary.url;
+    } else {
+      $('p-img').style.display='none'; $('p-placeholder').style.display='flex'; $('p-ice-shadow').style.opacity='0';
+    }
+    return;
+  }
+
+  /* multi-product */
+  wrap.style.display = 'none'; info.style.display = 'none';
+  $('p-ice-shadow').style.opacity = '0';
+  area.style.display = 'block';
+  area.innerHTML = '';
+
+  const layout   = getSlotLayout(count);
+  const showP    = $('f-show-price').checked;
+  const currency = $('f-cur').value;
+  const fName    = count >= 4 ? 20 : count === 3 ? 22 : 26;
+  const fPrice   = count >= 4 ? 16 : count === 3 ? 18 : 20;
+
+  /* save current slot positions before rebuild, then restore */
+  const prevSlots = Array.from(area.querySelectorAll('.p-product-slot'));
+  const savedPos  = prevSlots.map(el => ({ left: el.style.left, top: el.style.top }));
+
+  selectedProducts.forEach((prod, i) => {
+    const s    = layout[i];
+    /* restore dragged position if available, else use layout default */
+    const saved = savedPos[i];
+    const posLeft = (saved && saved.left) ? saved.left : s.x + 'px';
+    const posTop  = (saved && saved.top)  ? saved.top  : s.y + 'px';
+    const imgs = prod.product_images || [];
+    const pri  = imgs.find(img=>img.is_primary) || imgs[0];
+    const price = prod.discount_price ?? prod.price;
+    const imgH  = Math.round(s.h * 0.72);
+
+    const div = document.createElement('div');
+    div.className = 'p-product-slot p-draggable';
+    div.style.cssText = `left:${posLeft};top:${posTop};width:${s.w}px;height:${s.h}px;`;
+    div.innerHTML =
+      `<div class="drag-hint">⠿ اسحب</div>` +
+      (pri?.url
+        ? `<img class="p-slot-img" src="${pri.url}" style="max-height:${imgH}px;max-width:${s.w}px;">`
+        : `<div class="p-slot-placeholder-sm">📦</div>`) +
+      `<div class="p-slot-info-bar">
+        <div class="p-slot-name" style="font-size:${fName}px;">${prod.name_ar}</div>
+        ${showP && price ? `<div class="p-slot-price" style="font-size:${fPrice}px;">${price} ${currency}</div>` : ''}
+      </div>`;
+    /* attach drag listeners directly — innerHTML doesn't inherit them */
+    div.addEventListener('mousedown', onDragStart);
+    div.addEventListener('touchstart', onTouchStart, { passive: false });
+    area.appendChild(div);
+  });
+}
+
+/* ── Sync controls → poster ── */
+function sync() {
+  const first = selectedProducts[0] || null;
+
+  /* single-product name panel */
+  $('p-name').textContent = first ? first.name_ar : 'اختر منتجاً';
+  const sub = first?.name_en || '';
+  $('p-sub').textContent   = sub;
+  $('p-sub').style.display = sub ? 'block' : 'none';
+
+  $('p-type-bg').textContent = $('f-type').value;
+
+  /* price (single product) */
+  const showPrice = $('f-show-price').checked;
+  $('price-fields').style.display = showPrice ? 'block' : 'none';
+  $('p-price-wrap').style.display = (showPrice && selectedProducts.length <= 1) ? 'flex' : 'none';
+  if (showPrice) {
+    const qty = $('f-qty').value || '1';
+    const pr  = $('f-price').value || '—';
+    $('p-price').textContent   = `${qty} ب ${pr}`;
+    $('p-unit-bg').textContent = $('f-cur').value;
+  }
+
+  /* re-render multi-product prices if showing/hiding */
+  if (selectedProducts.length >= 2) renderProductSlots();
+
+  /* footer */
+  const showFooter = $('f-show-footer').checked;
+  $('p-footer-el').style.display = showFooter ? 'flex' : 'none';
+  document.querySelector('.p-tagline').style.bottom = showFooter ? '140px' : '40px';
+
+  $('p-company').textContent     = $('f-company').value     || 'أرض الشرق';
+  $('p-company-sub').textContent = $('f-company-sub').value || '';
+  $('p-tagline').textContent     = $('f-tagline').value     || '';
+  $('p-addr').textContent        = $('f-addr').value        || '';
+  $('p-p1').textContent          = $('f-p1').value          || '';
+  $('p-p2').textContent          = $('f-p2').value          || '';
+}
+
+/* ── Colors ── */
+function applyColors() {
+  [$('p-offer-bg'), $('p-price-bg'), $('p-footer-el'), $('p-logo-divider')].forEach(el => el && (el.style.background = c1));
+  [$('p-type-bg'),  $('p-unit-bg')].forEach(el => el && (el.style.background = c2));
+}
+
+function pickSwatch(which, hex, el) {
+  c1 = which==='c1' ? hex : c1;
+  c2 = which==='c2' ? hex : c2;
+  $(`f-${which}`).value  = hex;
+  $(`f-${which}t`).value = hex;
+  document.querySelectorAll(`#swatches-${which} .swatch`).forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  applyColors();
+}
+function onColorPicker(which) {
+  const v = $(`f-${which}`).value;
+  $(`f-${which}t`).value = v;
+  which==='c1' ? (c1=v) : (c2=v);
+  applyColors();
+}
+function onColorText(which) {
+  const v = $(`f-${which}t`).value;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    $(`f-${which}`).value = v;
+    which==='c1' ? (c1=v) : (c2=v);
+    applyColors();
+  }
+}
+
+/* ── Download ── */
+async function download() {
+  const btn = $('btn-dl');
+  btn.disabled = true;
+  btn.textContent = '⏳  جاري التحميل...';
+  const poster = $('poster');
+  poster.style.transform = 'none';
+  try {
+    const canvas = await html2canvas(poster, {
+      width: 1280, height: 720, scale: 1,
+      useCORS: true, allowTaint: true, backgroundColor: null, logging: false,
+    });
+    poster.style.transform = `scale(${currentScale})`;
+    const link = document.createElement('a');
+    link.download = `ardalsharq-${(currentProduct?.name_ar||'poster').replace(/\s+/g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch {
+    poster.style.transform = `scale(${currentScale})`;
+    alert('تعذّر التحميل. استخدم زر الطباعة أو خذ لقطة شاشة.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⬇&nbsp;&nbsp;تحميل الإعلان PNG';
+  }
+}
+
+function setLoading(on) {
+  $('loading').classList.toggle('show', on);
+}
+
+/* ── Preview zoom ── */
+let currentScale = 0.547;
+function setZoom(val) {
+  currentScale = val / 100;
+  const w = Math.round(1280 * currentScale);
+  const h = Math.round(720  * currentScale);
+  const wrapper = document.querySelector('.poster-scale-wrapper');
+  wrapper.style.width  = w + 'px';
+  wrapper.style.height = h + 'px';
+  $('poster').style.transform = `scale(${currentScale})`;
+  $('zoom-label').textContent = val + '%';
+}
+
+/* ══════════════════════════════════════
+   DRAG SYSTEM
+══════════════════════════════════════ */
+let activeDrag = null;
+let dragState  = {};
+
+/* Default positions (poster px) */
+const DEFAULT_POS = {
+  'p-img-wrap':   { left: 440,  top: 80  },
+  'p-offer-badge':{ left: 956,  top: 32  },
+  'p-info':       { left: 36,   top: 70  },
+};
+
+function initDraggables() {
+  ['p-img-wrap', 'p-offer-badge', 'p-info'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    // Set explicit left/top (remove right/bottom)
+    const pos = DEFAULT_POS[id];
+    el.style.left   = pos.left + 'px';
+    el.style.top    = pos.top  + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+
+    el.addEventListener('mousedown', onDragStart);
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+  });
+}
+
+function onDragStart(e) {
+  // Ignore clicks on interactive children
+  if (e.target.closest('input, select, button')) return;
+  e.preventDefault();
+  const el = e.currentTarget;
+  startDrag(el, e.clientX, e.clientY);
+}
+function onTouchStart(e) {
+  if (e.target.closest('input, select, button')) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  startDrag(e.currentTarget, t.clientX, t.clientY);
+}
+
+function startDrag(el, cx, cy) {
+  activeDrag = el;
+  el.classList.add('is-dragging');
+  dragState = {
+    startCX: cx,
+    startCY: cy,
+    startLeft: parseFloat(el.style.left) || 0,
+    startTop:  parseFloat(el.style.top)  || 0,
+  };
+  document.body.style.userSelect = 'none';
+}
+
+document.addEventListener('mousemove', e => {
+  if (!activeDrag) return;
+  moveDrag(e.clientX, e.clientY);
+});
+document.addEventListener('touchmove', e => {
+  if (!activeDrag) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  moveDrag(t.clientX, t.clientY);
+}, { passive: false });
+
+function moveDrag(cx, cy) {
+  const dx = (cx - dragState.startCX) / currentScale;
+  const dy = (cy - dragState.startCY) / currentScale;
+  activeDrag.style.left = (dragState.startLeft + dx) + 'px';
+  activeDrag.style.top  = (dragState.startTop  + dy) + 'px';
+}
+
+document.addEventListener('mouseup',  endDrag);
+document.addEventListener('touchend', endDrag);
+function endDrag() {
+  if (!activeDrag) return;
+  activeDrag.classList.remove('is-dragging');
+  activeDrag = null;
+  document.body.style.userSelect = '';
+}
+
+function resetPositions() {
+  ['p-img-wrap', 'p-offer-badge', 'p-info'].forEach(id => {
+    const el = $(id);
+    const pos = DEFAULT_POS[id];
+    if (el) { el.style.left = pos.left+'px'; el.style.top = pos.top+'px'; }
+  });
+  // reset multi-product slot positions
+  document.querySelectorAll('.p-product-slot').forEach((el, i) => {
+    const layout = getSlotLayout(selectedProducts.length);
+    if (layout[i]) { el.style.left = layout[i].x+'px'; el.style.top = layout[i].y+'px'; }
+  });
+  // reset rotation + scale
+  $('f-img-rot').value   = 0;
+  $('f-img-scale').value = 100;
+  applyImgTransform();
+}
+
+/* ── Image rotation + scale ── */
+function applyImgTransform() {
+  const rot = $('f-img-rot').value;
+  const sc  = ($('f-img-scale').value / 100).toFixed(2);
+  $('img-rot-val').textContent   = rot + '°';
+  $('img-scale-val').textContent = $('f-img-scale').value + '%';
+  $('p-img-inner').style.transform = `rotate(${rot}deg) scale(${sc})`;
+}
+
+// Probe bg image now that functions are defined
+(function() {
+  const probe = new Image();
+  probe.onload  = bgLoaded;
+  probe.onerror = bgFailed;
+  probe.src = 'assets/poster-bg.jpg';
+})();
+
+sync(); applyColors(); applyImgTransform(); initDraggables(); init();
+</script>
+</body>
+</html>
