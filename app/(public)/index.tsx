@@ -39,16 +39,21 @@ export default function PublicIndex() {
 
   return (
     <View style={styles.container}>
-      {/* absoluteFill keeps the image out of layout flow so it can't block touches */}
-      <Image
-        source={require('@/assets/splash-screen.png')}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        pointerEvents="none"
-      />
+      {/* Wrap image in a View with pointerEvents="none" — expo-image does not
+          reliably forward this prop to the underlying DOM element on web,
+          which causes the image to swallow all touch events. A plain View
+          node always sets pointer-events correctly on every platform. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Image
+          source={require('@/assets/splash-screen.png')}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+        />
+      </View>
       <Pressable
         style={[styles.skipButton, { top: insets.top + 12 }]}
         onPress={handleSkip}
+        hitSlop={12}
       >
         <Text style={styles.skipText}>تخطي</Text>
       </Pressable>

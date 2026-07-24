@@ -62,7 +62,7 @@ export default function ProductAnalyticsScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row items-center flex-1">
-            <TouchableOpacity onPress={() => router.back()} className="mr-3">
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/products' as any)} className="mr-3">
               <Ionicons name="arrow-back" size={24} color="#111" />
             </TouchableOpacity>
             <View className="flex-1">

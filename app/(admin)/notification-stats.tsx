@@ -205,7 +205,7 @@ export default function NotificationStatsScreen() {
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontSize: 20, color: '#374151' }}>‹</Text>

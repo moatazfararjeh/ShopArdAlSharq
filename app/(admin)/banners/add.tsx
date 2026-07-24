@@ -35,7 +35,7 @@ export default function AddBannerScreen() {
         await updateBanner(banner.id, { image_url: imageUrl });
       }
 
-      router.back();
+      router.canGoBack() ? router.back() : router.replace('/(admin)/banners' as any);
     } catch (e: any) {
       Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
     }

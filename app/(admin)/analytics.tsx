@@ -297,7 +297,7 @@ export default function AnalyticsDashboardScreen() {
         {/* ── Header ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)} style={{ padding: 4 }}>
               <Ionicons name="arrow-back" size={22} color={C.text} />
             </TouchableOpacity>
             <View>
