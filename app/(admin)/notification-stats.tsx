@@ -4,11 +4,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { getPromoCampaigns, getCampaignReaders, CampaignSummary, CampaignReader } from '@/services/campaignService';
 import { formatDateTime } from '@/utils/formatDate';
 
-const BRAND = '#e36523';
+const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
 // ─── Open-rate ring ───────────────────────────────────────────────────────────
 function OpenRateBadge({ sent, read }: { sent: number; read: number }) {
@@ -19,7 +20,7 @@ function OpenRateBadge({ sent, read }: { sent: number; read: number }) {
       width: 52, height: 52, borderRadius: 26,
       borderWidth: 3, borderColor: color,
       alignItems: 'center', justifyContent: 'center',
-      backgroundColor: '#fff',
+      backgroundColor: C.card,
     }}>
       <Text style={{ fontSize: 14, fontWeight: '900', color }}>{pct}%</Text>
     </View>
@@ -37,21 +38,21 @@ function CampaignCard({ campaign, onPress }: { campaign: CampaignSummary; onPres
       onPress={onPress}
       activeOpacity={0.8}
       style={{
-        backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12,
-        shadowColor: '#1c1917', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+        backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 12,
+        shadowColor: '#1e293b', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
         <OpenRateBadge sent={campaign.sent_count} read={campaign.read_count} />
 
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: '#1c1917', textAlign: 'right' }} numberOfLines={1}>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: C.text, textAlign: 'right' }} numberOfLines={1}>
             {campaign.title_ar}
           </Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2, textAlign: 'right' }} numberOfLines={1}>
+          <Text style={{ fontSize: 12, color: C.muted, marginTop: 2, textAlign: 'right' }} numberOfLines={1}>
             {campaign.body_ar}
           </Text>
-          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, textAlign: 'right' }}>
+          <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textAlign: 'right' }}>
             {formatDateTime(campaign.sent_at)}
           </Text>
         </View>
@@ -60,24 +61,24 @@ function CampaignCard({ campaign, onPress }: { campaign: CampaignSummary; onPres
       {/* Stats row */}
       <View style={{
         flexDirection: 'row', gap: 0, marginTop: 14,
-        borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12,
+        borderTopWidth: 1, borderTopColor: C.hairline, paddingTop: 12,
       }}>
         {[
-          { label: 'أُرسل', value: campaign.sent_count, color: '#6b7280' },
-          { label: 'فتح', value: campaign.read_count, color: '#2563eb' },
-          { label: 'لم يفتح', value: campaign.sent_count - campaign.read_count, color: '#dc2626' },
-          { label: 'معدل الفتح', value: `${openRate}%`, color: openRate >= 30 ? '#16a34a' : '#d97706' },
+          { label: 'أُرسل',    value: campaign.sent_count,                        color: C.muted },
+          { label: 'فتح',      value: campaign.read_count,                        color: '#2563eb' },
+          { label: 'لم يفتح',  value: campaign.sent_count - campaign.read_count,  color: '#dc2626' },
+          { label: 'معدل الفتح', value: `${openRate}%`,                           color: openRate >= 30 ? '#16a34a' : '#d97706' },
         ].map((stat, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 17, fontWeight: '900', color: stat.color }}>{stat.value}</Text>
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{stat.label}</Text>
+            <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{stat.label}</Text>
           </View>
         ))}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10, gap: 4 }}>
-        <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>من فتح الإشعار؟</Text>
-        <Text style={{ fontSize: 16, color: BRAND }}>←</Text>
+        <Text style={{ fontSize: 12, color: C.brand, fontWeight: '700' }}>من فتح الإشعار؟</Text>
+        <Ionicons name="chevron-back" size={14} color={C.brand} />
       </View>
     </TouchableOpacity>
   );
@@ -85,9 +86,7 @@ function CampaignCard({ campaign, onPress }: { campaign: CampaignSummary; onPres
 
 // ─── Readers modal ────────────────────────────────────────────────────────────
 function ReadersModal({
-  campaign,
-  visible,
-  onClose,
+  campaign, visible, onClose,
 }: {
   campaign: CampaignSummary | null;
   visible: boolean;
@@ -101,24 +100,24 @@ function ReadersModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
         {/* Header */}
         <View style={{
           flexDirection: 'row', alignItems: 'center', gap: 10,
-          padding: 16, backgroundColor: '#fff',
-          borderBottomWidth: 1, borderBottomColor: '#f0ece8',
+          padding: 16, backgroundColor: C.card,
+          borderBottomWidth: 1, borderBottomColor: C.hairline,
         }}>
           <TouchableOpacity
             onPress={onClose}
-            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 18, color: '#374151' }}>✕</Text>
+            <Ionicons name="close" size={18} color={C.muted} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917' }} numberOfLines={1}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: C.text }} numberOfLines={1}>
               {campaign?.title_ar}
             </Text>
-            <Text style={{ fontSize: 12, color: '#6b7280' }}>
+            <Text style={{ fontSize: 12, color: C.muted }}>
               فتح الإشعار: {readers.length} من {campaign?.sent_count ?? 0}
             </Text>
           </View>
@@ -126,13 +125,13 @@ function ReadersModal({
 
         {isLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={BRAND} size="large" />
+            <ActivityIndicator color={C.brand} size="large" />
           </View>
         ) : readers.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <Text style={{ fontSize: 40 }}>📭</Text>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>لا أحد فتح الإشعار بعد</Text>
-            <Text style={{ fontSize: 13, color: '#6b7280' }}>سيظهر هنا المستخدمون الذين يفتحون الإشعار</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>لا أحد فتح الإشعار بعد</Text>
+            <Text style={{ fontSize: 13, color: C.muted }}>سيظهر هنا المستخدمون الذين يفتحون الإشعار</Text>
           </View>
         ) : (
           <FlatList
@@ -141,36 +140,35 @@ function ReadersModal({
             contentContainerStyle={{ padding: 16, gap: 10 }}
             renderItem={({ item }: { item: CampaignReader }) => (
               <View style={{
-                backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
+                backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
                 flexDirection: 'row', alignItems: 'center', gap: 12,
-                shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+                shadowColor: '#1e293b', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
               }}>
-                {/* Avatar initial */}
                 <View style={{
                   width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: '#fff0eb', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: BRAND }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.brand }}>
                     {(item.full_name ?? item.email)[0].toUpperCase()}
                   </Text>
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917', textAlign: 'right' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, textAlign: 'right' }}>
                     {item.full_name ?? item.email}
                   </Text>
                   {item.full_name ? (
-                    <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'right' }}>{item.email}</Text>
+                    <Text style={{ fontSize: 12, color: C.muted, textAlign: 'right' }}>{item.email}</Text>
                   ) : null}
                   {item.phone ? (
-                    <Text style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right' }}>{item.phone}</Text>
+                    <Text style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right' }}>{item.phone}</Text>
                   ) : null}
                 </View>
 
                 {item.read_at ? (
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 10, color: '#9ca3af' }}>فتح في</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#6b7280' }}>
+                    <Text style={{ fontSize: 10, color: '#94a3b8' }}>فتح في</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: C.muted }}>
                       {formatDateTime(item.read_at)}
                     </Text>
                   </View>
@@ -199,42 +197,49 @@ export default function NotificationStatsScreen() {
   const avgOpen   = totalSent > 0 ? Math.round((totalRead / totalSent) * 100) : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+      {/* ── Header ── */}
+      <View style={{
+        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: C.hairline,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <TouchableOpacity
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="home-outline" size={18} color={C.muted} />
+        </TouchableOpacity>
 
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <TouchableOpacity
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 20, color: '#374151' }}>‹</Text>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>إحصائيات الإشعارات</Text>
-            <Text style={{ fontSize: 12, color: '#9ca3af' }}>{campaigns.length} حملة ترويجية</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => refetch()}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 18 }}>↻</Text>
-          </TouchableOpacity>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>إحصائيات الإشعارات</Text>
+          <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{campaigns.length} حملة ترويجية</Text>
         </View>
+
+        <TouchableOpacity
+          onPress={() => refetch()}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="refresh-outline" size={18} color={C.muted} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
         {/* Summary KPIs */}
         {campaigns.length > 0 && (
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
             {[
               { label: 'إجمالي الإرسال', value: totalSent, color: '#2563eb', bg: '#eff6ff' },
-              { label: 'إجمالي الفتح', value: totalRead, color: '#16a34a', bg: '#f0fdf4' },
-              { label: 'متوسط الفتح', value: `${avgOpen}%`, color: '#d97706', bg: '#fffbeb' },
+              { label: 'إجمالي الفتح',   value: totalRead, color: '#16a34a', bg: '#f0fdf4' },
+              { label: 'متوسط الفتح',    value: `${avgOpen}%`, color: '#d97706', bg: '#fffbeb' },
             ].map((k) => (
               <View key={k.label} style={{
                 flex: 1, backgroundColor: k.bg, borderRadius: 16, padding: 14, alignItems: 'center',
+                shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
               }}>
                 <Text style={{ fontSize: 22, fontWeight: '900', color: k.color }}>{k.value}</Text>
-                <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 4, textAlign: 'center' }}>{k.label}</Text>
+                <Text style={{ fontSize: 10, color: C.muted, marginTop: 4, textAlign: 'center' }}>{k.label}</Text>
               </View>
             ))}
           </View>
@@ -243,18 +248,18 @@ export default function NotificationStatsScreen() {
         {/* Campaign list */}
         {isLoading ? (
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <ActivityIndicator color={BRAND} size="large" />
+            <ActivityIndicator color={C.brand} size="large" />
           </View>
         ) : campaigns.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
             <Text style={{ fontSize: 48 }}>📭</Text>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1c1917' }}>لا توجد حملات بعد</Text>
-            <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>لا توجد حملات بعد</Text>
+            <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center' }}>
               أرسل إشعارات ترويجية وستظهر إحصائياتها هنا
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/(admin)/send-notification' as any)}
-              style={{ backgroundColor: BRAND, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 }}
+              style={{ backgroundColor: C.brand, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 }}
             >
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>إرسال أول إشعار 📢</Text>
             </TouchableOpacity>

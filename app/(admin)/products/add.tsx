@@ -1,21 +1,27 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Switch, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { productSchema, ProductFormValues } from '@/schemas/productSchema';
 import { useCreateProduct } from '@/hooks/useProducts';
 import { uploadProductImages } from '@/hooks/useProductImages';
 import { useCategories } from '@/hooks/useCategories';
 import { useBrands } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName } from '@/types/models';
+
+const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
+
+function FieldLabel({ children }: { children: string }) {
+  return <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted, marginBottom: 6, textAlign: 'right', letterSpacing: 0.4 }}>{children}</Text>;
+}
 
 export default function AddProductScreen() {
   const { t } = useTranslation();
@@ -98,246 +104,301 @@ export default function AddProductScreen() {
         setUploadingImages(false);
       }
     }
-    goBack();
-  }
-
-  function goBack() {
     if (router.canGoBack()) router.back();
     else router.replace('/(admin)/products' as any);
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView contentContainerClassName="p-4 pb-8" keyboardShouldPersistTaps="handled">
-        <Text className="mb-4 text-xl font-bold">{t('admin.addProduct')}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+      {/* ── Header ── */}
+      <View style={{
+        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: C.hairline,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <TouchableOpacity
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/products' as any)}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="close" size={20} color={C.muted} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>{t('admin.addProduct')}</Text>
+        <View style={{ width: 36 }} />
+      </View>
 
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+      >
+
+        {/* ── Error banner ── */}
         {createMutation.error && (
-          <View className="mb-4 rounded-xl bg-red-50 p-3">
-            <Text className="text-sm text-red-600">{(createMutation.error as Error).message}</Text>
+          <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#fecaca', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="alert-circle" size={16} color="#dc2626" />
+            <Text style={{ fontSize: 13, color: '#dc2626', flex: 1, textAlign: 'right' }}>{(createMutation.error as Error).message}</Text>
           </View>
         )}
 
-        {/* ── Images section ── */}
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>صور المنتج</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 20 }}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {pendingImages.map((asset, index) => (
-            <View key={index} style={{ position: 'relative' }}>
-              <Image
-                source={{ uri: asset.uri }}
-                style={{
-                  width: 90, height: 90, borderRadius: 10,
-                  borderWidth: index === 0 ? 2.5 : 1.5,
-                  borderColor: index === 0 ? '#e36523' : '#e6e0d8',
-                }}
-              />
-              {index === 0 && (
-                <View style={{
-                  position: 'absolute', bottom: 4, left: 4,
-                  backgroundColor: '#e36523', borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1,
-                }}>
-                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>رئيسية</Text>
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={() => removeLocalImage(index)}
-                style={{
-                  position: 'absolute', top: -6, right: -6,
-                  backgroundColor: '#dc2626', borderRadius: 10, width: 20, height: 20,
-                  alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-
-          <TouchableOpacity
-            onPress={pickImage}
-            style={{
-              width: 90, height: 90, borderRadius: 10,
-              borderWidth: 2, borderStyle: 'dashed', borderColor: '#e36523',
-              alignItems: 'center', justifyContent: 'center',
-              backgroundColor: '#fff8f5',
-            }}
-          >
-            <Text style={{ color: '#e36523', fontSize: 32, lineHeight: 36 }}>+</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        <Controller control={control} name="name_ar"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="الاسم بالعربية *" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name_ar?.message} />
-          )}
-        />
-        <Controller control={control} name="name_en"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="Name in English" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.name_en?.message} />
-          )}
-        />
-        {/* Brand picker */}
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>الماركة</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {brands?.map((brand) => {
-            const selected = watch('brand_id') === brand.id;
-            return (
-              <TouchableOpacity
-                key={brand.id}
-                onPress={() => setValue('brand_id', selected ? '' : brand.id)}
-                style={{
-                  paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-                  backgroundColor: selected ? '#e36523' : '#ede8e1',
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : '#1c1917' }}>
-                  {brand.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {errors.brand_id && <Text style={{ color: '#dc2626', fontSize: 12, marginTop: -12, marginBottom: 12 }}>{errors.brand_id.message}</Text>}
-
-        <Controller control={control} name="description_ar"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="الوصف" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />
-          )}
-        />
-        <Controller control={control} name="price"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="السعر *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.price?.message} />
-          )}
-        />
-        <Controller control={control} name="discount_price"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="سعر الخصم (اختياري)" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.discount_price?.message} />
-          )}
-        />
-        <Controller control={control} name="stock_quantity"
-          render={({ field: { onChange, value, onBlur } }) => (
-            <Input label="الكمية المتاحة *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" error={errors.stock_quantity?.message} />
-          )}
-        />
-
-        {/* Weight */}
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 2 }}>
-            <Controller control={control} name="weight"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الوزن" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" placeholder="مثال: 0.5" error={errors.weight?.message} />
-              )}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Controller control={control} name="weight_unit"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الوحدة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} placeholder="كغ / غ" error={errors.weight_unit?.message} />
-              )}
-            />
-          </View>
-        </View>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>وحدات البيع</Text>
-        {([
-          { key: 'price_per_piece' as const,  icon: '🔢', label: 'بالحبة',    priceLabel: 'سعر الحبة (د.أ)' },
-          { key: 'price_per_kg' as const,     icon: '⚖️', label: 'بالكيلو',   priceLabel: 'سعر الكيلو (د.أ)' },
-          { key: 'price_per_carton' as const, icon: '📦', label: 'بالكرتون',  priceLabel: 'سعر الكرتون (د.أ)' },
-        ]).map(({ key, icon, label, priceLabel }) => {
-          const isEnabled = !!(watch(key));
-          return (
-            <View key={key} style={{
-              borderWidth: 1.5,
-              borderColor: isEnabled ? '#e36523' : '#e6e0d8',
-              borderRadius: 14, marginBottom: 10,
-              backgroundColor: isEnabled ? '#fff8f5' : '#fafaf9',
-              overflow: 'hidden',
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1c1917' }}>{icon} {label}</Text>
-                <Switch
-                  value={isEnabled}
-                  onValueChange={(v) => {
-                    if (!v) setValue(key, '');
-                    else setValue(key, '0');
+        {/* ── Images ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
+          <FieldLabel>صور المنتج</FieldLabel>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {pendingImages.map((asset, index) => (
+              <View key={index} style={{ position: 'relative' }}>
+                <Image
+                  source={{ uri: asset.uri }}
+                  style={{
+                    width: 90, height: 90, borderRadius: 14,
+                    borderWidth: index === 0 ? 2.5 : 1.5,
+                    borderColor: index === 0 ? C.brand : C.hairline,
                   }}
-                  trackColor={{ true: '#e36523', false: '#e6e0d8' }}
+                  contentFit="cover"
                 />
+                {index === 0 && (
+                  <View style={{
+                    position: 'absolute', bottom: 4, left: 4,
+                    backgroundColor: C.brand, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>رئيسية</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  onPress={() => removeLocalImage(index)}
+                  style={{
+                    position: 'absolute', top: -6, right: -6,
+                    backgroundColor: '#dc2626', borderRadius: 10, width: 20, height: 20,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="close" size={11} color="#fff" />
+                </TouchableOpacity>
               </View>
-              {isEnabled && (
-                <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
-                  <Controller control={control} name={key}
-                    render={({ field: { onChange, value, onBlur } }) => (
-                      <Input label={priceLabel} value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={(errors as any)[key]?.message} />
-                    )}
+            ))}
+            <TouchableOpacity
+              onPress={pickImage}
+              style={{
+                width: 90, height: 90, borderRadius: 14,
+                borderWidth: 2, borderStyle: 'dashed', borderColor: C.brand,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: '#fff7ed',
+              }}
+            >
+              <Ionicons name="camera-outline" size={24} color={C.brand} />
+              <Text style={{ color: C.brand, fontSize: 10, fontWeight: '700', marginTop: 4 }}>إضافة</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* ── Basic info ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>المعلومات الأساسية</Text>
+          <Controller control={control} name="name_ar"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="الاسم بالعربية *" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name_ar?.message} />
+            )}
+          />
+          <Controller control={control} name="name_en"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="Name in English" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.name_en?.message} />
+            )}
+          />
+          <Controller control={control} name="description_ar"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="الوصف" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />
+            )}
+          />
+        </View>
+
+        {/* ── Brand picker ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
+          <FieldLabel>الماركة</FieldLabel>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {brands?.map((brand) => {
+              const selected = watch('brand_id') === brand.id;
+              return (
+                <TouchableOpacity
+                  key={brand.id}
+                  onPress={() => setValue('brand_id', selected ? '' : brand.id)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                    backgroundColor: selected ? C.brand : '#f1f5f9',
+                    borderWidth: 1.5, borderColor: selected ? C.brand : C.hairline,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>
+                    {brand.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {errors.brand_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.brand_id.message}</Text>}
+        </View>
+
+        {/* ── Category picker ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
+          <FieldLabel>الفئة *</FieldLabel>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {categories?.map((cat) => {
+              const selected = watch('category_id') === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setValue('category_id', cat.id)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                    backgroundColor: selected ? C.brand : '#f1f5f9',
+                    borderWidth: 1.5, borderColor: selected ? C.brand : C.hairline,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>
+                    {getCategoryName(cat, locale)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {errors.category_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.category_id.message}</Text>}
+        </View>
+
+        {/* ── Pricing ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>التسعير والمخزون</Text>
+          <Controller control={control} name="price"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="السعر *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.price?.message} />
+            )}
+          />
+          <Controller control={control} name="discount_price"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="سعر الخصم (اختياري)" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.discount_price?.message} />
+            )}
+          />
+          <Controller control={control} name="stock_quantity"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="الكمية المتاحة *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" error={errors.stock_quantity?.message} />
+            )}
+          />
+        </View>
+
+        {/* ── Weight ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>الوزن</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 2 }}>
+              <Controller control={control} name="weight"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="الوزن" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" placeholder="مثال: 0.5" error={errors.weight?.message} />
+                )}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Controller control={control} name="weight_unit"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="الوحدة" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} placeholder="كغ / غ" error={errors.weight_unit?.message} />
+                )}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ── Unit pricing ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>وحدات البيع</Text>
+          {([
+            { key: 'price_per_piece' as const,  icon: '🔢', label: 'بالحبة',    priceLabel: 'سعر الحبة (د.أ)' },
+            { key: 'price_per_kg' as const,     icon: '⚖️', label: 'بالكيلو',   priceLabel: 'سعر الكيلو (د.أ)' },
+            { key: 'price_per_carton' as const, icon: '📦', label: 'بالكرتون',  priceLabel: 'سعر الكرتون (د.أ)' },
+          ]).map(({ key, icon, label, priceLabel }) => {
+            const isEnabled = !!(watch(key));
+            return (
+              <View key={key} style={{
+                borderWidth: 1.5,
+                borderColor: isEnabled ? C.brand : C.hairline,
+                borderRadius: 14,
+                backgroundColor: isEnabled ? '#fff7ed' : '#f8fafc',
+                overflow: 'hidden',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12 }}>
+                  <Switch
+                    value={isEnabled}
+                    onValueChange={(v) => {
+                      if (!v) setValue(key, '');
+                      else setValue(key, '0');
+                    }}
+                    trackColor={{ true: C.brand, false: '#e2e8f0' }}
                   />
-                  {key === 'price_per_carton' && (
-                    <Controller control={control} name="pieces_per_carton"
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }}>{icon} {label}</Text>
+                </View>
+                {isEnabled && (
+                  <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                    <Controller control={control} name={key}
                       render={({ field: { onChange, value, onBlur } }) => (
-                        <Input label="عدد الحبات في الكرتون" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" />
+                        <Input label={priceLabel} value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={(errors as any)[key]?.message} />
                       )}
                     />
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        {/* Category picker */}
-        <Text className="mb-1 text-sm font-medium text-gray-700">الفئة *</Text>
-        <View className="mb-4 flex-row flex-wrap gap-2">
-          {categories?.map((cat) => {
-            const selected = watch('category_id') === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setValue('category_id', cat.id)}
-                className={['rounded-full px-4 py-2', selected ? 'bg-primary-500' : 'bg-gray-100'].join(' ')}
-              >
-                <Text className={['text-sm', selected ? 'text-white font-semibold' : 'text-gray-700'].join(' ')}>
-                  {getCategoryName(cat, locale)}
-                </Text>
-              </TouchableOpacity>
+                    {key === 'price_per_carton' && (
+                      <Controller control={control} name="pieces_per_carton"
+                        render={({ field: { onChange, value, onBlur } }) => (
+                          <Input label="عدد الحبات في الكرتون" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" />
+                        )}
+                      />
+                    )}
+                  </View>
+                )}
+              </View>
             );
           })}
         </View>
-        {errors.category_id && <Text className="-mt-3 mb-3 text-xs text-red-500">{errors.category_id.message}</Text>}
 
-        {/* Toggles */}
-        <Controller control={control} name="is_available"
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-sm font-medium text-gray-700">متوفر للبيع</Text>
-              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#e36523' }} />
-            </View>
-          )}
-        />
-        <Controller control={control} name="is_featured"
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-sm font-medium text-gray-700">منتج مميز</Text>
-              <Switch value={value} onValueChange={onChange} trackColor={{ true: '#e36523' }} />
-            </View>
-          )}
-        />
+        {/* ── Toggles ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 0 }}>
+          <Controller control={control} name="is_available"
+            render={({ field: { onChange, value } }) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline }}>
+                <Switch value={value} onValueChange={onChange} trackColor={{ true: C.brand, false: '#e2e8f0' }} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>متوفر للبيع</Text>
+              </View>
+            )}
+          />
+          <Controller control={control} name="is_featured"
+            render={({ field: { onChange, value } }) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }}>
+                <Switch value={value} onValueChange={onChange} trackColor={{ true: C.brand, false: '#e2e8f0' }} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>منتج مميز</Text>
+              </View>
+            )}
+          />
+        </View>
 
-        <Button
-          title={t('common.save')}
-          onPress={handleSubmit(onSubmit)}
-          isLoading={createMutation.isPending || uploadingImages}
-          fullWidth size="lg"
-        />
+        {/* ── Submit ── */}
         {uploadingImages && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, gap: 8 }}>
-            <ActivityIndicator color="#e36523" size="small" />
-            <Text style={{ color: '#857d78', fontSize: 12 }}>جارٍ رفع الصور...</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 }}>
+            <ActivityIndicator color={C.brand} size="small" />
+            <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600' }}>جارٍ رفع الصور...</Text>
           </View>
         )}
+        <TouchableOpacity
+          onPress={handleSubmit(onSubmit)}
+          disabled={createMutation.isPending || uploadingImages}
+          style={{
+            backgroundColor: (createMutation.isPending || uploadingImages) ? '#e2e8f0' : C.brand,
+            borderRadius: 16, paddingVertical: 16,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            shadowColor: C.brand, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
+          }}
+        >
+          {(createMutation.isPending || uploadingImages) ? (
+            <ActivityIndicator color="#94a3b8" size="small" />
+          ) : (
+            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+          )}
+          <Text style={{ color: (createMutation.isPending || uploadingImages) ? '#94a3b8' : '#fff', fontWeight: '800', fontSize: 15 }}>
+            {createMutation.isPending ? 'جارٍ الحفظ...' : t('common.save')}
+          </Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
-

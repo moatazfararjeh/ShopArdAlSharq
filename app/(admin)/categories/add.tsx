@@ -20,7 +20,7 @@ export default function AddCategoryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <CategoryForm
         onSubmit={handleSubmit}
         submitLabel="إضافة التصنيف"

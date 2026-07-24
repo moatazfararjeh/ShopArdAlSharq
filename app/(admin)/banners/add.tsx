@@ -42,7 +42,7 @@ export default function AddBannerScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <BannerForm
         onSubmit={handleSubmit}
         submitLabel="إضافة البانر"

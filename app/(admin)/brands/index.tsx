@@ -1,15 +1,259 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform, TextInput, ActivityIndicator, FlatList } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand } from '@/hooks/useBrands';
 import { uploadImage } from '@/services/storageService';
 import { BRAND_IMAGE_BUCKET } from '@/lib/constants';
 import { Brand } from '@/types/models';
 
+const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
+
+// ─── Image picker (cross-platform) ───────────────────────────────────────────
+async function pickAndUploadImage(setUrl: (u: string) => void, setLoading: (v: boolean) => void) {
+  if (Platform.OS === 'web') {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setLoading(true);
+      try {
+        const result = await uploadImage(BRAND_IMAGE_BUCKET, `brand_${Date.now()}_${file.name}`, file);
+        setUrl(result.publicUrl);
+      } catch (err: any) {
+        window.alert(err?.message ?? 'فشل رفع الصورة');
+      } finally { setLoading(false); }
+    };
+    input.click();
+  } else {
+    const ImagePicker = require('expo-image-picker');
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
+    if (result.canceled) return;
+    setLoading(true);
+    try {
+      const asset = result.assets[0];
+      const blob = await (await fetch(asset.uri)).blob();
+      const ext = asset.uri.split('.').pop() ?? 'jpg';
+      const uploadResult = await uploadImage(BRAND_IMAGE_BUCKET, `brand_${Date.now()}.${ext}`, blob);
+      setUrl(uploadResult.publicUrl);
+    } catch (err: any) {
+      Alert.alert('خطأ', err?.message ?? 'فشل رفع الصورة');
+    } finally { setLoading(false); }
+  }
+}
+
+// ─── Inline image upload button ───────────────────────────────────────────────
+function ImageUploadButton({ url, loading, onPress, onClear }: { url: string; loading: boolean; onPress: () => void; onClear: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={loading}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 8,
+          paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
+          borderWidth: 1.5, borderColor: url ? '#10b981' : C.hairline,
+          backgroundColor: url ? '#f0fdf4' : C.card,
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={C.brand} />
+        ) : url ? (
+          <Image source={{ uri: url }} style={{ width: 28, height: 28, borderRadius: 8 }} contentFit="cover" />
+        ) : (
+          <Ionicons name="camera-outline" size={18} color={C.muted} />
+        )}
+        <Text style={{ fontSize: 12, fontWeight: '700', color: url ? '#10b981' : '#ef4444' }}>
+          {url ? 'تم الرفع ✓' : 'رفع صورة *'}
+        </Text>
+      </TouchableOpacity>
+      {url ? (
+        <TouchableOpacity onPress={onClear} style={{ padding: 4 }}>
+          <Ionicons name="close-circle" size={18} color="#ef4444" />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+// ─── Add form (collapsible) ───────────────────────────────────────────────────
+function AddBrandPanel({ onAdd, isPending }: { onAdd: (name: string, sort: number, url: string) => void; isPending: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [sort, setSort] = useState('0');
+  const [url, setUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  if (!open) {
+    return (
+      <TouchableOpacity
+        onPress={() => setOpen(true)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, margin: 16, padding: 14, backgroundColor: C.card, borderRadius: 16, borderWidth: 1.5, borderColor: C.hairline, borderStyle: 'dashed' }}
+      >
+        <Ionicons name="add-circle-outline" size={22} color={C.brand} />
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.brand }}>إضافة ماركة جديدة</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function handleAdd() {
+    const n = name.trim();
+    const s = parseInt(sort);
+    const missing: string[] = [];
+    if (!n) missing.push('الاسم');
+    if (isNaN(s)) missing.push('الترتيب');
+    if (!url) missing.push('الصورة');
+    if (missing.length) {
+      const msg = `يرجى تعبئة: ${missing.join('، ')}`;
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('حقول مطلوبة', msg);
+      return;
+    }
+    onAdd(n, s, url);
+    setName(''); setSort('0'); setUrl(''); setOpen(false);
+  }
+
+  return (
+    <View style={{ margin: 16, padding: 16, backgroundColor: C.card, borderRadius: 20, borderWidth: 1.5, borderColor: C.brand + '40', gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+        <Text style={{ fontSize: 15, fontWeight: '800', color: C.text }}>إضافة ماركة</Text>
+        <TouchableOpacity onPress={() => setOpen(false)}>
+          <Ionicons name="close" size={20} color={C.muted} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>الاسم</Text>
+        <TextInput
+          value={name} onChangeText={setName} placeholder="اسم الماركة" placeholderTextColor="#94a3b8"
+          style={{ flex: 1, borderWidth: 1.5, borderColor: C.hairline, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, textAlign: 'right', color: C.text, backgroundColor: '#f8fafc' }}
+        />
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>الترتيب</Text>
+        <TextInput
+          value={sort} onChangeText={setSort} keyboardType="number-pad" placeholder="0" placeholderTextColor="#94a3b8"
+          style={{ width: 70, borderWidth: 1.5, borderColor: C.hairline, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, textAlign: 'center', color: C.text, backgroundColor: '#f8fafc' }}
+        />
+      </View>
+
+      <ImageUploadButton url={url} loading={uploading} onPress={() => pickAndUploadImage(setUrl, setUploading)} onClear={() => setUrl('')} />
+
+      <TouchableOpacity
+        onPress={handleAdd}
+        disabled={isPending}
+        style={{ backgroundColor: (name.trim() && url) ? C.brand : '#e2e8f0', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+      >
+        <Text style={{ color: (name.trim() && url) ? '#fff' : '#94a3b8', fontWeight: '700', fontSize: 14 }}>
+          {isPending ? 'جارٍ الإضافة...' : 'إضافة الماركة'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Brand row ────────────────────────────────────────────────────────────────
+function BrandRow({ item, onEdit, onDelete, onToggle, isEditing, editState, onSaveEdit, onCancelEdit }: {
+  item: Brand;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggle: () => void;
+  isEditing: boolean;
+  editState: { name: string; sort: string; url: string; uploading: boolean };
+  onSaveEdit: (name: string, sort: number, url: string) => void;
+  onCancelEdit: () => void;
+}) {
+  const [eName, setEName] = useState(editState.name);
+  const [eSort, setESort] = useState(editState.sort);
+  const [eUrl, setEUrl] = useState(editState.url);
+  const [eUploading, setEUploading] = useState(false);
+
+  if (isEditing) {
+    return (
+      <View style={{ marginHorizontal: 16, marginVertical: 4, backgroundColor: C.card, borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: C.brand + '50', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>الاسم</Text>
+          <TextInput
+            value={eName} onChangeText={setEName} autoFocus placeholder="اسم الماركة" placeholderTextColor="#94a3b8"
+            style={{ flex: 1, borderWidth: 1.5, borderColor: C.brand, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, textAlign: 'right', color: C.text }}
+          />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>الترتيب</Text>
+          <TextInput
+            value={eSort} onChangeText={setESort} keyboardType="number-pad" placeholder="0" placeholderTextColor="#94a3b8"
+            style={{ width: 70, borderWidth: 1.5, borderColor: C.hairline, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, textAlign: 'center', color: C.text }}
+          />
+        </View>
+        <ImageUploadButton url={eUrl} loading={eUploading} onPress={() => pickAndUploadImage(setEUrl, setEUploading)} onClear={() => setEUrl('')} />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          <TouchableOpacity
+            onPress={() => onSaveEdit(eName, parseInt(eSort), eUrl)}
+            style={{ flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: C.brand, alignItems: 'center' }}
+          >
+            <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>حفظ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onCancelEdit} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: '#f1f5f9', alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, color: C.muted, fontWeight: '600' }}>إلغاء</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{
+      marginHorizontal: 16, marginVertical: 4,
+      backgroundColor: C.card, borderRadius: 16, padding: 12,
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    }}>
+      {/* Image */}
+      {item.image_url ? (
+        <Image source={{ uri: item.image_url }} style={{ width: 46, height: 46, borderRadius: 12 }} contentFit="cover" />
+      ) : (
+        <View style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="ribbon-outline" size={22} color="#94a3b8" />
+        </View>
+      )}
+
+      {/* Info */}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <TouchableOpacity onPress={onToggle} style={{
+            paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20,
+            backgroundColor: item.is_active ? '#f0fdf4' : '#fff1f2',
+          }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: item.is_active ? '#16a34a' : '#ef4444' }}>
+              {item.is_active ? 'نشطة' : 'معطلة'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 10, color: C.muted }}>ترتيب: {item.sort_order}</Text>
+        </View>
+      </View>
+
+      {/* Icon actions */}
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <TouchableOpacity onPress={onEdit} style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="create-outline" size={16} color="#3b82f6" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onDelete} style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff1f2', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="trash-outline" size={16} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AdminBrandsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -17,118 +261,27 @@ export default function AdminBrandsScreen() {
   const createMutation = useCreateBrand();
   const updateMutation = useUpdateBrand();
   const deleteMutation = useDeleteBrand();
-
-  const [newName, setNewName] = useState('');
-  const [newSortOrder, setNewSortOrder] = useState('0');
-  const [newImageUrl, setNewImageUrl] = useState('');
-  const [uploadingNew, setUploadingNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSortOrder, setEditSortOrder] = useState('');
-  const [editImageUrl, setEditImageUrl] = useState('');
-  const [uploadingEdit, setUploadingEdit] = useState(false);
 
-  async function pickAndUploadImage(setUrl: (url: string) => void, setLoading: (v: boolean) => void) {
-    if (Platform.OS === 'web') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/jpeg,image/png,image/webp';
-      input.onchange = async (e: any) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setLoading(true);
-        try {
-          const fileName = `brand_${Date.now()}_${file.name}`;
-          const result = await uploadImage(BRAND_IMAGE_BUCKET, fileName, file);
-          setUrl(result.publicUrl);
-        } catch (err: any) {
-          window.alert(err?.message ?? 'فشل رفع الصورة');
-        } finally {
-          setLoading(false);
-        }
-      };
-      input.click();
-    } else {
-      // Native: use expo-image-picker
-      const ImagePicker = require('expo-image-picker');
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('إذن مطلوب', 'يرجى السماح بالوصول إلى الصور');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.85,
-      });
-      if (result.canceled) return;
-      setLoading(true);
-      try {
-        const asset = result.assets[0];
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        const ext = asset.uri.split('.').pop() ?? 'jpg';
-        const fileName = `brand_${Date.now()}.${ext}`;
-        const uploadResult = await uploadImage(BRAND_IMAGE_BUCKET, fileName, blob);
-        setUrl(uploadResult.publicUrl);
-      } catch (err: any) {
-        Alert.alert('خطأ', err?.message ?? 'فشل رفع الصورة');
-      } finally {
-        setLoading(false);
-      }
-    }
+  function handleAdd(name: string, sort: number, url: string) {
+    createMutation.mutate({ name, sort_order: sort, image_url: url });
   }
 
-  function handleAdd() {
-    const name = newName.trim();
-    const sort_order = parseInt(newSortOrder);
+  function handleSaveEdit(id: string, name: string, sort: number, url: string) {
     const missing: string[] = [];
     if (!name) missing.push('الاسم');
-    if (!newSortOrder.trim() || isNaN(sort_order)) missing.push('الترتيب');
-    if (!newImageUrl) missing.push('الصورة');
+    if (!url) missing.push('الصورة');
     if (missing.length) {
       const msg = `يرجى تعبئة: ${missing.join('، ')}`;
       Platform.OS === 'web' ? window.alert(msg) : Alert.alert('حقول مطلوبة', msg);
       return;
     }
-    createMutation.mutate({ name, sort_order, image_url: newImageUrl }, {
-      onSuccess: () => { setNewName(''); setNewSortOrder('0'); setNewImageUrl(''); },
-    });
-  }
-
-  function startEdit(brand: Brand) {
-    setEditingId(brand.id);
-    setEditName(brand.name);
-    setEditSortOrder(String(brand.sort_order));
-    setEditImageUrl(brand.image_url ?? '');
-  }
-
-  function handleSaveEdit() {
-    if (!editingId) return;
-    const name = editName.trim();
-    const sort_order = parseInt(editSortOrder);
-    const missing: string[] = [];
-    if (!name) missing.push('الاسم');
-    if (!editSortOrder.trim() || isNaN(sort_order)) missing.push('الترتيب');
-    if (!editImageUrl) missing.push('الصورة');
-    if (missing.length) {
-      const msg = `يرجى تعبئة: ${missing.join('، ')}`;
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('حقول مطلوبة', msg);
-      return;
-    }
-    updateMutation.mutate({ id: editingId, name, sort_order, image_url: editImageUrl }, {
-      onSuccess: () => setEditingId(null),
-    });
-  }
-
-  function handleToggleActive(brand: Brand) {
-    updateMutation.mutate({ id: brand.id, is_active: !brand.is_active });
+    updateMutation.mutate({ id, name, sort_order: sort, image_url: url }, { onSuccess: () => setEditingId(null) });
   }
 
   function confirmDelete(brand: Brand) {
     if (Platform.OS === 'web') {
-      if (window.confirm(`حذف الماركة "${brand.name}"؟`)) {
-        deleteMutation.mutate(brand.id);
-      }
+      if (window.confirm(`حذف الماركة "${brand.name}"؟`)) deleteMutation.mutate(brand.id);
       return;
     }
     Alert.alert('حذف الماركة', `حذف "${brand.name}"؟`, [
@@ -138,230 +291,50 @@ export default function AdminBrandsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <View style={{ width: 36 }} />
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>إدارة الماركات</Text>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Add new brand */}
-      <View style={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TextInput
-            value={newName}
-            onChangeText={setNewName}
-            placeholder="اسم الماركة الجديدة..."
-            placeholderTextColor="#9ca3af"
-            onSubmitEditing={handleAdd}
-            style={{
-              flex: 1, borderWidth: 1.5, borderColor: '#e5e7eb', borderRadius: 12,
-              paddingHorizontal: 14, paddingVertical: 8, fontSize: 14,
-              backgroundColor: '#fff', textAlign: 'right', color: '#1c1917',
-            }}
-          />
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الاسم</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TextInput
-            value={newSortOrder}
-            onChangeText={setNewSortOrder}
-            keyboardType="number-pad"
-            placeholder="0"
-            placeholderTextColor="#9ca3af"
-            style={{
-              width: 70, borderWidth: 1.5, borderColor: '#e5e7eb', borderRadius: 12,
-              paddingHorizontal: 12, paddingVertical: 8, fontSize: 14,
-              textAlign: 'center', color: '#1c1917',
-            }}
-          />
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الترتيب</Text>
-        </View>
-        {/* Image upload */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity
-            onPress={() => pickAndUploadImage(setNewImageUrl, setUploadingNew)}
-            disabled={uploadingNew}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-              borderWidth: 1.5, borderColor: newImageUrl ? '#059669' : '#e5e7eb',
-              backgroundColor: newImageUrl ? '#ecfdf5' : '#fff',
-            }}
-          >
-            {uploadingNew ? (
-              <ActivityIndicator size="small" color="#e36523" />
-            ) : (
-              <>
-                {newImageUrl ? (
-                  <Image source={{ uri: newImageUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} contentFit="cover" />
-                ) : (
-                  <Text style={{ fontSize: 13, color: '#6b7280' }}>📷</Text>
-                )}
-                <Text style={{ fontSize: 12, color: newImageUrl ? '#059669' : '#dc2626', fontWeight: '600' }}>
-                  {newImageUrl ? 'تم الرفع ✓' : 'رفع صورة *'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-          {newImageUrl ? (
-            <TouchableOpacity onPress={() => setNewImageUrl('')}>
-              <Text style={{ fontSize: 12, color: '#dc2626' }}>إزالة</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+      {/* ── Header ── */}
+      <View style={{
+        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: C.hairline,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
         <TouchableOpacity
-          onPress={handleAdd}
-          disabled={createMutation.isPending}
-          style={{
-            alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
-            backgroundColor: (newName.trim() && newImageUrl) ? '#e36523' : '#e5e7eb',
-          }}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ color: (newName.trim() && newImageUrl) ? '#fff' : '#9ca3af', fontWeight: '700', fontSize: 14 }}>إضافة</Text>
+          <Ionicons name="home-outline" size={18} color={C.muted} />
         </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>إدارة الماركات</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {createMutation.error && (
-        <View style={{ marginHorizontal: 16, marginTop: 8, borderRadius: 10, backgroundColor: '#fef2f2', padding: 10 }}>
-          <Text style={{ color: '#dc2626', fontSize: 12 }}>{(createMutation.error as Error).message}</Text>
-        </View>
-      )}
-
-      {/* Brands list */}
       <FlatList
         data={brands ?? []}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
-        renderItem={({ item }) => (
-          <View style={{
-            marginHorizontal: 16, marginVertical: 4, backgroundColor: '#fff',
-            borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center',
-            borderWidth: 1, borderColor: '#e5e7eb',
-          }}>
-            {editingId === item.id ? (
-              /* Edit mode */
-              <View style={{ flex: 1, gap: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TextInput
-                    value={editName}
-                    onChangeText={setEditName}
-                    autoFocus
-                    placeholder="اسم الماركة"
-                    placeholderTextColor="#9ca3af"
-                    style={{
-                      flex: 1, borderWidth: 1.5, borderColor: '#e36523', borderRadius: 10,
-                      paddingHorizontal: 12, paddingVertical: 8, fontSize: 14,
-                      textAlign: 'right', color: '#1c1917',
-                    }}
-                  />
-                  <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الاسم</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TextInput
-                    value={editSortOrder}
-                    onChangeText={setEditSortOrder}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor="#9ca3af"
-                    style={{
-                      width: 70, borderWidth: 1.5, borderColor: '#e5e7eb', borderRadius: 10,
-                      paddingHorizontal: 12, paddingVertical: 8, fontSize: 14,
-                      textAlign: 'center', color: '#1c1917',
-                    }}
-                  />
-                  <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '600' }}>الترتيب</Text>
-                </View>
-                {/* Image upload in edit mode */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => pickAndUploadImage(setEditImageUrl, setUploadingEdit)}
-                    disabled={uploadingEdit}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', gap: 6,
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-                      borderWidth: 1.5, borderColor: editImageUrl ? '#059669' : '#e5e7eb',
-                      backgroundColor: editImageUrl ? '#ecfdf5' : '#fff',
-                    }}
-                  >
-                    {uploadingEdit ? (
-                      <ActivityIndicator size="small" color="#e36523" />
-                    ) : (
-                      <>
-                        {editImageUrl ? (
-                          <Image source={{ uri: editImageUrl }} style={{ width: 28, height: 28, borderRadius: 6 }} contentFit="cover" />
-                        ) : (
-                          <Text style={{ fontSize: 13, color: '#6b7280' }}>📷</Text>
-                        )}
-                        <Text style={{ fontSize: 12, color: editImageUrl ? '#059669' : '#6b7280', fontWeight: '600' }}>
-                          {editImageUrl ? 'تغيير الصورة' : 'رفع صورة'}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  {editImageUrl ? (
-                    <TouchableOpacity onPress={() => setEditImageUrl('')}>
-                      <Text style={{ fontSize: 12, color: '#dc2626' }}>إزالة</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity onPress={() => setEditingId(null)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#f3f4f6' }}>
-                    <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600' }}>إلغاء</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleSaveEdit} disabled={updateMutation.isPending} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#e36523' }}>
-                    <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>حفظ</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              /* Display mode */
-              <>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity onPress={() => confirmDelete(item)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#fef2f2' }}>
-                    <Text style={{ fontSize: 12, color: '#dc2626' }}>{t('common.delete')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => startEdit(item)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f3f4f6' }}>
-                    <Text style={{ fontSize: 12, color: '#374151' }}>{t('common.edit')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleToggleActive(item)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: item.is_active ? '#ecfdf5' : '#fef2f2' }}>
-                    <Text style={{ fontSize: 12, color: item.is_active ? '#059669' : '#dc2626' }}>
-                      {item.is_active ? 'نشطة' : 'معطلة'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>{item.name}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <Text style={{ fontSize: 11, color: '#9ca3af' }}>الترتيب: {item.sort_order}</Text>
-                      <Text style={{ fontSize: 11, color: item.is_active ? '#059669' : '#dc2626' }}>
-                        {item.is_active ? '● نشطة' : '● معطلة'}
-                      </Text>
-                    </View>
-                  </View>
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={{ width: 44, height: 44, borderRadius: 10 }} contentFit="cover" />
-                  ) : (
-                    <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 20, color: '#d1d5db' }}>📷</Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-          </View>
-        )}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        ListHeaderComponent={
+          <AddBrandPanel onAdd={handleAdd} isPending={createMutation.isPending} />
+        }
         ListEmptyComponent={
           isLoading ? null : (
-            <View style={{ marginTop: 60, alignItems: 'center' }}>
-              <Text style={{ color: '#9ca3af', fontSize: 14 }}>لا توجد ماركات بعد</Text>
+            <View style={{ marginTop: 60, alignItems: 'center', gap: 10 }}>
+              <Ionicons name="ribbon-outline" size={48} color="#cbd5e1" />
+              <Text style={{ color: C.muted, fontSize: 14, fontWeight: '600' }}>لا توجد ماركات بعد</Text>
             </View>
           )
         }
+        renderItem={({ item }) => (
+          <BrandRow
+            item={item}
+            isEditing={editingId === item.id}
+            editState={{ name: item.name, sort: String(item.sort_order), url: item.image_url ?? '', uploading: false }}
+            onEdit={() => setEditingId(item.id)}
+            onDelete={() => confirmDelete(item)}
+            onToggle={() => updateMutation.mutate({ id: item.id, is_active: !item.is_active })}
+            onSaveEdit={(name, sort, url) => handleSaveEdit(item.id, name, sort, url)}
+            onCancelEdit={() => setEditingId(null)}
+          />
+        )}
       />
     </SafeAreaView>
   );

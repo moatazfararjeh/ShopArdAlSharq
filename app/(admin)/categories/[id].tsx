@@ -13,7 +13,7 @@ export default function EditCategoryScreen() {
 
   if (isLoading || !category) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f4f8' }}>
         <ActivityIndicator size="large" color="#e36523" />
       </SafeAreaView>
     );
@@ -30,7 +30,7 @@ export default function EditCategoryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <CategoryForm
         initial={{
           name_ar: category.name_ar,

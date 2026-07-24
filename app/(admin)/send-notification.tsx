@@ -1,12 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Ionicons } from '@expo/vector-icons';
 import { sendBroadcastNotification } from '@/services/pushNotificationService';
 
-const BRAND = '#e36523';
+const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
 const QUICK_TEMPLATES = [
   { icon: '🎁', title: 'عرض خاص!', body: 'تسوق الآن واستمتع بأفضل العروض والخصومات.' },
@@ -56,97 +55,141 @@ export default function SendNotificationScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+      {/* ── Header ── */}
+      <View style={{
+        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: C.hairline,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <TouchableOpacity
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="home-outline" size={18} color={C.muted} />
+        </TouchableOpacity>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>إرسال إشعار ترويجي</Text>
+          <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>يصل إلى جميع المستخدمين</Text>
+        </View>
+        <View style={{ width: 36 }} />
+      </View>
+
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
 
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <TouchableOpacity
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 20, color: '#374151' }}>‹</Text>
-          </TouchableOpacity>
-          <View>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>إرسال إشعار ترويجي</Text>
-            <Text style={{ fontSize: 12, color: '#9ca3af' }}>يصل إلى جميع المستخدمين</Text>
-          </View>
-        </View>
-
         {/* Quick templates */}
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#6b7280', marginBottom: 10 }}>قوالب سريعة</Text>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted, marginBottom: 10, textAlign: 'right', letterSpacing: 0.5 }}>
+          قوالب سريعة
+        </Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
           {QUICK_TEMPLATES.map((tpl) => (
             <TouchableOpacity
               key={tpl.title}
-              onPress={() => { setTitle(tpl.title); setBody(tpl.body); }}
+              onPress={() => { setTitle(tpl.title); setBody(tpl.body); setSuccessMsg(''); setErrorMsg(''); }}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 6,
-                backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-                borderWidth: 1.5, borderColor: '#ede8e1',
+                backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+                borderWidth: 1.5, borderColor: C.hairline,
+                shadowColor: '#1e293b', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
               }}
             >
               <Text style={{ fontSize: 16 }}>{tpl.icon}</Text>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151' }}>{tpl.title}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: C.text }}>{tpl.title}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Form */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 16, gap: 4 }}>
-          <Input
-            label="عنوان الإشعار *"
-            value={title}
-            onChangeText={setTitle}
-            placeholder="مثال: خصم 20% على جميع المنتجات!"
-          />
-          <Input
-            label="نص الإشعار *"
-            value={body}
-            onChangeText={setBody}
-            multiline
-            numberOfLines={4}
-            placeholder="اكتب تفاصيل العرض أو الرسالة هنا..."
-          />
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 16, gap: 14, shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+          {/* Title field */}
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted, textAlign: 'right' }}>عنوان الإشعار *</Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="مثال: خصم 20% على جميع المنتجات!"
+              placeholderTextColor="#94a3b8"
+              style={{
+                borderWidth: 1.5, borderColor: title ? C.brand : C.hairline,
+                borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
+                fontSize: 14, textAlign: 'right', color: C.text, backgroundColor: '#f8fafc',
+              }}
+            />
+          </View>
+
+          {/* Body field */}
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted, textAlign: 'right' }}>نص الإشعار *</Text>
+            <TextInput
+              value={body}
+              onChangeText={setBody}
+              placeholder="اكتب تفاصيل العرض أو الرسالة هنا..."
+              placeholderTextColor="#94a3b8"
+              multiline
+              numberOfLines={4}
+              style={{
+                borderWidth: 1.5, borderColor: body ? C.brand : C.hairline,
+                borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
+                fontSize: 14, textAlign: 'right', color: C.text, backgroundColor: '#f8fafc',
+                minHeight: 100, textAlignVertical: 'top',
+              }}
+            />
+          </View>
         </View>
 
         {/* Preview */}
         {(title || body) ? (
-          <View style={{
-            backgroundColor: '#1c1917', borderRadius: 18, padding: 16, marginBottom: 20,
-          }}>
-            <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 8 }}>معاينة الإشعار</Text>
-            <View style={{ backgroundColor: '#374151', borderRadius: 12, padding: 14, flexDirection: 'row', gap: 12 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ backgroundColor: '#0d1b2a', borderRadius: 18, padding: 16, marginBottom: 20 }}>
+            <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 8, textAlign: 'right' }}>معاينة الإشعار</Text>
+            <View style={{ backgroundColor: '#1e293b', borderRadius: 14, padding: 14, flexDirection: 'row', gap: 12 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 20 }}>📢</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#f9fafb' }}>{title || 'العنوان'}</Text>
-                <Text style={{ fontSize: 12, color: '#d1d5db', marginTop: 3 }} numberOfLines={2}>{body || 'النص'}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#f8fafc' }}>{title || 'العنوان'}</Text>
+                <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }} numberOfLines={2}>{body || 'النص'}</Text>
               </View>
             </View>
           </View>
         ) : null}
 
+        {/* Error */}
         {errorMsg ? (
-          <View style={{ backgroundColor: '#fef2f2', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#fecaca' }}>
-            <Text style={{ color: '#dc2626', fontWeight: '700', textAlign: 'right' }}>{errorMsg}</Text>
+          <View style={{ backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#fecaca', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+            <Text style={{ color: '#dc2626', fontWeight: '700', flex: 1, textAlign: 'right' }}>{errorMsg}</Text>
+            <Ionicons name="alert-circle" size={18} color="#dc2626" />
           </View>
         ) : null}
 
+        {/* Success */}
         {successMsg ? (
-          <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' }}>
-            <Text style={{ color: '#16a34a', fontWeight: '700', textAlign: 'right' }}>{successMsg}</Text>
+          <View style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+            <Text style={{ color: '#16a34a', fontWeight: '700', flex: 1, textAlign: 'right' }}>{successMsg}</Text>
+            <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
           </View>
         ) : null}
 
+        {/* Send button */}
         {loading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-            <ActivityIndicator color={BRAND} size="large" />
-            <Text style={{ color: '#6b7280', marginTop: 10 }}>جارٍ الإرسال...</Text>
+          <View style={{ alignItems: 'center', paddingVertical: 20, gap: 8 }}>
+            <ActivityIndicator color={C.brand} size="large" />
+            <Text style={{ color: C.muted, fontSize: 13, fontWeight: '600' }}>جارٍ الإرسال...</Text>
           </View>
         ) : (
-          <Button title="إرسال للجميع 📢" onPress={handleSend} fullWidth size="lg" />
+          <TouchableOpacity
+            onPress={handleSend}
+            style={{
+              backgroundColor: (title.trim() && body.trim()) ? C.brand : '#e2e8f0',
+              borderRadius: 16, paddingVertical: 16,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              shadowColor: C.brand, shadowOpacity: (title.trim() && body.trim()) ? 0.3 : 0, shadowRadius: 10, elevation: (title.trim() && body.trim()) ? 4 : 0,
+            }}
+          >
+            <Ionicons name="megaphone-outline" size={20} color={(title.trim() && body.trim()) ? '#fff' : '#94a3b8'} />
+            <Text style={{ color: (title.trim() && body.trim()) ? '#fff' : '#94a3b8', fontWeight: '800', fontSize: 15 }}>
+              إرسال للجميع
+            </Text>
+          </TouchableOpacity>
         )}
 
       </ScrollView>

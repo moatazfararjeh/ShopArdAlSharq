@@ -1,13 +1,15 @@
-import { View, Text, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform, FlatList } from 'react-native';
+import { Image } from 'expo-image';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useCategories, useDeleteCategory } from '@/hooks/useCategories';
-import { Button } from '@/components/ui/Button';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName } from '@/types/models';
+
+const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
 export default function AdminCategoriesScreen() {
   const { t } = useTranslation();
@@ -18,9 +20,7 @@ export default function AdminCategoriesScreen() {
 
   function confirmDelete(id: string, name: string) {
     if (Platform.OS === 'web') {
-      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) {
-        deleteMutation.mutate(id);
-      }
+      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) deleteMutation.mutate(id);
       return;
     }
     Alert.alert(t('admin.confirmDelete'), name, [
@@ -30,58 +30,46 @@ export default function AdminCategoriesScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="flex-row items-center justify-between bg-white px-4 py-3 shadow-sm">
-        <Button
-          title={t('admin.addCategory')}
-          size="sm"
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+      {/* ── Header ── */}
+      <View style={{
+        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: C.hairline,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <TouchableOpacity
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}
+          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="home-outline" size={18} color={C.muted} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>{t('admin.manageCategories')}</Text>
+        <TouchableOpacity
           onPress={() => router.push('/(admin)/categories/add')}
-        />
-        <Text className="text-lg font-bold text-gray-900">{t('admin.manageCategories')}</Text>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.brand, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 }}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>إضافة</Text>
         </TouchableOpacity>
       </View>
 
+      {/* ── List ── */}
       <FlatList
         data={categories ?? []}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View className="mx-4 my-1 flex-row items-center rounded-2xl bg-white p-4 shadow-sm">
-            <View className="flex-1">
-              <Text className="font-semibold text-gray-900">{getCategoryName(item, locale)}</Text>
-              <Text className={['text-xs', item.is_active ? 'text-green-500' : 'text-red-400'].join(' ')}>
-                {item.is_active ? 'نشطة' : 'غير نشطة'}
-              </Text>
-            </View>
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                className="rounded-lg bg-gray-100 px-3 py-1.5"
-                onPress={() => router.push(`/(admin)/categories/${item.id}` as any)}
-              >
-                <Text className="text-sm">{t('common.edit')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="rounded-lg bg-red-50 px-3 py-1.5"
-                onPress={() => confirmDelete(item.id, getCategoryName(item, locale))}
-              >
-                <Text className="text-sm text-red-500">{t('common.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        contentContainerStyle={{ padding: 12, gap: 8, paddingBottom: 32 }}
         ListHeaderComponent={
           isLoading ? (
-            <View style={{ padding: 16, gap: 8 }}>
+            <View style={{ gap: 8 }}>
               {[1, 2, 3, 4, 5].map((i) => (
-                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Skeleton width={52} height={28} borderRadius={8} />
-                    <Skeleton width={52} height={28} borderRadius={8} />
+                <View key={i} style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <Skeleton width={32} height={32} borderRadius={10} />
+                    <Skeleton width={32} height={32} borderRadius={10} />
                   </View>
-                  <View style={{ gap: 6 }}>
-                    <Skeleton width={100} height={13} borderRadius={5} />
-                    <Skeleton width={50} height={11} borderRadius={5} />
+                  <View style={{ gap: 6, alignItems: 'flex-end' }}>
+                    <Skeleton width={110} height={14} borderRadius={5} />
+                    <Skeleton width={50} height={18} borderRadius={20} />
                   </View>
                 </View>
               ))}
@@ -90,14 +78,61 @@ export default function AdminCategoriesScreen() {
         }
         ListEmptyComponent={
           !isLoading ? (
-            <View style={{ marginTop: 80, alignItems: 'center' }}>
-              <Text style={{ color: '#9ca3af' }}>{t('categories.noCategories')}</Text>
+            <View style={{ paddingTop: 80, alignItems: 'center', gap: 10 }}>
+              <Ionicons name="grid-outline" size={48} color="#cbd5e1" />
+              <Text style={{ color: C.muted, fontSize: 15, fontWeight: '600' }}>{t('categories.noCategories')}</Text>
             </View>
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: 16 }}
+        renderItem={({ item }) => (
+          <View style={{
+            backgroundColor: C.card, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12,
+            flexDirection: 'row', alignItems: 'center', gap: 12,
+            shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+          }}>
+            {/* Thumbnail */}
+            {(item as any).image_url ? (
+              <Image source={{ uri: (item as any).image_url }} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#f1f5f9' }} contentFit="cover" />
+            ) : (
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="grid-outline" size={20} color="#94a3b8" />
+              </View>
+            )}
+
+            {/* Info */}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }} numberOfLines={1}>
+                {getCategoryName(item, locale)}
+              </Text>
+              <View style={{
+                alignSelf: 'flex-start', marginTop: 4,
+                paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20,
+                backgroundColor: item.is_active ? '#f0fdf4' : '#fff1f2',
+              }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: item.is_active ? '#16a34a' : '#ef4444' }}>
+                  {item.is_active ? 'نشطة' : 'غير نشطة'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Icon actions */}
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <TouchableOpacity
+                onPress={() => router.push(`/(admin)/categories/${item.id}` as any)}
+                style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="create-outline" size={16} color="#3b82f6" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => confirmDelete(item.id, getCategoryName(item, locale))}
+                style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff1f2', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="trash-outline" size={16} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       />
     </SafeAreaView>
   );
 }
-

@@ -13,7 +13,7 @@ export default function EditBannerScreen() {
 
   if (isLoading || !banner) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f4f8' }}>
         <ActivityIndicator size="large" color="#e36523" />
       </SafeAreaView>
     );
@@ -53,7 +53,7 @@ export default function EditBannerScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <BannerForm
         initial={{
           buttonTextAr: banner.button_text_ar ?? 'تسوق الآن',
