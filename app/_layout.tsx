@@ -58,6 +58,38 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCartSync } from '@/hooks/useCart';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Toast } from '@/components/ui/Toast';
+import React from 'react';
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#fff' }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#dc2626', marginBottom: 12 }}>
+            حدث خطأ غير متوقع
+          </Text>
+          <Text style={{ fontSize: 13, color: '#666', textAlign: 'center' }}>
+            {this.state.error?.message}
+          </Text>
+          <Text style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 8 }}>
+            {this.state.error?.stack?.slice(0, 500)}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AuthInitializer() {
   useAuth();
@@ -103,16 +135,18 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthInitializer />
-      <CartInitializer />
-      <PushInitializer />
-      <StatusBar style="auto" />
-      <View style={{ flex: 1, direction: 'rtl' }}>
-        <Stack screenOptions={{ headerShown: false }} />
-      </View>
-      <Toast />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthInitializer />
+        <CartInitializer />
+        <PushInitializer />
+        <StatusBar style="auto" />
+        <View style={{ flex: 1, direction: 'rtl' }}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </View>
+        <Toast />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
