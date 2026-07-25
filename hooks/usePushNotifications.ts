@@ -44,8 +44,15 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     });
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
-  return tokenData.data;
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '930260f4-2f52-4396-8533-c61ceb68bd72',
+    });
+    return tokenData.data;
+  } catch {
+    // Push token registration can fail on simulators or misconfigured builds
+    return null;
+  }
 }
 
 async function savePushToken(userId: string, token: string) {
@@ -69,6 +76,8 @@ export function usePushNotifications() {
     // Register and save token
     registerForPushNotificationsAsync().then((token) => {
       if (token) savePushToken(userId, token);
+    }).catch(() => {
+      // Silently handle push registration failure to prevent app crash
     });
 
     // Listen for incoming notifications while app is open
