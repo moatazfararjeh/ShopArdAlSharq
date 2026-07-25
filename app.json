@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ArdAlsharq",
+    "name": "FoodBox",
     "slug": "ardalsharq",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,9 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ardalsharq.app",
+      "bundleIdentifier": "com.ardalsharq.foodbox",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول"
+        "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -29,8 +31,14 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"],
-      "blockedPermissions": ["com.google.android.gms.permission.AD_ID"]
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ]
     },
     "web": {
       "bundler": "metro",

@@ -171,6 +171,24 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
 
+        {/* Desktop: persistent right sidebar — FIRST so it sits on the RIGHT in RTL */}
+        {isDesktop && (
+          <View
+            style={{
+              width: 220,
+              backgroundColor: '#fff',
+              borderLeftWidth: 1,
+              borderLeftColor: '#e6e0d8',
+              paddingTop: 20,
+              paddingHorizontal: 10,
+              overflowY: 'auto' as any,
+              flexShrink: 0,
+            }}
+          >
+            {sidebarContent}
+          </View>
+        )}
+
         {/* Content — extra bottom padding on mobile so it clears the bottom bar */}
         <View style={{ flex: 1, overflowY: 'auto' as any, paddingBottom: isDesktop ? 0 : `calc(${BOTTOM_BAR_HEIGHT}px + ${SAI_BOTTOM})` as any }}>
           <View style={{ minHeight: `calc(100vh - ${HEADER_HEIGHT}px)` as any }}>
@@ -234,23 +252,6 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
           </View>}
         </View>
 
-        {/* Desktop: persistent right sidebar */}
-        {isDesktop && (
-          <View
-            style={{
-              width: 220,
-              backgroundColor: '#fff',
-              borderLeftWidth: 1,
-              borderLeftColor: '#e6e0d8',
-              paddingTop: 20,
-              paddingHorizontal: 10,
-              overflowY: 'auto' as any,
-              flexShrink: 0,
-            }}
-          >
-            {sidebarContent}
-          </View>
-        )}
       </View>
 
       {/* ── Mobile: fixed bottom tab bar ───────────────────────────────── */}

@@ -25,52 +25,7 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
   return (
     <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
 
-      {/* ── Content area — left side ─────────────────────────────────────── */}
-      <View style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' as any }}>
-        {/* Sticky top bar */}
-        <View
-          style={{
-            backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#e6e0d8',
-            paddingHorizontal: 24,
-            height: 56,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 4,
-                backgroundColor: '#16a34a',
-              }}
-            />
-            <Text style={{ fontSize: 12, color: '#857d78' }}>متصل</Text>
-          </View>
-          <Text style={{ fontSize: 14, color: '#5c4a35', fontWeight: '500' }}>
-            {profile?.full_name ?? 'المدير'} · أرض الشرق
-          </Text>
-          <TouchableOpacity
-            onPress={() => setSidebarOpen((v) => !v)}
-            activeOpacity={0.7}
-            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f0ec', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name={sidebarOpen ? 'close-outline' : 'menu-outline'} size={20} color="#5c4a35" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Page content */}
-        <View style={{ flex: 1, overflowY: 'auto' as any }}>
-          {children}
-        </View>
-      </View>
-
-      {/* ── Dark sidebar — right side ─────────────────────────────────────── */}
+      {/* ── Dark sidebar — FIRST so it sits on the RIGHT in RTL ──────────── */}
       {sidebarOpen && (
       <View
         style={{
@@ -180,6 +135,52 @@ export function AdminWebLayout({ children }: { children: React.ReactNode }) {
         </View>
       </View>
       )}
+
+      {/* ── Content area ─────────────────────────────────────────────────── */}
+      <View style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' as any }}>
+        {/* Sticky top bar */}
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#e6e0d8',
+            paddingHorizontal: 24,
+            height: 56,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                backgroundColor: '#16a34a',
+              }}
+            />
+            <Text style={{ fontSize: 12, color: '#857d78' }}>متصل</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: '#5c4a35', fontWeight: '500' }}>
+            {profile?.full_name ?? 'المدير'} · أرض الشرق
+          </Text>
+          <TouchableOpacity
+            onPress={() => setSidebarOpen((v) => !v)}
+            activeOpacity={0.7}
+            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f0ec', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name={sidebarOpen ? 'close-outline' : 'menu-outline'} size={20} color="#5c4a35" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Page content */}
+        <View style={{ flex: 1, overflowY: 'auto' as any }}>
+          {children}
+        </View>
+      </View>
+
 
     </View>
   );

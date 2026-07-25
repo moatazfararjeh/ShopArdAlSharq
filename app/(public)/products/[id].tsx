@@ -344,6 +344,11 @@ export default function ProductDetailScreen() {
   const recordEvent = useRecordProductEvent();
   const userId = useAuthStore((s) => s.profile?.id);
 
+  // Flash sale — must be computed before early returns so useCountdown is always called
+  const flashActive    = !!product?.flash_sale_price && !!product?.flash_sale_ends_at &&
+                         new Date(product.flash_sale_ends_at) > new Date();
+  const flashCountdown = useCountdown(flashActive ? product?.flash_sale_ends_at : null);
+
   // Track product view
   useEffect(() => {
     if (id) {
@@ -372,11 +377,6 @@ export default function ProductDetailScreen() {
   const discounted  = hasDiscount(product);
   const images      = product.images?.length ? product.images : (product.product_images ?? []);
   const outOfStock  = product.stock_quantity === 0;
-
-  // Flash sale
-  const flashActive    = !!product.flash_sale_price && !!product.flash_sale_ends_at &&
-                         new Date(product.flash_sale_ends_at) > new Date();
-  const flashCountdown = useCountdown(flashActive ? product.flash_sale_ends_at : null);
 
   // Unit options
   const unitOptions: { unit: 'piece' | 'kg' | 'carton'; label: string; price: number }[] = [];

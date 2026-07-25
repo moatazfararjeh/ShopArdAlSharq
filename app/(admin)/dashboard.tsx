@@ -60,10 +60,10 @@ export default function AdminDashboardScreen() {
         <View style={{ backgroundColor: C.headerBg, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 22 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ alignItems: 'flex-start' }}>
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 }}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5, textAlign: 'right' }}>
                 لوحة التحكم
               </Text>
-              <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+              <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, textAlign: 'right' }}>
                 {new Date().toLocaleDateString('ar-SA', { weekday: 'long', month: 'long', day: 'numeric' })}
               </Text>
             </View>

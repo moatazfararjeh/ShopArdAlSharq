@@ -1,7 +1,7 @@
 import '../global.css';
 import '../i18n';
 import { useEffect } from 'react';
-import { I18nManager, LogBox, Platform, Text, TextInput } from 'react-native';
+import { I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -44,6 +44,12 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 
 // Force RTL at module level so React Native Web applies it before first render
 I18nManager.forceRTL(true);
+
+// Web: set dir="rtl" on the document root so CSS flexbox also respects RTL
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  document.documentElement.setAttribute('dir', 'rtl');
+  document.documentElement.setAttribute('lang', 'ar');
+}
 import { Stack } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -76,8 +82,11 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Redundant safety — already set at module level above
     I18nManager.forceRTL(true);
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.setAttribute('dir', 'rtl');
+      document.documentElement.setAttribute('lang', 'ar');
+    }
   }, []);
 
   useEffect(() => {
@@ -99,7 +108,9 @@ export default function RootLayout() {
       <CartInitializer />
       <PushInitializer />
       <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <View style={{ flex: 1, direction: 'rtl' }}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </View>
       <Toast />
     </QueryClientProvider>
   );
