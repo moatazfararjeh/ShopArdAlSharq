@@ -59,7 +59,7 @@ export default function ChangePasswordScreen() {
         </View>
 
         {/* Form */}
-        <View style={{ padding: 24, maxWidth: 400, width: '100%', alignSelf: 'center' }}>
+        <View style={{ padding: 24, maxWidth: 400, width: '100%', alignSelf: 'center', direction: 'rtl' as any }}>
           <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 20, textAlign: 'right' }}>
             أدخل كلمة المرور الجديدة
           </Text>
@@ -74,7 +74,8 @@ export default function ChangePasswordScreen() {
               borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
               paddingHorizontal: 14, paddingVertical: 14, fontSize: 14,
               textAlign: 'right', marginBottom: 16, backgroundColor: '#fff',
-            }}
+              writingDirection: 'rtl',
+            } as any}
             placeholderTextColor="#9ca3af"
           />
 
@@ -88,7 +89,8 @@ export default function ChangePasswordScreen() {
               borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
               paddingHorizontal: 14, paddingVertical: 14, fontSize: 14,
               textAlign: 'right', marginBottom: 24, backgroundColor: '#fff',
-            }}
+              writingDirection: 'rtl',
+            } as any}
             placeholderTextColor="#9ca3af"
           />
 

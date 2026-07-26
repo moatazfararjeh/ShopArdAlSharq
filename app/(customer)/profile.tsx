@@ -350,7 +350,7 @@ export default function ProfileScreen() {
             editable={!locked}
             placeholder={placeholder}
             keyboardType={keyboard}
-            style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917', textAlign: 'right' } as any}
+            style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917', textAlign: 'right', writingDirection: 'rtl' } as any}
             placeholderTextColor="#c0b8b0"
           />
         </View>
@@ -463,9 +463,9 @@ export default function ProfileScreen() {
                 {profile?.full_name ?? '—'}
               </Text>
               {!!(profile as any)?.company_name && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                  <Ionicons name="business-outline" size={13} color={BRAND} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4, direction: 'rtl' as any }}>
                   <Text style={{ fontSize: 13, color: BRAND, fontWeight: '700' }}>{(profile as any).company_name}</Text>
+                  <Ionicons name="business-outline" size={13} color={BRAND} />
                 </View>
               )}
               <Text style={{ fontSize: 13, color: '#9ca3af', marginBottom: 2, textAlign: 'center' }}>{profile?.email ?? '—'}</Text>
@@ -482,11 +482,11 @@ export default function ProfileScreen() {
                 style={{
                   marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
                   backgroundColor: '#fff7ed', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
-                  borderWidth: 1, borderColor: '#fedcb6',
+                  borderWidth: 1, borderColor: '#fedcb6', direction: 'rtl' as any,
                 }}
               >
-                <Ionicons name="pencil-outline" size={14} color={BRAND} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: BRAND }}>تعديل المعلومات</Text>
+                <Ionicons name="pencil-outline" size={14} color={BRAND} />
               </TouchableOpacity>
             </View>
           )}
@@ -659,12 +659,13 @@ export default function ProfileScreen() {
               flexDirection: 'row', alignItems: 'center',
               justifyContent: 'center', gap: 8,
               borderWidth: 1, borderColor: '#fecaca',
+              direction: 'rtl' as any,
             }}
           >
-            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
             <Text style={{ fontSize: 16, fontWeight: '800', color: '#ef4444' }}>
               {t('auth.logout')}
             </Text>
+            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
           </TouchableOpacity>
         </View>
 

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Animated, PanResponder,
-  Platform, I18nManager,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
@@ -50,20 +50,16 @@ function CartItemRow({ item }: { item: CartItemType }) {
   const rowHeight = useRef(new Animated.Value(1)).current; // scale trick for collapse
   const opacity = useRef(new Animated.Value(1)).current;
 
-  // In RTL, swipe-to-delete direction is reversed (positive dx = swipe left visually)
-  const isRTL = I18nManager.isRTL;
+  // Left swipe triggers delete — same physical gesture on both LTR and RTL iOS
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderMove: (_, g) => {
-        const dx = isRTL ? -g.dx : g.dx;
-        if (dx < 0) translateX.setValue(dx);
+        if (g.dx < 0) translateX.setValue(g.dx);
       },
       onPanResponderRelease: (_, g) => {
-        const dx = isRTL ? -g.dx : g.dx;
-        if (dx < SWIPE_THRESHOLD) {
-          // Snap out then remove
+        if (g.dx < SWIPE_THRESHOLD) {
           Animated.parallel([
             Animated.timing(translateX, { toValue: -400, duration: 220, useNativeDriver: true }),
             Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
@@ -249,7 +245,7 @@ export default function CartScreen() {
 
   if (items.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0', paddingHorizontal: 32 }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0', paddingHorizontal: 32, direction: 'rtl' as any }}>
         <View style={{
           width: 100, height: 100, borderRadius: 50,
           backgroundColor: '#fff7ed',
@@ -280,7 +276,7 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0', direction: 'rtl' as any }} edges={['top']}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, direction: 'rtl' as any }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>{t('cart.title')}</Text>

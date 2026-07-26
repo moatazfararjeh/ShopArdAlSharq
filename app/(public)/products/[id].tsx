@@ -540,7 +540,7 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Stock + weight row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 16, flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 16, flexWrap: 'wrap', direction: 'rtl' as any }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View style={{
                 width: 8, height: 8, borderRadius: 4,
@@ -571,12 +571,13 @@ export default function ProductDetailScreen() {
 
           {/* Quantity stepper */}
           {!outOfStock && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, direction: 'rtl' as any }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#374151' }}>الكمية</Text>
+              {/* direction: ltr keeps − left, + right regardless of I18nManager */}
               <View style={{
                 flexDirection: 'row', alignItems: 'center', gap: 0,
                 backgroundColor: '#f9f7f5', borderRadius: 18, borderWidth: 1.5, borderColor: '#e6e0d8',
-                overflow: 'hidden',
+                overflow: 'hidden', direction: 'ltr' as any,
               }}>
                 <TouchableOpacity
                   onPress={() => setQuantity((q) => Math.max(1, q - 1))}

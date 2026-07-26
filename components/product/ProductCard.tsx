@@ -73,7 +73,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   }
 
   return (
-    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+    <Animated.View style={{ flex: 1, transform: [{ scale }], direction: 'rtl' as any }}>
       <TouchableOpacity
         onPress={onPress}
         onPressIn={onPressIn}
@@ -195,7 +195,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           )}
 
           {/* Price row + add-to-cart */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, direction: 'rtl' as any }}>
 
             {/* Price — large number, small currency unit */}
             <View>
