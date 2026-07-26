@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ardalsharq.foodbox",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "infoPlist": {
         "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول",
         "ITSAppUsesNonExemptEncryption": false,
