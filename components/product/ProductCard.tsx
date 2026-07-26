@@ -170,7 +170,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         </View>
 
         {/* ── Info block ── */}
-        <View style={{ padding: 11, gap: 4 }}>
+        <View style={{ padding: 11, gap: 4, direction: 'rtl' as any }}>
 
           {/* Brand */}
           {!!product.brands?.name && (
