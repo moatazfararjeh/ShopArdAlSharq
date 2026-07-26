@@ -294,7 +294,7 @@ export default function CartScreen() {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#fff',
         borderTopLeftRadius: 28, borderTopRightRadius: 28,
-        paddingHorizontal: 24, paddingTop: 20, paddingBottom: Math.max(insets.bottom, 16) + 60,
+        paddingHorizontal: 24, paddingTop: 20, paddingBottom: Math.max(insets.bottom, 16) + 80,
         shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 16,
       }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>

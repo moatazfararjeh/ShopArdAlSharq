@@ -31,7 +31,7 @@ function BottomButton({ children }: { children: React.ReactNode }) {
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: '#ffffff',
       paddingHorizontal: 16, paddingVertical: 14,
-      paddingBottom: Math.max(insets.bottom, 14) + 60,
+      paddingBottom: Math.max(insets.bottom, 14) + 80,
       borderTopWidth: 1, borderTopColor: '#e6e0d8',
       shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 10,
     }}>

@@ -533,7 +533,7 @@ function MiniCartBar() {
       activeOpacity={0.9}
       style={{
         position: 'absolute',
-        bottom: 14,
+        bottom: 100,
         left: 16,
         right: 16,
         backgroundColor: '#1c1917',
