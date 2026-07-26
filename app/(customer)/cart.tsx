@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, Animated, PanResponder,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -266,9 +266,10 @@ export default function CartScreen() {
   }
 
   const totalWithDelivery = summary.total;
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }} edges={['top']}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>{t('cart.title')}</Text>
@@ -284,7 +285,7 @@ export default function CartScreen() {
         keyExtractor={(item) => `${item.product_id}-${item.selected_unit ?? 'default'}`}
         ListHeaderComponent={<SwipeHint />}
         renderItem={({ item }) => <CartItemRow item={item} />}
-        contentContainerStyle={{ paddingBottom: 270, paddingTop: 4 }}
+        contentContainerStyle={{ paddingBottom: 300, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}
       />
 
@@ -293,7 +294,7 @@ export default function CartScreen() {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#fff',
         borderTopLeftRadius: 28, borderTopRightRadius: 28,
-        paddingHorizontal: 24, paddingTop: 20, paddingBottom: 32,
+        paddingHorizontal: 24, paddingTop: 20, paddingBottom: Math.max(insets.bottom, 16) + 60,
         shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 16,
       }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
