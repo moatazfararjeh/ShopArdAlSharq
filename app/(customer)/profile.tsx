@@ -360,7 +360,7 @@ export default function ProfileScreen() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG, direction: 'rtl' as any }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* ── Orange header ── */}

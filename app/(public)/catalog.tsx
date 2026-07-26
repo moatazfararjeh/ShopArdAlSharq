@@ -3,6 +3,7 @@ import {
   View, Text, Dimensions, TouchableOpacity,
   ActivityIndicator, PanResponder, Platform, Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
@@ -367,11 +368,10 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
     }),
   ).current;
 
+  const insets = useSafeAreaInsets();
   const bookW = isDesktop ? winW - 160 : winW;
-  // On mobile: subtract toolbar (~60px), dots+indicator (~52px), and a buffer
-  // for the safe-area-inset-top (approx 50px max on iPhone).  Using a generous
-  // constant keeps the book within the viewport on all phone sizes.
-  const bookH = isDesktop ? Math.min(winH - 120, 820) : winH - 160;
+  // On mobile: subtract toolbar, dots+indicator, and safe area insets
+  const bookH = isDesktop ? Math.min(winH - 120, 820) : winH - 160 - insets.top;
   const pageW = isDesktop ? bookW / 2 : bookW;
 
   const [leftPage, rightPage] = spreads[spreadIdx];
@@ -395,8 +395,8 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
       <View style={{
         width: '100%', flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 8,
-        // Push content below the status bar on mobile web (viewport-fit=cover)
-        paddingTop: Platform.OS === 'web' ? 'env(safe-area-inset-top, 8px)' as any : 8,
+        // Push content below the status bar
+        paddingTop: Platform.OS === 'web' ? 'env(safe-area-inset-top, 8px)' as any : insets.top + 8,
         backgroundColor: '#111',
       }}>
         <TouchableOpacity
