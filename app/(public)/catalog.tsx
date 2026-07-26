@@ -33,7 +33,7 @@ function useWindowSize() {
     height: typeof window !== 'undefined' ? window.innerHeight : Dimensions.get('window').height,
   }));
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (Platform.OS !== 'web') {
       const sub = Dimensions.addEventListener('change', ({ window: w }) =>
         setSize({ width: w.width, height: w.height }),
       );

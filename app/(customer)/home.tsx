@@ -584,7 +584,7 @@ export default function HomeScreen() {
 
   const [windowWidth, setWindowWidth] = useState<number>(getBrowserWidth);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     const handler = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);

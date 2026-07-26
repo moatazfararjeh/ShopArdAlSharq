@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Platform } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -43,6 +43,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
   const [winWidth, setWinWidth] = useState<number>(getBrowserWidth);
 
   useEffect(() => {
+    if (Platform.OS !== 'web') return;
     const handler = () => setWinWidth(window.innerWidth);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
