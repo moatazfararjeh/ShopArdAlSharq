@@ -107,6 +107,4 @@ export function usePushNotifications() {
       responseListener.current?.remove();
     };
   }, [session?.user?.id]);
-    };
-  }, [session?.user?.id]);
 }
