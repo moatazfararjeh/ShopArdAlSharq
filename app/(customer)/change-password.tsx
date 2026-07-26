@@ -37,14 +37,25 @@ export default function ChangePasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8' }}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/profile' as any)} style={{ padding: 8 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center',
+          paddingHorizontal: 16, paddingVertical: 14,
+          backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8',
+          direction: 'rtl' as any,
+        }}>
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/profile' as any)}
+            style={{ padding: 8 }}
+          >
             <Ionicons name="arrow-forward" size={22} color="#1c1917" />
           </TouchableOpacity>
-          <Text style={{ flex: 1, fontSize: 18, fontWeight: '700', color: '#1c1917', textAlign: 'center', marginRight: 30 }}>تغيير كلمة المرور</Text>
+          <Text style={{ flex: 1, fontSize: 18, fontWeight: '700', color: '#1c1917', textAlign: 'center' }}>
+            تغيير كلمة المرور
+          </Text>
+          <View style={{ width: 38 }} />
         </View>
 
         {/* Form */}

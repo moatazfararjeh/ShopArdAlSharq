@@ -15,6 +15,7 @@ import { getProductName, getProductDescription } from '@/types/models';
 import { CartItem as CartItemType } from '@/types/models';
 import { Image } from 'expo-image';
 import { getCartItemPrice } from '@/stores/cartStore';
+import { Ionicons } from '@expo/vector-icons';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
@@ -88,11 +89,14 @@ function CartItemRow({ item }: { item: CartItemType }) {
         style={{
           position: 'absolute', top: 0, bottom: 0, right: 0, left: 0,
           backgroundColor: DELETE_BG, borderRadius: 20,
-          alignItems: 'flex-end', justifyContent: 'center',
-          paddingEnd: 20, opacity: deleteOpacity,
+          opacity: deleteOpacity,
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>🗑 حذف</Text>
+        {/* Delete label — pinned to RIGHT where card reveals on left-swipe */}
+        <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+          <Ionicons name="trash-outline" size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>حذف</Text>
+        </View>
       </Animated.View>
 
       <Animated.View
@@ -104,8 +108,9 @@ function CartItemRow({ item }: { item: CartItemType }) {
           backgroundColor: '#fff', borderRadius: 20,
           padding: 12,
           shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+          direction: 'rtl' as any,
         }}>
-          {/* Product image */}
+          {/* Product image — FIRST in RTL row → RIGHT side */}
           <Image
             source={{ uri: (item.product.images?.[0] ?? item.product.product_images?.[0])?.url }}
             style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }}
@@ -116,13 +121,13 @@ function CartItemRow({ item }: { item: CartItemType }) {
 
           <View style={{ flex: 1, marginStart: 12 }}>
             {/* Name */}
-            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20 }} numberOfLines={1}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20, textAlign: 'right' }} numberOfLines={1}>
               {getProductName(item.product, locale)}
             </Text>
 
             {/* Description */}
             {!!description && (
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15 }} numberOfLines={1}>
+              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15, textAlign: 'right' }} numberOfLines={1}>
                 {description}
               </Text>
             )}
@@ -173,7 +178,8 @@ function CartItemRow({ item }: { item: CartItemType }) {
                 {formatPrice(effectivePrice)}
               </Text>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {/* Stepper: direction ltr so +/− stay conventional */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr' as any }}>
                 <TouchableOpacity
                   onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
                   style={{
@@ -223,13 +229,14 @@ function SwipeHint() {
   if (Platform.OS === 'web') return null;
   return (
     <View style={{
-      flexDirection: 'row', alignItems: 'center', gap: 6,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
       marginHorizontal: 16, marginBottom: 4, marginTop: 2,
       backgroundColor: '#fef2f2', borderRadius: 10,
       paddingHorizontal: 12, paddingVertical: 7,
     }}>
-      <Text style={{ fontSize: 12 }}>←</Text>
-      <Text style={{ fontSize: 12, color: '#991b1b', fontWeight: '600' }}>اسحب المنتج لليسار للحذف</Text>
+      {/* RTL: text first (RIGHT), arrow last (LEFT) */}
+      <Text style={{ fontSize: 12, color: '#991b1b', fontWeight: '600' }}>اسحب لليسار للحذف</Text>
+      <Ionicons name="arrow-back" size={14} color="#991b1b" />
     </View>
   );
 }
@@ -275,7 +282,7 @@ export default function CartScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0' }} edges={['top']}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, direction: 'rtl' as any }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>{t('cart.title')}</Text>
         <View style={{ backgroundColor: '#fff7ed', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
           <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>
@@ -301,16 +308,16 @@ export default function CartScreen() {
         paddingHorizontal: 24, paddingTop: 20, paddingBottom: Math.max(insets.bottom, 16) + 80,
         shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 16,
       }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, direction: 'rtl' as any }}>
           <Text style={{ color: '#6b7280', fontSize: 14 }}>{t('cart.subtotal', { defaultValue: 'مجموع المنتجات' })}</Text>
           <Text style={{ fontWeight: '600', fontSize: 14, color: '#374151' }}>{formatPrice(summary.subtotal)}</Text>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, direction: 'rtl' as any }}>
           <Text style={{ color: '#6b7280', fontSize: 14 }}>{t('cart.deliveryFee', { defaultValue: 'رسوم التوصيل' })}</Text>
           <Text style={{ fontWeight: '600', fontSize: 14, color: '#16a34a' }}>مجاني</Text>
         </View>
         {summary.discount > 0 && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, direction: 'rtl' as any }}>
             <Text style={{ color: '#16a34a', fontSize: 14 }}>{t('cart.discount', { defaultValue: 'خصم' })}</Text>
             <Text style={{ fontWeight: '600', fontSize: 14, color: '#16a34a' }}>-{formatPrice(summary.discount)}</Text>
           </View>
@@ -319,6 +326,7 @@ export default function CartScreen() {
           flexDirection: 'row', justifyContent: 'space-between',
           borderTopWidth: 1, borderTopColor: '#f3f4f6',
           paddingTop: 12, marginBottom: 16,
+          direction: 'rtl' as any,
         }}>
           <Text style={{ fontSize: 17, fontWeight: '800', color: '#111827' }}>{t('cart.total')}</Text>
           <Text style={{ fontSize: 20, fontWeight: '900', color: '#111827' }}>{formatPrice(totalWithDelivery)}</Text>
@@ -335,7 +343,7 @@ export default function CartScreen() {
           }}
         >
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>
-            {t('cart.checkout')} ←
+            {t('cart.checkout')}
           </Text>
         </TouchableOpacity>
       </View>

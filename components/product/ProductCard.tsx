@@ -199,7 +199,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
             {/* Price — large number, small currency unit */}
             <View>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, direction: 'ltr' as any }}>
                 <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND, lineHeight: 20 }}>
                   {priceNum}
                 </Text>
@@ -208,7 +208,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                 </Text>
               </View>
               {discounted && (
-                <Text style={{ fontSize: 10, color: '#c9bfb6', textDecorationLine: 'line-through', marginTop: -1 }}>
+                <Text style={{ fontSize: 10, color: '#c9bfb6', textDecorationLine: 'line-through', marginTop: -1, textAlign: 'right' }}>
                   {Number(product.price).toFixed(3)}
                 </Text>
               )}
@@ -221,6 +221,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                   flexDirection: 'row', alignItems: 'center',
                   borderRadius: 10, borderWidth: 1.5, borderColor: BRAND,
                   overflow: 'hidden',
+                  direction: 'ltr' as any,
                 }}>
                   <TouchableOpacity
                     onPress={() => updateQuantity(product.id, cartQty - 1)}

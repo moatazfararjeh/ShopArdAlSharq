@@ -438,12 +438,7 @@ export default function ProfileScreen() {
                 editable={false}
               />
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                <TouchableOpacity
-                  onPress={() => setEditMode(false)}
-                  style={{ flex: 1, paddingVertical: 13, borderRadius: 14, backgroundColor: '#f5f0eb', alignItems: 'center' }}
-                >
-                  <Text style={{ fontWeight: '700', color: '#5c4a35' }}>إلغاء</Text>
-                </TouchableOpacity>
+                {/* Save FIRST → RIGHT in RTL (primary action) */}
                 <TouchableOpacity
                   onPress={saveProfile}
                   disabled={saving}
@@ -452,6 +447,13 @@ export default function ProfileScreen() {
                   {saving
                     ? <ActivityIndicator color="#fff" size="small" />
                     : <Text style={{ fontWeight: '800', color: '#fff', fontSize: 15 }}>حفظ التغييرات</Text>}
+                </TouchableOpacity>
+                {/* Cancel LAST → LEFT in RTL */}
+                <TouchableOpacity
+                  onPress={() => setEditMode(false)}
+                  style={{ flex: 1, paddingVertical: 13, borderRadius: 14, backgroundColor: '#f5f0eb', alignItems: 'center' }}
+                >
+                  <Text style={{ fontWeight: '700', color: '#5c4a35' }}>إلغاء</Text>
                 </TouchableOpacity>
               </View>
             </View>

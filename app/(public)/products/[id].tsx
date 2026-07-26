@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -220,14 +221,15 @@ function WishlistButton({ productId }: { productId: string }) {
       <TouchableOpacity
         onPress={toggle}
         style={{
-          width: 40, height: 40, borderRadius: 20,
+          width: 44, height: 44, borderRadius: 22,
           backgroundColor: isFav ? '#fef2f2' : 'rgba(255,255,255,0.95)',
           alignItems: 'center', justifyContent: 'center',
-          shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+          shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 5,
+          borderWidth: isFav ? 1 : 0, borderColor: '#fecaca',
         }}
         activeOpacity={0.75}
       >
-        <Text style={{ fontSize: 18 }}>{isFav ? '❤️' : '🤍'}</Text>
+        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? '#ef4444' : '#374151'} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -269,14 +271,14 @@ function ShareButton({ productId, productName }: { productId: string; productNam
     <TouchableOpacity
       onPress={handleShare}
       style={{
-        width: 40, height: 40, borderRadius: 20,
+        width: 44, height: 44, borderRadius: 22,
         backgroundColor: 'rgba(255,255,255,0.95)',
         alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+        shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 5,
       }}
       activeOpacity={0.75}
     >
-      <Text style={{ fontSize: 18 }}>📤</Text>
+      <Ionicons name="share-social-outline" size={20} color="#374151" />
     </TouchableOpacity>
   );
 }
@@ -420,7 +422,7 @@ export default function ProductDetailScreen() {
             discountPrice={product.discount_price ?? undefined}
           />
 
-          {/* Back button */}
+          {/* Back + Home — top right (RTL: reading start) */}
           <View style={{
             position: 'absolute', top: (insets.top || 0) + 10, right: 16,
             flexDirection: 'row', gap: 8,
@@ -428,28 +430,28 @@ export default function ProductDetailScreen() {
             <TouchableOpacity
               onPress={goBack}
               style={{
-                width: 40, height: 40, borderRadius: 20,
+                width: 44, height: 44, borderRadius: 22,
                 backgroundColor: 'rgba(255,255,255,0.95)',
                 alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+                shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 5,
               }}
             >
-              <Text style={{ fontSize: 18, color: '#374151' }}>→</Text>
+              <Ionicons name="arrow-forward" size={22} color="#374151" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.replace('/(customer)/home')}
               style={{
-                width: 40, height: 40, borderRadius: 20,
+                width: 44, height: 44, borderRadius: 22,
                 backgroundColor: 'rgba(255,255,255,0.95)',
                 alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+                shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 5,
               }}
             >
-              <Text style={{ fontSize: 18 }}>🏠</Text>
+              <Ionicons name="home-outline" size={20} color="#374151" />
             </TouchableOpacity>
           </View>
 
-          {/* Wishlist + Share buttons — top left */}
+          {/* Wishlist + Share — top left (RTL: secondary actions) */}
           <View style={{
             position: 'absolute', top: (insets.top || 0) + 10, left: 16,
             flexDirection: 'row', gap: 8,
