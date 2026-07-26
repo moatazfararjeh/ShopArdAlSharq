@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,23 @@ import { getProductName } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 
 const BRAND = '#e36523';
+
+// ─── Bottom sticky button wrapper ─────────────────────────────────────────────
+function BottomButton({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      backgroundColor: '#ffffff',
+      paddingHorizontal: 16, paddingVertical: 14,
+      paddingBottom: Math.max(insets.bottom, 14) + 60,
+      borderTopWidth: 1, borderTopColor: '#e6e0d8',
+      shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 10,
+    }}>
+      {children}
+    </View>
+  );
+}
 
 interface SavedAddress {
   id: string;
@@ -352,7 +369,7 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }} edges={['top']}>
       {/* Header + Step bar */}
       <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0ece6' }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 }}>
@@ -363,7 +380,7 @@ export default function CheckoutScreen() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 130 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 200 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Error banner */}
@@ -561,13 +578,7 @@ export default function CheckoutScreen() {
       </ScrollView>
 
       {/* Sticky place-order button */}
-      <View style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: '#ffffff',
-        paddingHorizontal: 16, paddingVertical: 14,
-        borderTopWidth: 1, borderTopColor: '#e6e0d8',
-        shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 10,
-      }}>
+      <BottomButton>
         {/* Total row above the button */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
           <Text style={{ fontSize: 14, color: '#857d78' }}>الإجمالي</Text>
@@ -588,7 +599,7 @@ export default function CheckoutScreen() {
           fullWidth
           size="lg"
         />
-      </View>
+      </BottomButton>
     </SafeAreaView>
   );
 }
