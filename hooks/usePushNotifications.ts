@@ -77,8 +77,15 @@ export function usePushNotifications() {
 
     // Register and save token
     registerForPushNotificationsAsync().then((token) => {
-      if (token) savePushToken(userId, token);
-    }).catch(() => {});
+      if (token) {
+        console.log('[Push] Token registered:', token);
+        savePushToken(userId, token);
+      } else {
+        console.log('[Push] No token received');
+      }
+    }).catch((err) => {
+      console.log('[Push] Registration error:', err);
+    });
 
     try {
       // Listen for incoming notifications while app is open

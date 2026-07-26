@@ -67,7 +67,8 @@
           "color": "#e36523",
           "sounds": [],
           "androidMode": "default",
-          "androidCollapsedTitle": "ArdAlsharq"
+          "androidCollapsedTitle": "ArdAlsharq",
+          "mode": "production"
         }
       ],
       "expo-secure-store",
