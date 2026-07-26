@@ -43,7 +43,14 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 // Force RTL at module level so React Native Web applies it before first render
+I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
+
+// On iOS/Android first install, forceRTL requires a reload to take effect
+if (Platform.OS !== 'web' && !I18nManager.isRTL) {
+  const Updates = require('expo-updates');
+  Updates.reloadAsync().catch(() => {});
+}
 
 // Web: set dir="rtl" on the document root so CSS flexbox also respects RTL
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -123,10 +130,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
-      const timer = setTimeout(() => {
-        SplashScreen.hideAsync();
-      }, 3000);
-      return () => clearTimeout(timer);
+      SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
 

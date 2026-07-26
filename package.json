@@ -39,6 +39,7 @@
     "expo-secure-store": "~55.0.16",
     "expo-splash-screen": "~55.0.23",
     "expo-status-bar": "~55.0.6",
+    "expo-updates": "~55.0.26",
     "i18next": "^25.8.18",
     "nativewind": "^4.2.2",
     "react": "19.2.0",
