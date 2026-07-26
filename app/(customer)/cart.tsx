@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Animated, PanResponder,
-  Platform,
+  Platform, I18nManager,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
@@ -49,15 +49,19 @@ function CartItemRow({ item }: { item: CartItemType }) {
   const rowHeight = useRef(new Animated.Value(1)).current; // scale trick for collapse
   const opacity = useRef(new Animated.Value(1)).current;
 
+  // In RTL, swipe-to-delete direction is reversed (positive dx = swipe left visually)
+  const isRTL = I18nManager.isRTL;
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderMove: (_, g) => {
-        if (g.dx < 0) translateX.setValue(g.dx);
+        const dx = isRTL ? -g.dx : g.dx;
+        if (dx < 0) translateX.setValue(dx);
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dx < SWIPE_THRESHOLD) {
+        const dx = isRTL ? -g.dx : g.dx;
+        if (dx < SWIPE_THRESHOLD) {
           // Snap out then remove
           Animated.parallel([
             Animated.timing(translateX, { toValue: -400, duration: 220, useNativeDriver: true }),
