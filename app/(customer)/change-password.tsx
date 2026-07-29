@@ -37,14 +37,13 @@ export default function ChangePasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Header */}
+        {/* Header — back button first (→RIGHT in RTL), title middle, spacer last (→LEFT) */}
         <View style={{
           flexDirection: 'row', alignItems: 'center',
           paddingHorizontal: 16, paddingVertical: 14,
           backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8',
-          direction: 'rtl' as any,
         }}>
           <TouchableOpacity
             onPress={() => router.canGoBack() ? router.back() : router.replace('/(customer)/profile' as any)}
@@ -59,12 +58,12 @@ export default function ChangePasswordScreen() {
         </View>
 
         {/* Form */}
-        <View style={{ padding: 24, maxWidth: 400, width: '100%', alignSelf: 'center', direction: 'rtl' as any }}>
-          <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 20, textAlign: 'right' }}>
+        <View style={{ padding: 24, maxWidth: 400, width: '100%', alignSelf: 'center' }}>
+          <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
             أدخل كلمة المرور الجديدة
           </Text>
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'right' }}>كلمة المرور الجديدة</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>كلمة المرور الجديدة</Text>
           <TextInput
             placeholder="أدخل كلمة المرور الجديدة"
             secureTextEntry
@@ -79,7 +78,7 @@ export default function ChangePasswordScreen() {
             placeholderTextColor="#9ca3af"
           />
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'right' }}>تأكيد كلمة المرور</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>تأكيد كلمة المرور</Text>
           <TextInput
             placeholder="أعد إدخال كلمة المرور"
             secureTextEntry

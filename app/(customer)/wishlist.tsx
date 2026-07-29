@@ -113,7 +113,7 @@ export default function WishlistScreen() {
         <Text style={{ fontSize: 20, fontWeight: '800', color: '#1c1917' }}>المفضلة</Text>
         {products.length > 0 && (
           <View style={{
-            position: 'absolute', right: 20,
+            position: 'absolute', left: 20,
             backgroundColor: '#fff0eb', borderRadius: 12,
             paddingHorizontal: 10, paddingVertical: 3,
           }}>

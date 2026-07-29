@@ -217,9 +217,9 @@ const STATUS_META: Record<string, { icon: string; labelAr: string }> = {
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-      <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600', flex: 1, textAlign: 'right' }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: '#9ca3af', width: 90, paddingTop: 1, textAlign: 'right' }}>{label}</Text>
-      <Text style={{ fontSize: 14, width: 22, textAlign: 'right' }}>{icon}</Text>
+      <Text style={{ fontSize: 14, width: 22 }}>{icon}</Text>
+      <Text style={{ fontSize: 12, color: '#9ca3af', width: 90, paddingTop: 1 }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600', flex: 1 }}>{value}</Text>
     </View>
   );
 }
@@ -256,22 +256,7 @@ function OrderTimeline({ status }: { status: string }) {
 
         return (
           <View key={step} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            {/* Label */}
-            <View style={{ flex: 1, paddingEnd: 12, paddingBottom: isLast ? 0 : 18, justifyContent: 'center', paddingTop: isCurrent ? 6 : 4 }}>
-              <Text style={{
-                fontSize: isCurrent ? 14 : 13,
-                fontWeight: isCurrent ? '800' : isDone ? '600' : '500',
-                color: isCurrent ? '#e36523' : isDone ? '#111827' : '#9ca3af',
-                textAlign: 'right',
-              }}>
-                {meta.labelAr}
-              </Text>
-              {isCurrent && (
-                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, textAlign: 'right' }}>الحالة الحالية</Text>
-              )}
-            </View>
-
-            {/* Dot + vertical line */}
+            {/* Dot + vertical line — first child → RIGHT in RTL */}
             <View style={{ alignItems: 'center', width: 38 }}>
               <View style={{
                 width: isCurrent ? 38 : 32,
@@ -290,6 +275,20 @@ function OrderTimeline({ status }: { status: string }) {
               </View>
               {!isLast && (
                 <View style={{ width: 2.5, flex: 1, minHeight: 22, backgroundColor: lineColor, marginVertical: 3, borderRadius: 2 }} />
+              )}
+            </View>
+
+            {/* Label — last child → LEFT in RTL */}
+            <View style={{ flex: 1, paddingStart: 12, paddingBottom: isLast ? 0 : 18, justifyContent: 'center', paddingTop: isCurrent ? 6 : 4 }}>
+              <Text style={{
+                fontSize: isCurrent ? 14 : 13,
+                fontWeight: isCurrent ? '800' : isDone ? '600' : '500',
+                color: isCurrent ? '#e36523' : isDone ? '#111827' : '#9ca3af',
+              }}>
+                {meta.labelAr}
+              </Text>
+              {isCurrent && (
+                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>الحالة الحالية</Text>
               )}
             </View>
           </View>
@@ -341,7 +340,7 @@ export default function OrderDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
-      {/* Header — RTL: back button left, order info right, status+print far right */}
+      {/* Header — RTL: back button RIGHT (first child), order info middle, status LEFT (last child) */}
       <View style={{
         backgroundColor: '#ffffff',
         paddingTop: insets.top + 8,
@@ -349,14 +348,22 @@ export default function OrderDetailScreen() {
         paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        direction: 'rtl' as any,
+        gap: 10,
         shadowColor: '#1c1917',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
         elevation: 3,
       }}>
-        {/* Right side: order number + date */}
+        {/* Back button — first child → RIGHT in RTL */}
+        <TouchableOpacity
+          onPress={() => goBack()}
+          style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+        </TouchableOpacity>
+
+        {/* Order number + date — fills middle */}
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
             {t('orders.orderNumber')} #{order.order_number}
@@ -366,7 +373,7 @@ export default function OrderDetailScreen() {
           </Text>
         </View>
 
-        {/* Left side: status badge + print */}
+        {/* Status badge + print — last child → LEFT in RTL */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ backgroundColor: statusConfig.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ fontSize: 12 }}>{statusConfig.label}</Text>
@@ -387,12 +394,6 @@ export default function OrderDetailScreen() {
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', pointerEvents: 'none' }}>طباعة</Text>
             </Pressable>
           )}
-          <TouchableOpacity
-            onPress={() => goBack()}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -404,7 +405,7 @@ export default function OrderDetailScreen() {
         <OrderTimeline status={order.status} />
 
         {/* Items section */}
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', marginBottom: 12, marginTop: 4, textAlign: 'right' }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', marginBottom: 12, marginTop: 4 }}>
           {t('orders.orderItems')}
         </Text>
 
@@ -435,27 +436,7 @@ export default function OrderDetailScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523', marginEnd: 4 }}>
-                  {formatPrice(item.total_price)}
-                </Text>
-                <View style={{ flex: 1, marginEnd: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 20, textAlign: 'right' }} numberOfLines={2}>
-                    {name}
-                  </Text>
-                  {prod?.weight ? (
-                    <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, textAlign: 'right' }}>
-                      ⚖️ {prod.weight} {prod.weight_unit ?? 'كغ'}
-                    </Text>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <Text style={{ fontSize: 12, color: '#6b7280' }}>
-                      {item.quantity} × {formatPrice(item.unit_price)}
-                    </Text>
-                    <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 11, color: '#ea580c', fontWeight: '700' }}>{unitLabel}</Text>
-                    </View>
-                  </View>
-                </View>
+                {/* Image — first child → RIGHT in RTL */}
                 {imgUrl ? (
                   <Image
                     source={{ uri: imgUrl }}
@@ -469,6 +450,29 @@ export default function OrderDetailScreen() {
                     <Text style={{ fontSize: 28 }}>📦</Text>
                   </View>
                 )}
+                {/* Info — middle */}
+                <View style={{ flex: 1, marginHorizontal: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 20 }} numberOfLines={2}>
+                    {name}
+                  </Text>
+                  {prod?.weight ? (
+                    <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                      ⚖️ {prod.weight} {prod.weight_unit ?? 'كغ'}
+                    </Text>
+                  ) : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, color: '#ea580c', fontWeight: '700' }}>{unitLabel}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                      {item.quantity} × {formatPrice(item.unit_price)}
+                    </Text>
+                  </View>
+                </View>
+                {/* Price — last child → LEFT in RTL */}
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523' }}>
+                  {formatPrice(item.total_price)}
+                </Text>
               </View>
             </View>
           );
@@ -488,19 +492,19 @@ export default function OrderDetailScreen() {
           elevation: 3,
         }}>
           {order.delivery_fee > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, direction: 'rtl' as any }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text style={{ fontSize: 13, color: '#6b7280' }}>رسوم التوصيل</Text>
               <Text style={{ fontSize: 13, color: '#374151', fontWeight: '600' }}>{formatPrice(order.delivery_fee)}</Text>
             </View>
           )}
           {order.discount_amount > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, direction: 'rtl' as any }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text style={{ fontSize: 13, color: '#6b7280' }}>الخصم</Text>
               <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>- {formatPrice(order.discount_amount)}</Text>
             </View>
           )}
           <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 10 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', direction: 'rtl' as any }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 15, color: '#6b7280', fontWeight: '600' }}>{t('cart.total')}</Text>
             <Text style={{ fontSize: 20, fontWeight: '900', color: '#e36523' }}>
               {formatPrice(order.total_amount)}
@@ -525,7 +529,7 @@ export default function OrderDetailScreen() {
             }}>
               <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 12 }}>📍 عنوان التوصيل</Text>
               {addr.label ? (
-                <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-end', marginBottom: 10 }}>
+                <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10 }}>
                   <Text style={{ fontSize: 11, color: '#ea580c', fontWeight: '700' }}>{addr.label}</Text>
                 </View>
               ) : null}

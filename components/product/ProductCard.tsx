@@ -170,11 +170,11 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         </View>
 
         {/* ── Info block ── */}
-        <View style={{ padding: 11, gap: 4, direction: 'rtl' as any }}>
+        <View style={{ padding: 11, gap: 4, direction: 'rtl' as any, alignItems: 'flex-end' }}>
 
           {/* Brand */}
           {!!product.brands?.name && (
-            <Text style={{ fontSize: 10, color: '#a39890', fontWeight: '700', textAlign: 'right' }}>
+            <Text style={{ fontSize: 10, color: '#a39890', fontWeight: '700', width: '100%' }}>
               {product.brands.name}
             </Text>
           )}
@@ -182,14 +182,14 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           {/* Product name */}
           <Text
             numberOfLines={2}
-            style={{ fontSize: 13, fontWeight: '800', color: '#1c1917', lineHeight: 18, textAlign: 'right' }}
+            style={{ fontSize: 13, fontWeight: '800', color: '#1c1917', lineHeight: 18, width: '100%' }}
           >
             {name}
           </Text>
 
           {/* Weight */}
           {product.weight != null && (
-            <Text style={{ fontSize: 10, color: '#b0a89e', textAlign: 'right' }}>
+            <Text style={{ fontSize: 10, color: '#b0a89e', width: '100%' }}>
               {product.weight} {product.weight_unit ?? 'غم'}
             </Text>
           )}
@@ -208,7 +208,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                 </Text>
               </View>
               {discounted && (
-                <Text style={{ fontSize: 10, color: '#c9bfb6', textDecorationLine: 'line-through', marginTop: -1, textAlign: 'right' }}>
+                <Text style={{ fontSize: 10, color: '#c9bfb6', textDecorationLine: 'line-through', marginTop: -1 }}>
                   {Number(product.price).toFixed(3)}
                 </Text>
               )}

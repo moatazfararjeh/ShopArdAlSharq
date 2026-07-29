@@ -97,7 +97,7 @@ function HeroBannerCard({
         {!!titleText && (
           <Text style={{
             color: '#fff', fontSize: 22, fontWeight: '900',
-            lineHeight: 30, textAlign: 'right', marginBottom: 14,
+            lineHeight: 30, marginBottom: 14,
             textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
           }}>{titleText}</Text>
         )}
@@ -657,7 +657,7 @@ export default function HomeScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder={t('products.search')}
-          style={{ flex: 1, fontSize: 14, color: '#111827', textAlign: 'right' } as any}
+          style={{ flex: 1, fontSize: 14, color: '#111827' } as any}
           placeholderTextColor="#9ca3af"
         />
         <Ionicons name="search-outline" size={17} color="#9ca3af" />
@@ -680,7 +680,7 @@ export default function HomeScreen() {
         paddingHorizontal: 16, paddingVertical: 10,
         backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8', gap: 10,
       }}>
-        <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: '#1c1917', textAlign: 'right' }}>
+        <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: '#1c1917' }}>
           {label}
         </Text>
         <TouchableOpacity

@@ -5,12 +5,15 @@ import { I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-nati
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Set default font family for all Text and TextInput components
-// Icons override this with their own fontFamily, so they remain unaffected
+// Set default font family + RTL rendering for all Text and TextInput components.
+// Icons use their own fontFamily so they remain unaffected.
+// writingDirection: 'rtl' — tells iOS/Android to shape bidirectional Unicode text RTL.
+// textAlign: 'right'      — anchors every text block to the right by default.
+// Components that need centering already set textAlign: 'center' explicitly.
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
 (Text as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
 if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
-(TextInput as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
+(TextInput as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular', textAlign: 'right', writingDirection: 'rtl' };
 
 SplashScreen.preventAutoHideAsync();
 
@@ -45,12 +48,6 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 // Force RTL at module level so React Native Web applies it before first render
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
-
-// On iOS/Android first install, forceRTL requires a reload to take effect
-if (Platform.OS !== 'web' && !I18nManager.isRTL) {
-  const Updates = require('expo-updates');
-  Updates.reloadAsync().catch(() => {});
-}
 
 // Web: set dir="rtl" on the document root so CSS flexbox also respects RTL
 if (Platform.OS === 'web' && typeof document !== 'undefined') {

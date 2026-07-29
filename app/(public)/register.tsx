@@ -140,7 +140,7 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Image source={require('@/assets/logo.png')} style={{ width: 340, height: 140, marginBottom: 24, alignSelf: 'center' }} resizeMode="contain" />
-          <Text className="mb-2 text-3xl font-bold text-gray-900">{t('auth.register')}</Text>
+          <Text className="mb-2 text-3xl font-bold text-gray-900" style={{ width: '100%', paddingTop: 4 }}>{t('auth.register')}</Text>
 
           {registerMutation.error && (
             <View className="mb-4 rounded-xl bg-red-50 px-4 py-3">

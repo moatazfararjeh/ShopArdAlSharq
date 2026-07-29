@@ -422,9 +422,9 @@ export default function ProductDetailScreen() {
             discountPrice={product.discount_price ?? undefined}
           />
 
-          {/* Back + Home — top right (RTL: reading start) */}
+          {/* Back + Home — top LEFT (Arabic RTL standard: back arrow points → right) */}
           <View style={{
-            position: 'absolute', top: (insets.top || 0) + 10, right: 16,
+            position: 'absolute', top: (insets.top || 0) + 10, left: 16,
             flexDirection: 'row', gap: 8,
           }}>
             <TouchableOpacity
@@ -450,21 +450,24 @@ export default function ProductDetailScreen() {
               <Ionicons name="home-outline" size={20} color="#374151" />
             </TouchableOpacity>
           </View>
-
-          {/* Wishlist + Share — top left (RTL: secondary actions) */}
-          <View style={{
-            position: 'absolute', top: (insets.top || 0) + 10, left: 16,
-            flexDirection: 'row', gap: 8,
-          }}>
-            <WishlistButton productId={product.id} />
-            <ShareButton productId={product.id} productName={name} />
-          </View>
         </View>
 
+        {/* ── Wishlist + Share — below the image ── */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 16,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: '#f3f4f6',
+        }}>
+          <WishlistButton productId={product.id} />
+          <ShareButton productId={product.id} productName={name} />
+        </View>
         {/* ── Product info ── */}
         <View style={{ padding: 20, direction: 'rtl' as any }}>
           {/* Name */}
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#111827', lineHeight: 32, textAlign: 'right' }}>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#111827', lineHeight: 32 }}>
             {name}
           </Text>
 
@@ -508,7 +511,7 @@ export default function ProductDetailScreen() {
           {/* Unit selector */}
           {hasUnitOptions && !outOfStock && (
             <View style={{ marginTop: 18, marginBottom: 4 }}>
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#374151', marginBottom: 10, textAlign: 'right' }}>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#374151', marginBottom: 10 }}>
                 اختر الوحدة
               </Text>
               <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
@@ -564,7 +567,7 @@ export default function ProductDetailScreen() {
 
           {/* Description */}
           {description && (
-            <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 26, marginBottom: 24, textAlign: 'right' }}>
+            <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 26, marginBottom: 24 }}>
               {description}
             </Text>
           )}
@@ -683,8 +686,8 @@ function SimilarProducts({ categoryId, currentProductId, locale }: { categoryId:
 
   return (
     <View style={{ marginTop: 4, marginBottom: 8 }}>
-      <View style={{ paddingHorizontal: 16, marginBottom: 12, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 18, fontWeight: '900', color: '#1c1917', textAlign: 'right' }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <Text style={{ fontSize: 18, fontWeight: '900', color: '#1c1917' }}>
           منتجات مشابهة
         </Text>
         <View style={{ width: 40, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 6 }} />
@@ -692,7 +695,7 @@ function SimilarProducts({ categoryId, currentProductId, locale }: { categoryId:
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12, flexDirection: 'row-reverse' }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
       >
         {products.map((item) => (
           <View key={item.id} style={{ width: 155 }}>

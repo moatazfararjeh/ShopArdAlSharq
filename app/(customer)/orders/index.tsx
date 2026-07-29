@@ -79,7 +79,7 @@ function OrderCard({ order, onPress }: { order: Order; onPress: () => void }) {
         <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 12 }} />
 
         {/* Footer row — RTL: price right, items count left */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' as any }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: '#e36523' }}>
             {formatPrice(order.total_amount)}
           </Text>
@@ -102,7 +102,7 @@ export default function OrdersScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, direction: 'rtl' as any }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
         <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>
           {t('orders.title')}
         </Text>

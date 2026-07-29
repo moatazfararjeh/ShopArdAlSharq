@@ -28,7 +28,6 @@ function SectionHeader({ label }: { label: string }) {
       fontSize: 11, fontWeight: '800', color: '#a09284',
       letterSpacing: 0.8, textTransform: 'uppercase',
       paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8,
-      textAlign: 'right',
     }}>
       {label}
     </Text>
@@ -59,11 +58,10 @@ function NavRow({
         flexDirection: 'row', alignItems: 'center',
         paddingVertical: 14, paddingHorizontal: 18,
         borderBottomWidth: 1, borderBottomColor: '#f5f0eb',
-        direction: 'rtl' as any,
         gap: 14,
       }}
     >
-      {/* Icon bubble — appears on RIGHT in RTL */}
+      {/* Icon bubble — FIRST in JSX → appears on RIGHT (isRTL=true row flows right→left) */}
       <View style={{
         width: 40, height: 40, borderRadius: 13,
         backgroundColor: iconBg,
@@ -73,19 +71,19 @@ function NavRow({
         <Ionicons name={ionicon as any} size={20} color={iconCol} />
       </View>
 
-      {/* Labels — grow to fill */}
+      {/* Labels — fill the middle */}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: textCol, textAlign: 'right' }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: textCol }}>
           {label}
         </Text>
         {!!sublabel && (
-          <Text style={{ fontSize: 12, color: '#a09284', marginTop: 1, textAlign: 'right' }}>
+          <Text style={{ fontSize: 12, color: '#a09284', marginTop: 1 }}>
             {sublabel}
           </Text>
         )}
       </View>
 
-      {/* Right slot (custom content or chevron) */}
+      {/* Chevron — LAST in JSX → appears on LEFT (isRTL=true row flows right→left) */}
       {right ?? (!!onPress && !danger && (
         <Ionicons name="chevron-back" size={18} color="#c0b8b0" />
       ))}
@@ -329,7 +327,7 @@ export default function ProfileScreen() {
     const locked = !editable;
     return (
       <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: '#a09284', marginBottom: 5, textAlign: 'right' }}>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: '#a09284', marginBottom: 5 }}>
           {label}
         </Text>
         <View style={{
@@ -338,8 +336,7 @@ export default function ProfileScreen() {
           borderRadius: 14,
           paddingHorizontal: 14, paddingVertical: 11,
           backgroundColor: locked ? '#faf8f6' : '#fff',
-          flexDirection: 'row', alignItems: 'center',
-          direction: 'rtl' as any,
+          flexDirection: 'row-reverse', alignItems: 'center',
         }}>
           {locked && (
             <Ionicons name="lock-closed-outline" size={13} color="#c0b8b0" style={{ marginLeft: 6 }} />
@@ -350,7 +347,7 @@ export default function ProfileScreen() {
             editable={!locked}
             placeholder={placeholder}
             keyboardType={keyboard}
-            style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917', textAlign: 'right', writingDirection: 'rtl' } as any}
+            style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917' } as any}
             placeholderTextColor="#c0b8b0"
           />
         </View>
@@ -371,10 +368,9 @@ export default function ProfileScreen() {
           borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
           direction: 'rtl' as any,
         }}>
-          {/* Title row */}
+          {/* Title row — isRTL=true + row flows right→left: حسابي FIRST → RIGHT, badge SECOND → LEFT */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
             <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff' }}>حسابي</Text>
-            {/* Role badge */}
             <View style={{ backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
               <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.3 }}>{roleBadge}</Text>
             </View>
@@ -407,7 +403,7 @@ export default function ProfileScreen() {
         <Card style={{ marginTop: 8, marginBottom: 4 }}>
           {editMode ? (
             <View style={{ padding: 18 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', textAlign: 'right', marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', marginBottom: 16 }}>
                 تعديل المعلومات
               </Text>
               <Field
@@ -437,7 +433,7 @@ export default function ProfileScreen() {
                 value={profile?.email ?? ''}
                 editable={false}
               />
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <View style={{ flexDirection: 'row-reverse', gap: 10, marginTop: 4 }}>
                 {/* Save FIRST → RIGHT in RTL (primary action) */}
                 <TouchableOpacity
                   onPress={saveProfile}
@@ -463,7 +459,7 @@ export default function ProfileScreen() {
                 {profile?.full_name ?? '—'}
               </Text>
               {!!(profile as any)?.company_name && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4, direction: 'rtl' as any }}>
+                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                   <Text style={{ fontSize: 13, color: BRAND, fontWeight: '700' }}>{(profile as any).company_name}</Text>
                   <Ionicons name="business-outline" size={13} color={BRAND} />
                 </View>
@@ -480,7 +476,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 onPress={openEdit}
                 style={{
-                  marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
+                  marginTop: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 6,
                   backgroundColor: '#fff7ed', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
                   borderWidth: 1, borderColor: '#fedcb6', direction: 'rtl' as any,
                 }}
@@ -515,7 +511,7 @@ export default function ProfileScreen() {
             paddingVertical: 14, paddingHorizontal: 18,
             direction: 'rtl' as any,
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 14 }}>
               <View style={{
                 width: 40, height: 40, borderRadius: 13,
                 backgroundColor: hasDoc ? '#f0fdf4' : '#fff7ed',
@@ -529,28 +525,27 @@ export default function ProfileScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1c1917', textAlign: 'right' }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1c1917' }}>
                   السجل التجاري
                 </Text>
-                <Text style={{ fontSize: 12, color: hasDoc ? '#16a34a' : '#a09284', marginTop: 1, textAlign: 'right' }}>
+                <Text style={{ fontSize: 12, color: hasDoc ? '#16a34a' : '#a09284', marginTop: 1 }}>
                   {uploadingDoc ? 'جارٍ الرفع...' : hasDoc ? '✓ تم الرفع' : 'لم يتم الرفع بعد'}
                 </Text>
               </View>
             </View>
 
             {/* Action buttons */}
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <View style={{ flexDirection: 'row-reverse', gap: 10, marginTop: 12 }}>
               {hasDoc && (
                 <TouchableOpacity
                   onPress={viewingDoc ? undefined : handleViewDocument}
                   activeOpacity={0.75}
                   style={{
-                    flex: 1, flexDirection: 'row', alignItems: 'center',
+                    flex: 1, flexDirection: 'row-reverse', alignItems: 'center',
                     justifyContent: 'center', gap: 6,
                     paddingVertical: 10, borderRadius: 12,
                     backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac',
                     opacity: viewingDoc ? 0.5 : 1,
-                    direction: 'rtl' as any,
                   }}
                 >
                   {viewingDoc
@@ -565,12 +560,11 @@ export default function ProfileScreen() {
                 onPress={uploadingDoc ? undefined : handleUploadCommercialRegister}
                 activeOpacity={0.75}
                 style={{
-                  flex: 1, flexDirection: 'row', alignItems: 'center',
+                  flex: 1, flexDirection: 'row-reverse', alignItems: 'center',
                   justifyContent: 'center', gap: 6,
                   paddingVertical: 10, borderRadius: 12,
                   backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fedcb6',
                   opacity: uploadingDoc ? 0.5 : 1,
-                  direction: 'rtl' as any,
                 }}
               >
                 {uploadingDoc
@@ -656,7 +650,7 @@ export default function ProfileScreen() {
             style={{
               backgroundColor: '#fef2f2',
               borderRadius: 18, paddingVertical: 16,
-              flexDirection: 'row', alignItems: 'center',
+              flexDirection: 'row-reverse', alignItems: 'center',
               justifyContent: 'center', gap: 8,
               borderWidth: 1, borderColor: '#fecaca',
               direction: 'rtl' as any,

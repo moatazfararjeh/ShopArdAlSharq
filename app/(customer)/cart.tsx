@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Animated, PanResponder,
-  Platform,
+  Platform, I18nManager,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
@@ -20,7 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
 const BRAND = '#e36523';
-const SWIPE_THRESHOLD = -80;
+const IS_RTL = I18nManager.isRTL;
+// RTL: swipe right (positive dx) to delete. LTR: swipe left (negative dx).
+const SWIPE_THRESHOLD = IS_RTL ? 80 : -80;
 const DELETE_BG = '#ef4444';
 
 // ─── Unit label helpers ────────────────────────────────────────────────────────
@@ -50,51 +52,66 @@ function CartItemRow({ item }: { item: CartItemType }) {
   const rowHeight = useRef(new Animated.Value(1)).current; // scale trick for collapse
   const opacity = useRef(new Animated.Value(1)).current;
 
-  // Left swipe triggers delete — same physical gesture on both LTR and RTL iOS
+
+  // Always LEFT swipe (g.dx < 0). With native driver + isRTL=true, translateX is
+  // mirrored natively, so we use useNativeDriver:false for translateX to keep
+  // physical left movement. Opacity uses native driver (not affected by RTL).
+  const deleteZoneOpacity = useRef(new Animated.Value(0)).current;
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
+        Math.abs(g.dx) > 5 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderMove: (_, g) => {
-        if (g.dx < 0) translateX.setValue(g.dx);
+        if (g.dx < 0) {
+          translateX.setValue(g.dx);
+          // Fade in delete zone proportionally
+          deleteZoneOpacity.setValue(Math.min(1, Math.abs(g.dx) / 60));
+        }
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dx < SWIPE_THRESHOLD) {
+        if (g.dx < -60) {
+          // Trigger delete: slide off LEFT + fade out card
           Animated.parallel([
-            Animated.timing(translateX, { toValue: -400, duration: 220, useNativeDriver: true }),
+            Animated.timing(translateX, { toValue: -500, duration: 220, useNativeDriver: false }),
             Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
           ]).start(() => removeItem(item.product_id));
         } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          // Not far enough — spring back AND hide delete zone
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0, useNativeDriver: false,
+              tension: 200, friction: 20,
+            }),
+            Animated.timing(deleteZoneOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+          ]).start();
         }
       },
     }),
   ).current;
 
-  // Delete button shown behind the card
-  const deleteOpacity = translateX.interpolate({
-    inputRange: [SWIPE_THRESHOLD, 0],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
   return (
     <View style={{ position: 'relative', marginHorizontal: 16, marginVertical: 5 }}>
-      {/* Red delete zone behind card */}
+      {/* Red delete zone — visible on RIGHT as card slides LEFT */}
       <Animated.View
         style={{
           position: 'absolute', top: 0, bottom: 0, right: 0, left: 0,
           backgroundColor: DELETE_BG, borderRadius: 20,
-          opacity: deleteOpacity,
+          opacity: deleteZoneOpacity,
         }}
       >
-        {/* Delete label — pinned to RIGHT where card reveals on left-swipe */}
-        <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+        {/* Label on the RIGHT side — revealed when card slides left */}
+        <View style={{
+          position: 'absolute', right: 20, top: 0, bottom: 0,
+          justifyContent: 'center', alignItems: 'center',
+          flexDirection: 'row', gap: 6,
+        }}>
           <Ionicons name="trash-outline" size={18} color="#fff" />
           <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>حذف</Text>
         </View>
       </Animated.View>
 
+      {/* Card that slides */}
       <Animated.View
         style={{ transform: [{ translateX }], opacity }}
         {...panResponder.panHandlers}
@@ -106,7 +123,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
           shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
           direction: 'rtl' as any,
         }}>
-          {/* Product image — FIRST in RTL row → RIGHT side */}
+          {/* Product image */}
           <Image
             source={{ uri: (item.product.images?.[0] ?? item.product.product_images?.[0])?.url }}
             style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }}
@@ -117,18 +134,18 @@ function CartItemRow({ item }: { item: CartItemType }) {
 
           <View style={{ flex: 1, marginStart: 12 }}>
             {/* Name */}
-            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20, textAlign: 'right' }} numberOfLines={1}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20 }} numberOfLines={1}>
               {getProductName(item.product, locale)}
             </Text>
 
             {/* Description */}
             {!!description && (
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15, textAlign: 'right' }} numberOfLines={1}>
+              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15 }} numberOfLines={1}>
                 {description}
               </Text>
             )}
 
-            {/* Unit selector — only shown when product has multiple pricing units */}
+            {/* Unit selector */}
             {availableUnits.length > 1 && (
               <View style={{ flexDirection: 'row', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
                 {availableUnits.map((unit) => {
@@ -136,9 +153,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
                   return (
                     <TouchableOpacity
                       key={unit}
-                      onPress={() => {
-                        if (!isActive) changeUnit(item.product_id, currentUnit, unit);
-                      }}
+                      onPress={() => { if (!isActive) changeUnit(item.product_id, currentUnit, unit); }}
                       activeOpacity={0.75}
                       style={{
                         paddingHorizontal: 10, paddingVertical: 4,
@@ -156,7 +171,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
               </View>
             )}
 
-            {/* Single unit badge (no switcher needed) */}
+            {/* Single unit badge */}
             {availableUnits.length === 1 && currentUnit && (
               <View style={{
                 marginTop: 6, alignSelf: 'flex-start',
@@ -174,7 +189,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
                 {formatPrice(effectivePrice)}
               </Text>
 
-              {/* Stepper: direction ltr so +/− stay conventional */}
+              {/* Stepper — explicit LTR so +/− stay in conventional order */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr' as any }}>
                 <TouchableOpacity
                   onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
@@ -200,7 +215,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
             </View>
           </View>
 
-          {/* Delete button (tap fallback for web) */}
+          {/* Delete button (web only) */}
           {Platform.OS === 'web' && (
             <TouchableOpacity
               onPress={() => removeItem(item.product_id)}
@@ -219,6 +234,7 @@ function CartItemRow({ item }: { item: CartItemType }) {
     </View>
   );
 }
+
 
 // ─── Swipe hint — shown once at top of list ────────────────────────────────────
 function SwipeHint() {
