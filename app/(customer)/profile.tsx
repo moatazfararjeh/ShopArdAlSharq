@@ -73,11 +73,11 @@ function NavRow({
 
       {/* Labels — fill the middle */}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: textCol }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: textCol, lineHeight: 22 }}>
           {label}
         </Text>
         {!!sublabel && (
-          <Text style={{ fontSize: 12, color: '#a09284', marginTop: 1 }}>
+          <Text style={{ fontSize: 12, color: '#a09284', marginTop: 2, lineHeight: 18 }}>
             {sublabel}
           </Text>
         )}
