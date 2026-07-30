@@ -44,3 +44,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# iOS Pods (installed by ci_post_clone.sh)
+/ios/Pods/
+/ios/build/
