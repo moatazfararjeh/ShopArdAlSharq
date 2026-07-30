@@ -42,7 +42,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
-/ios
 /android
 
 # iOS Pods (installed by ci_post_clone.sh)
