@@ -41,9 +41,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders — committed for Xcode Cloud CI
+# /ios
 /android
-
-# iOS Pods (installed by ci_post_clone.sh)
-/ios/Pods/
-/ios/build/
