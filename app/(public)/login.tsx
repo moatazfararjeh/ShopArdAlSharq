@@ -98,7 +98,7 @@ export default function LoginScreen() {
           contentContainerClassName="flex-grow justify-center px-6 py-8"
           keyboardShouldPersistTaps="handled"
         >
-          <Image source={require('@/assets/logo.png')} style={{ width: Math.min(340, width - 48), height: 140, marginBottom: 16, alignSelf: 'center' }} resizeMode="contain" />
+          <Image source={require('@/assets/logo.png')} style={{ width: 300, height: 140, marginBottom: 16, alignSelf: 'center' }} resizeMode="contain" />
 
           {/* Hero features */}
           <View style={{ marginBottom: 20, alignItems: 'center' }}>
