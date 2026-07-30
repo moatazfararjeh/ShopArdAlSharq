@@ -82,7 +82,7 @@ function HeroBannerCard({
       )}
 
       {/* Content overlay */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 22 }}>
+      <View style={{ position: 'absolute', bottom: 0, left: 0, width: width, padding: 22 }}>
         {/* Label chip */}
         {!!labelText && (
           <View style={{
