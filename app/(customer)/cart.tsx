@@ -1,7 +1,5 @@
-import { useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, Animated, PanResponder,
-  Platform, I18nManager,
+  View, Text, TouchableOpacity, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
@@ -18,14 +16,8 @@ import { getCartItemPrice } from '@/stores/cartStore';
 import { Ionicons } from '@expo/vector-icons';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
-
 const BRAND = '#e36523';
-const IS_RTL = I18nManager.isRTL;
-// RTL: swipe right (positive dx) to delete. LTR: swipe left (negative dx).
-const SWIPE_THRESHOLD = IS_RTL ? 80 : -80;
-const DELETE_BG = '#ef4444';
 
-// ─── Unit label helpers ────────────────────────────────────────────────────────
 type UnitKey = 'piece' | 'carton' | 'kg';
 const UNIT_LABELS: Record<UnitKey, string> = { piece: 'حبة', carton: 'كرتون', kg: 'كيلو' };
 
@@ -37,7 +29,6 @@ function getAvailableUnits(item: CartItemType): UnitKey[] {
   return units;
 }
 
-// ─── Swipeable cart item ───────────────────────────────────────────────────────
 function CartItemRow({ item }: { item: CartItemType }) {
   const locale = getCurrentLocale();
   const { removeItem, updateQuantity } = useCart();
@@ -47,213 +38,117 @@ function CartItemRow({ item }: { item: CartItemType }) {
   const availableUnits = getAvailableUnits(item);
   const currentUnit = item.selected_unit as UnitKey | null;
 
-  // Swipe animation
-  const translateX = useRef(new Animated.Value(0)).current;
-  const rowHeight = useRef(new Animated.Value(1)).current; // scale trick for collapse
-  const opacity = useRef(new Animated.Value(1)).current;
-
-
-  // Always LEFT swipe (g.dx < 0). With native driver + isRTL=true, translateX is
-  // mirrored natively, so we use useNativeDriver:false for translateX to keep
-  // physical left movement. Opacity uses native driver (not affected by RTL).
-  const deleteZoneOpacity = useRef(new Animated.Value(0)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 5 && Math.abs(g.dx) > Math.abs(g.dy),
-      onPanResponderMove: (_, g) => {
-        if (g.dx < 0) {
-          translateX.setValue(g.dx);
-          // Fade in delete zone proportionally
-          deleteZoneOpacity.setValue(Math.min(1, Math.abs(g.dx) / 60));
-        }
-      },
-      onPanResponderRelease: (_, g) => {
-        if (g.dx < -60) {
-          // Trigger delete: slide off LEFT + fade out card
-          Animated.parallel([
-            Animated.timing(translateX, { toValue: -500, duration: 220, useNativeDriver: false }),
-            Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-          ]).start(() => removeItem(item.product_id));
-        } else {
-          // Not far enough — spring back AND hide delete zone
-          Animated.parallel([
-            Animated.spring(translateX, {
-              toValue: 0, useNativeDriver: false,
-              tension: 200, friction: 20,
-            }),
-            Animated.timing(deleteZoneOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-          ]).start();
-        }
-      },
-    }),
-  ).current;
-
   return (
-    <View style={{ position: 'relative', marginHorizontal: 16, marginVertical: 5 }}>
-      {/* Red delete zone — visible on RIGHT as card slides LEFT */}
-      <Animated.View
-        style={{
-          position: 'absolute', top: 0, bottom: 0, right: 0, left: 0,
-          backgroundColor: DELETE_BG, borderRadius: 20,
-          opacity: deleteZoneOpacity,
-        }}
-      >
-        {/* Label on the RIGHT side — revealed when card slides left */}
-        <View style={{
-          position: 'absolute', right: 20, top: 0, bottom: 0,
-          justifyContent: 'center', alignItems: 'center',
-          flexDirection: 'row', gap: 6,
-        }}>
-          <Ionicons name="trash-outline" size={18} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>حذف</Text>
-        </View>
-      </Animated.View>
+    <View style={{ marginHorizontal: 16, marginVertical: 5 }}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'flex-start',
+        backgroundColor: '#fff', borderRadius: 20,
+        padding: 12,
+        shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+        direction: 'rtl' as any,
+      }}>
+        <Image
+          source={{ uri: (item.product.images?.[0] ?? item.product.product_images?.[0])?.url }}
+          style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }}
+          contentFit="cover"
+          placeholder={{ blurhash: PLACEHOLDER_HASH }}
+          transition={250}
+        />
 
-      {/* Card that slides */}
-      <Animated.View
-        style={{ transform: [{ translateX }], opacity }}
-        {...panResponder.panHandlers}
-      >
-        <View style={{
-          flexDirection: 'row', alignItems: 'flex-start',
-          backgroundColor: '#fff', borderRadius: 20,
-          padding: 12,
-          shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-          direction: 'rtl' as any,
-        }}>
-          {/* Product image */}
-          <Image
-            source={{ uri: (item.product.images?.[0] ?? item.product.product_images?.[0])?.url }}
-            style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }}
-            contentFit="cover"
-            placeholder={{ blurhash: PLACEHOLDER_HASH }}
-            transition={250}
-          />
-
-          <View style={{ flex: 1, marginStart: 12 }}>
-            {/* Name */}
-            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20 }} numberOfLines={1}>
+        <View style={{ flex: 1, marginStart: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: '#111827', lineHeight: 20 }} numberOfLines={1}>
               {getProductName(item.product, locale)}
             </Text>
-
-            {/* Description */}
-            {!!description && (
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15 }} numberOfLines={1}>
-                {description}
-              </Text>
-            )}
-
-            {/* Unit selector */}
-            {availableUnits.length > 1 && (
-              <View style={{ flexDirection: 'row', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
-                {availableUnits.map((unit) => {
-                  const isActive = currentUnit === unit;
-                  return (
-                    <TouchableOpacity
-                      key={unit}
-                      onPress={() => { if (!isActive) changeUnit(item.product_id, currentUnit, unit); }}
-                      activeOpacity={0.75}
-                      style={{
-                        paddingHorizontal: 10, paddingVertical: 4,
-                        borderRadius: 20, borderWidth: 1.5,
-                        borderColor: BRAND,
-                        backgroundColor: isActive ? BRAND : '#fff0eb',
-                      }}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#fff' : BRAND }}>
-                        {UNIT_LABELS[unit]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Single unit badge */}
-            {availableUnits.length === 1 && currentUnit && (
-              <View style={{
-                marginTop: 6, alignSelf: 'flex-start',
-                backgroundColor: '#fff0eb', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
-              }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: BRAND }}>
-                  {UNIT_LABELS[currentUnit]}
-                </Text>
-              </View>
-            )}
-
-            {/* Price + qty stepper */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text style={{ fontSize: 15, fontWeight: '900', color: BRAND }}>
-                {formatPrice(effectivePrice)}
-              </Text>
-
-              {/* Stepper — explicit LTR so +/− stay in conventional order */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr' as any }}>
-                <TouchableOpacity
-                  onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
-                  style={{
-                    width: 30, height: 30, borderRadius: 15,
-                    backgroundColor: item.quantity === 1 ? '#f3f4f6' : '#fff7ed',
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 1, borderColor: item.quantity === 1 ? '#e5e7eb' : '#fed7aa',
-                  }}
-                >
-                  <Text style={{ fontWeight: '800', color: item.quantity === 1 ? '#9ca3af' : BRAND, fontSize: 16, lineHeight: 18 }}>−</Text>
-                </TouchableOpacity>
-                <Text style={{ minWidth: 26, textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#111827' }}>
-                  {item.quantity}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => updateQuantity(item.product_id, item.quantity + 1)}
-                  style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontWeight: '800', color: '#fff', fontSize: 16, lineHeight: 18 }}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* Delete button (web only) */}
-          {Platform.OS === 'web' && (
             <TouchableOpacity
               onPress={() => removeItem(item.product_id)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={{
                 width: 28, height: 28, borderRadius: 14,
                 backgroundColor: '#fef2f2',
                 alignItems: 'center', justifyContent: 'center',
-                alignSelf: 'flex-start', marginStart: 8,
+                marginStart: 8, flexShrink: 0,
               }}
             >
-              <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700' }}>✕</Text>
+              <Ionicons name="trash-outline" size={15} color="#ef4444" />
             </TouchableOpacity>
+          </View>
+
+          {!!description && (
+            <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, lineHeight: 15 }} numberOfLines={1}>
+              {description}
+            </Text>
           )}
+
+          {availableUnits.length > 1 && (
+            <View style={{ flexDirection: 'row', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
+              {availableUnits.map((unit) => {
+                const isActive = currentUnit === unit;
+                return (
+                  <TouchableOpacity
+                    key={unit}
+                    onPress={() => { if (!isActive) changeUnit(item.product_id, currentUnit, unit); }}
+                    activeOpacity={0.75}
+                    style={{
+                      paddingHorizontal: 10, paddingVertical: 4,
+                      borderRadius: 20, borderWidth: 1.5,
+                      borderColor: BRAND,
+                      backgroundColor: isActive ? BRAND : '#fff0eb',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#fff' : BRAND }}>
+                      {UNIT_LABELS[unit]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {availableUnits.length === 1 && currentUnit && (
+            <View style={{
+              marginTop: 6, alignSelf: 'flex-start',
+              backgroundColor: '#fff0eb', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
+            }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: BRAND }}>
+                {UNIT_LABELS[currentUnit]}
+              </Text>
+            </View>
+          )}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: '900', color: BRAND }}>
+              {formatPrice(effectivePrice)}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr' as any }}>
+              <TouchableOpacity
+                onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
+                style={{
+                  width: 30, height: 30, borderRadius: 15,
+                  backgroundColor: item.quantity === 1 ? '#f3f4f6' : '#fff7ed',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: item.quantity === 1 ? '#e5e7eb' : '#fed7aa',
+                }}
+              >
+                <Text style={{ fontWeight: '800', color: item.quantity === 1 ? '#9ca3af' : BRAND, fontSize: 16, lineHeight: 18 }}>−</Text>
+              </TouchableOpacity>
+              <Text style={{ minWidth: 26, textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#111827' }}>
+                {item.quantity}
+              </Text>
+              <TouchableOpacity
+                onPress={() => updateQuantity(item.product_id, item.quantity + 1)}
+                style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontWeight: '800', color: '#fff', fontSize: 16, lineHeight: 18 }}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </Animated.View>
+      </View>
     </View>
   );
 }
 
-
-// ─── Swipe hint — shown once at top of list ────────────────────────────────────
-function SwipeHint() {
-  if (Platform.OS === 'web') return null;
-  return (
-    <View style={{
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-      marginHorizontal: 16, marginBottom: 4, marginTop: 2,
-      backgroundColor: '#fef2f2', borderRadius: 10,
-      paddingHorizontal: 12, paddingVertical: 7,
-    }}>
-      {/* RTL: text first (RIGHT), arrow last (LEFT) */}
-      <Text style={{ fontSize: 12, color: '#991b1b', fontWeight: '600' }}>اسحب لليسار للحذف</Text>
-      <Ionicons name="arrow-back" size={14} color="#991b1b" />
-    </View>
-  );
-}
-
-// ─── Main cart screen ─────────────────────────────────────────────────────────
 export default function CartScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -262,27 +157,13 @@ export default function CartScreen() {
   if (items.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f0', paddingHorizontal: 32, direction: 'rtl' as any }}>
-        <View style={{
-          width: 100, height: 100, borderRadius: 50,
-          backgroundColor: '#fff7ed',
-          alignItems: 'center', justifyContent: 'center',
-          marginBottom: 20,
-        }}>
+        <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <Text style={{ fontSize: 44 }}>🛒</Text>
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 8 }}>
-          {t('cart.emptyCart')}
-        </Text>
-        <Text style={{ fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 28 }}>
-          {t('cart.emptyCartDesc')}
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push('/(customer)/home')}
-          style={{ backgroundColor: BRAND, borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14 }}
-        >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-            {t('cart.continueShopping')}
-          </Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 8 }}>{t('cart.emptyCart')}</Text>
+        <Text style={{ fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 28 }}>{t('cart.emptyCartDesc')}</Text>
+        <TouchableOpacity onPress={() => router.push('/(customer)/home')} style={{ backgroundColor: BRAND, borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14 }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('cart.continueShopping')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -293,13 +174,10 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0', direction: 'rtl' as any }} edges={['top']}>
-      {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, direction: 'rtl' as any }}>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>{t('cart.title')}</Text>
         <View style={{ backgroundColor: '#fff7ed', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
-          <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>
-            {items.length} {items.length === 1 ? 'منتج' : 'منتجات'}
-          </Text>
+          <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>{items.length} {items.length === 1 ? 'منتج' : 'منتجات'}</Text>
         </View>
       </View>
 
@@ -311,7 +189,6 @@ export default function CartScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Summary footer */}
       <View style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#fff',
@@ -333,12 +210,7 @@ export default function CartScreen() {
             <Text style={{ fontWeight: '600', fontSize: 14, color: '#16a34a' }}>-{formatPrice(summary.discount)}</Text>
           </View>
         )}
-        <View style={{
-          flexDirection: 'row', justifyContent: 'space-between',
-          borderTopWidth: 1, borderTopColor: '#f3f4f6',
-          paddingTop: 12, marginBottom: 16,
-          direction: 'rtl' as any,
-        }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12, marginBottom: 16, direction: 'rtl' as any }}>
           <Text style={{ fontSize: 17, fontWeight: '800', color: '#111827' }}>{t('cart.total')}</Text>
           <Text style={{ fontSize: 20, fontWeight: '900', color: '#111827' }}>{formatPrice(totalWithDelivery)}</Text>
         </View>
@@ -346,16 +218,12 @@ export default function CartScreen() {
           onPress={() => router.push('/(customer)/checkout')}
           activeOpacity={0.85}
           style={{
-            backgroundColor: BRAND,
-            borderRadius: 18,
-            paddingVertical: 17, alignItems: 'center',
+            backgroundColor: BRAND, borderRadius: 18, paddingVertical: 17, alignItems: 'center',
             shadowColor: BRAND, shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.35, shadowRadius: 14, elevation: 8,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>
-            {t('cart.checkout')}
-          </Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>{t('cart.checkout')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
