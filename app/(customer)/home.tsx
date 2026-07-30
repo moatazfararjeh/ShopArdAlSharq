@@ -34,8 +34,10 @@ const SIDEBAR_W = 220;
 const { width: SCREEN_W } = Dimensions.get('window');
 
 function getBrowserWidth(): number {
-  if (typeof window !== 'undefined') return window.innerWidth;
-  return SCREEN_W;
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth) {
+    return window.innerWidth;
+  }
+  return Dimensions.get('window').width;
 }
 
 // ─── Fallback banner ──────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ function HeroBannerCard({
       )}
 
       {/* Content overlay */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, width: width, padding: 22 }}>
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 22 }}>
         {/* Label chip */}
         {!!labelText && (
           <View style={{
