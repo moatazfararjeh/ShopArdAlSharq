@@ -75,8 +75,9 @@ function HeroBannerCard({
       {!!banner.image_url && (
         <Image
           source={{ uri: banner.image_url }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           contentFit="cover"
+          cachePolicy="memory-disk"
         />
       )}
 
