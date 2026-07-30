@@ -10,7 +10,7 @@ import type { PropsWithChildren } from 'react';
  * - Inner screens scroll individually via their own ScrollView / FlatList
  */
 export default function Root({ children }: PropsWithChildren) {
-  return (
+  return ( 
     <html lang="ar" dir="rtl" style={{ height: '100%' }}>
       <head>
         <meta charSet="utf-8" />
