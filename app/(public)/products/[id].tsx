@@ -130,7 +130,7 @@ function ImageGallery({
       {/* Discount badge */}
       {discounted && discountPrice != null && (
         <View style={{
-          position: 'absolute', top: 12, left: 16,
+          position: 'absolute', top: 60, left: 16,
           backgroundColor: '#ef4444', borderRadius: 12,
           paddingHorizontal: 10, paddingVertical: 5,
         }}>
@@ -412,6 +412,8 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', direction: 'rtl' as any }}>
+      {/* Push all content below the status bar */}
+      <View style={{ height: insets.top, backgroundColor: '#fff' }} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Image gallery */}
         <View style={{ position: 'relative' }}>
@@ -422,9 +424,9 @@ export default function ProductDetailScreen() {
             discountPrice={product.discount_price ?? undefined}
           />
 
-          {/* Back + Home — top LEFT (Arabic RTL standard: back arrow points → right) */}
+          {/* Back + Home buttons */}
           <View style={{
-            position: 'absolute', top: (insets.top || 0) + 10, left: 16,
+            position: 'absolute', top: 10, left: 16,
             flexDirection: 'row', gap: 8,
           }}>
             <TouchableOpacity
