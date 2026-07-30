@@ -15,7 +15,7 @@ function AnimatedTabButton({ children, onPress, onLongPress, style, accessibilit
 
   const handlePress = () => {
     Animated.sequence([
-      Animated.spring(scale, { toValue: 1.28, useNativeDriver: true, speed: 60, bounciness: 14 }),
+      Animated.spring(scale, { toValue: 1.22, useNativeDriver: true, speed: 60, bounciness: 16 }),
       Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 20, bounciness: 6  }),
     ]).start();
     onPress?.();
@@ -25,18 +25,18 @@ function AnimatedTabButton({ children, onPress, onLongPress, style, accessibilit
     <TouchableOpacity
       onPress={handlePress}
       onLongPress={onLongPress}
-      style={[style, { flex: 1, alignItems: 'center', justifyContent: 'center' }]}
+      style={[style, { flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: Platform.OS === 'ios' ? 20 : 8, overflow: 'visible' }]}
       activeOpacity={1}
       {...rest}
     >
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View style={{ transform: [{ scale }], overflow: 'visible' }}>
         {children}
       </Animated.View>
     </TouchableOpacity>
   );
 }
 
-// ── Tab icon with active top-border indicator ─────────────────────────────────
+// ── Tab icon: floating bubble when active ─────────────────────────────────────
 function TabIcon({
   name,
   focusedName,
@@ -46,30 +46,29 @@ function TabIcon({
   focusedName: string;
   focused: boolean;
 }) {
-  return (
-    <View style={{ alignItems: 'center' }}>
-      {/* Orange bar above active icon */}
+  if (focused) {
+    return (
       <View style={{
-        width: 36,
-        height: 3,
-        borderRadius: 2,
-        backgroundColor: focused ? BRAND : 'transparent',
-        marginBottom: 4,
-      }} />
-      <View style={{
-        backgroundColor: focused ? '#fff7ed' : 'transparent',
-        borderRadius: 14,
-        width: 46,
-        height: 30,
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
+        marginBottom: 28,          // lifts the bubble above the tab bar top border
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 10,
+        elevation: 10,
       }}>
-        <Ionicons
-          name={(focused ? focusedName : name) as any}
-          size={22}
-          color={focused ? BRAND : INACTIVE}
-        />
+        <Ionicons name={focusedName as any} size={26} color={BRAND} />
       </View>
+    );
+  }
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center', width: 46, height: 30 }}>
+      <Ionicons name={name as any} size={22} color={INACTIVE} />
     </View>
   );
 }
@@ -102,16 +101,20 @@ export default function CustomerLayout() {
         tabBarButton: tabButton,
         tabBarStyle: {
           backgroundColor: '#fff',
-          borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 88 : 72,
+          borderTopWidth: 3,
+          borderTopColor: BRAND,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          height: Platform.OS === 'ios' ? 90 : 74,
           paddingTop: 0,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          paddingBottom: 0,
           position: 'absolute',
+          overflow: 'visible',
           elevation: 20,
           shadowColor: '#1c1917',
-          shadowOffset: { width: 0, height: -8 },
-          shadowOpacity: 0.08,
-          shadowRadius: 24,
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.10,
+          shadowRadius: 20,
         },
         tabBarLabelStyle: {
           fontSize: 10,
@@ -119,7 +122,8 @@ export default function CustomerLayout() {
           marginTop: 2,
         },
         tabBarItemStyle: {
-          paddingTop: 2,
+          overflow: 'visible',
+          paddingTop: 0,
         },
       }}
     >
@@ -187,7 +191,7 @@ export default function CustomerLayout() {
       <Tabs.Screen name="addresses"       options={{ href: null }} />
       <Tabs.Screen name="edit-address"    options={{ href: null }} />
       <Tabs.Screen name="contact"         options={{ href: null }} />
-      <Tabs.Screen name="catalog"          options={{ href: null }} />
+      <Tabs.Screen name="catalog"         options={{ href: null }} />
       <Tabs.Screen name="delete-account"  options={{ href: null }} />
       <Tabs.Screen name="change-password" options={{ href: null }} />
     </Tabs>
