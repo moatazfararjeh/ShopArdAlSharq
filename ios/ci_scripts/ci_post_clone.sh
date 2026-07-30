@@ -1,21 +1,25 @@
 #!/bin/sh
 
 # Xcode Cloud Post-Clone Script
-# Runs after the repository is cloned — installs Node.js deps and CocoaPods
+# Runs after the repository is cloned
 
 set -e
 
 echo "=== Xcode Cloud Post-Clone Script ==="
+echo "CI_PRIMARY_REPOSITORY_PATH: $CI_PRIMARY_REPOSITORY_PATH"
 echo "Working directory: $(pwd)"
-echo "CI_WORKSPACE: $CI_WORKSPACE"
 
-# ── Install Homebrew if missing ────────────────────────────────────────────────
-if ! command -v brew &>/dev/null; then
-  echo "Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# CI_PRIMARY_REPOSITORY_PATH is the repo root in Xcode Cloud
+REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH}"
+
+# Fallback: script lives at ios/ci_scripts/, repo root is two levels up
+if [ -z "$REPO_ROOT" ]; then
+  REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 fi
 
-# ── Install Node.js if missing ─────────────────────────────────────────────────
+echo "Repo root: $REPO_ROOT"
+
+# Install Node.js if missing
 if ! command -v node &>/dev/null; then
   echo "Installing Node.js via Homebrew..."
   brew install node
@@ -24,24 +28,20 @@ fi
 echo "Node version: $(node --version)"
 echo "NPM version:  $(npm --version)"
 
-# ── Install JavaScript dependencies ───────────────────────────────────────────
-# Move to repo root (one level up from ios/)
-cd "$CI_WORKSPACE/.."
-echo "Installing JS dependencies in: $(pwd)"
-npm install
+# Install JavaScript dependencies
+echo "Installing JS dependencies in: $REPO_ROOT"
+cd "$REPO_ROOT"
+npm install --legacy-peer-deps
 
-# ── Install CocoaPods dependencies ────────────────────────────────────────────
-cd "$CI_WORKSPACE"
-echo "Running pod install in: $(pwd)"
+# Install CocoaPods dependencies
+IOS_DIR="$REPO_ROOT/ios"
+echo "Running pod install in: $IOS_DIR"
+cd "$IOS_DIR"
 
-# Use Bundler if Gemfile exists, otherwise use system gem
 if [ -f "Gemfile" ]; then
-  echo "Using Bundler..."
   bundle install
   bundle exec pod install --repo-update
 else
-  echo "Using system CocoaPods..."
-  gem install cocoapods --no-document 2>/dev/null || true
   pod install --repo-update
 fi
 
