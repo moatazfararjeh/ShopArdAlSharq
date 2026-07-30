@@ -130,7 +130,7 @@ function ImageGallery({
       {/* Discount badge */}
       {discounted && discountPrice != null && (
         <View style={{
-          position: 'absolute', top: 60, left: 16,
+          position: 'absolute', top: 12, left: 16,
           backgroundColor: '#ef4444', borderRadius: 12,
           paddingHorizontal: 10, paddingVertical: 5,
         }}>

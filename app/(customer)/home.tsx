@@ -607,7 +607,7 @@ export default function HomeScreen() {
   const numCols       = isDesktop ? Math.max(2, Math.floor((availW + CARD_GAP) / (200 + CARD_GAP))) : 2;
   const browseCardW   = (availW - (numCols - 1) * CARD_GAP) / numCols;
   const discoverCardW = isDesktop ? 185 : 150;
-  const bannerW       = isWeb ? windowWidth - sidebarW : SCREEN_W;
+  const bannerW       = isWeb ? windowWidth - sidebarW : windowWidth;
 
   const { data: categories } = useCategories();
   const { data: brands } = useBrands();
@@ -893,7 +893,7 @@ export default function HomeScreen() {
         <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedBrand('__all__')} />
       </ScrollView>
     );
-  } 
+  }
 
   // ── Mobile browse ──────────────────────────────────────────────────────────
   function MobileBrowseContent() {

@@ -27,8 +27,11 @@ export const registerSchema = z
       .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا'),
     phone: z
       .string()
-      .min(1, 'رقم الجوال مطلوب')
-      .regex(jordanianPhoneRegex, 'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)'),
+      .optional()
+      .refine(
+        (val) => !val || val.trim() === '' || jordanianPhoneRegex.test(val),
+        'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)',
+      ),
     email: z
       .string()
       .min(1, 'البريد الإلكتروني مطلوب')

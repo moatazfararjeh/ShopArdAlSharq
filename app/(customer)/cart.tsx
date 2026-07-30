@@ -306,7 +306,6 @@ export default function CartScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => `${item.product_id}-${item.selected_unit ?? 'default'}`}
-        ListHeaderComponent={<SwipeHint />}
         renderItem={({ item }) => <CartItemRow item={item} />}
         contentContainerStyle={{ paddingBottom: 300, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}
