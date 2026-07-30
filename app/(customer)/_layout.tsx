@@ -1,13 +1,42 @@
-import { ActivityIndicator, View, Platform } from 'react-native';
+import { ActivityIndicator, View, Platform, Animated, TouchableOpacity } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/stores/cartStore';
 import { Ionicons } from '@expo/vector-icons';
+import { useRef } from 'react';
 
 const BRAND    = '#e36523';
 const INACTIVE = '#b0a89e';
 
+// ── Animated press wrapper ────────────────────────────────────────────────────
+function AnimatedTabButton({ children, onPress, onLongPress, style, accessibilityState, ...rest }: any) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.28, useNativeDriver: true, speed: 60, bounciness: 14 }),
+      Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 20, bounciness: 6  }),
+    ]).start();
+    onPress?.();
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      onLongPress={onLongPress}
+      style={[style, { flex: 1, alignItems: 'center', justifyContent: 'center' }]}
+      activeOpacity={1}
+      {...rest}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+// ── Tab icon with active top-border indicator ─────────────────────────────────
 function TabIcon({
   name,
   focusedName,
@@ -18,19 +47,29 @@ function TabIcon({
   focused: boolean;
 }) {
   return (
-    <View style={{
-      backgroundColor: focused ? '#fff7ed' : 'transparent',
-      borderRadius: 14,
-      width: 46,
-      height: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <Ionicons
-        name={(focused ? focusedName : name) as any}
-        size={22}
-        color={focused ? BRAND : INACTIVE}
-      />
+    <View style={{ alignItems: 'center' }}>
+      {/* Orange bar above active icon */}
+      <View style={{
+        width: 36,
+        height: 3,
+        borderRadius: 2,
+        backgroundColor: focused ? BRAND : 'transparent',
+        marginBottom: 4,
+      }} />
+      <View style={{
+        backgroundColor: focused ? '#fff7ed' : 'transparent',
+        borderRadius: 14,
+        width: 46,
+        height: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Ionicons
+          name={(focused ? focusedName : name) as any}
+          size={22}
+          color={focused ? BRAND : INACTIVE}
+        />
+      </View>
     </View>
   );
 }
@@ -52,17 +91,20 @@ export default function CustomerLayout() {
     return <Redirect href="/(public)/login" />;
   }
 
+  const tabButton = (props: any) => <AnimatedTabButton {...props} />;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: BRAND,
         tabBarInactiveTintColor: INACTIVE,
+        tabBarButton: tabButton,
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 0,
           height: Platform.OS === 'ios' ? 88 : 72,
-          paddingTop: 8,
+          paddingTop: 0,
           paddingBottom: Platform.OS === 'ios' ? 28 : 12,
           position: 'absolute',
           elevation: 20,
