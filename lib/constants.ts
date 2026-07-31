@@ -2,6 +2,8 @@
 export const APP_NAME = process.env.EXPO_PUBLIC_APP_NAME ?? 'ArdAlsharq';
 /** Public web URL of the deployed app — used as the base for auth redirect links (e.g. password reset). */
 export const APP_URL = (process.env.EXPO_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+export const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? 'https://ardalsharq.com/privacy-policy.html';
+export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@ardalsharq.com';
 export const DEFAULT_LOCALE = process.env.EXPO_PUBLIC_DEFAULT_LOCALE ?? 'ar';
 export const SUPPORTED_LOCALES = ['ar', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];

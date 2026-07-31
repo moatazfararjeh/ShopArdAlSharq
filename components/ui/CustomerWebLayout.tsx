@@ -7,6 +7,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { useUnreadCount } from '@/hooks/useNotifications';
+import { PRIVACY_POLICY_URL } from '@/lib/constants';
 
 const NAV_ITEMS = [
   { label: 'الرئيسية', icon: 'home-outline'    as const, activeIcon: 'home'    as const, path: '/home' },
@@ -206,7 +207,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
                 </View>
               </View>
               <View style={{ borderTopWidth: 1, borderTopColor: '#333', marginTop: 32, paddingTop: 20, alignItems: 'center' as any, gap: 10 }}>
-                <TouchableOpacity onPress={() => router.push('/(public)/privacy-policy' as any)}>
+                <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                   <Text style={{ fontSize: 13, color: '#aaa', textDecorationLine: 'underline' }}>سياسة الخصوصية</Text>
                 </TouchableOpacity>
                 <Text style={{ fontSize: 12, color: '#888' }}>© 2026 أرض الشرق الحديثة لتجارة المواد الغذائية - جميع الحقوق محفوظة</Text>

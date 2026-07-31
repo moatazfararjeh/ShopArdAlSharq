@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,6 +13,7 @@ import { useLogin, useResendConfirmation } from '@/hooks/useAuth';
 import { useBiometric } from '@/hooks/useBiometric';
 import { isAppError } from '@/lib/errors';
 import { useState, useEffect } from 'react';
+import { PRIVACY_POLICY_URL } from '@/lib/constants';
 
 const REMEMBER_ME_KEY = 'remember_me_credentials';
 
@@ -223,6 +224,12 @@ export default function LoginScreen() {
             fullWidth
             size="lg"
           />
+
+          <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} style={{ marginTop: 12, alignSelf: 'center' }}>
+            <Text style={{ fontSize: 13, color: '#2563eb', textDecorationLine: 'underline' }}>
+              اقرأ سياسة الخصوصية
+            </Text>
+          </TouchableOpacity>
 
           {/* Biometric login button */}
           {isAvailable && isEnabled && Platform.OS !== 'web' && (

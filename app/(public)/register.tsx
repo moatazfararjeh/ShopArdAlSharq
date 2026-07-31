@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { registerSchema, RegisterFormValues } from '@/schemas/authSchema';
 import { useRegister } from '@/hooks/useAuth';
+import { PRIVACY_POLICY_URL } from '@/lib/constants';
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -313,6 +314,12 @@ export default function RegisterScreen() {
             fullWidth
             size="lg"
           />
+
+          <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} style={{ marginTop: 12, alignSelf: 'center' }}>
+            <Text style={{ fontSize: 13, color: '#2563eb', textDecorationLine: 'underline' }}>
+              اقرأ سياسة الخصوصية
+            </Text>
+          </TouchableOpacity>
 
           <View className="mt-6 flex-row items-center justify-center gap-2">
             <Text className="text-gray-500">{t('auth.hasAccount')}</Text>
