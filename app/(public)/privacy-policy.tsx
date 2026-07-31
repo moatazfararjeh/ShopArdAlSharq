@@ -27,6 +27,9 @@ export default function PrivacyPolicyScreen() {
         </Text>
 
         <View style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, padding: 14, marginBottom: 20 }}>
+          <Text style={{ fontSize: 14, lineHeight: 22, color: '#92400e', textAlign: 'right', marginBottom: 8 }}>
+            هذه السياسة تنطبق على تطبيق FoodBox وموقع ArdAlsharq الإلكتروني، وتشرف عليه/تتشغل به ArdAlsharq (المطور/الجهة المسؤولة). هذا يطابق الهوية المذكورة في قائمة Google Play الخاصة بالتطبيق.
+          </Text>
           <Text style={{ fontSize: 14, lineHeight: 22, color: '#92400e', textAlign: 'right' }}>
             هذه السياسة متاحة أيضاً عبر الرابط العام التالي، وهو ما يمكن مراجعة Google Play له بسهولة:
           </Text>
