@@ -117,6 +117,11 @@ export default function RootLayout() {
     'NotoSansArabic-Bold': require('../assets/fonts/NotoSansArabic-Bold.ttf'),
   });
 
+  // Start auth initialization here so it runs in parallel with font loading.
+  // useAuth() subscribes to the Zustand store and keeps the subscription alive
+  // for the lifetime of the root layout (which never unmounts).
+  const { isInitialized } = useAuth();
+
   useEffect(() => {
     I18nManager.forceRTL(true);
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -125,20 +130,23 @@ export default function RootLayout() {
     }
   }, []);
 
+  // Keep the native splash screen visible until BOTH fonts and auth are ready.
+  // This avoids the custom loading-spinner flash: the user sees the splash screen
+  // (which looks intentional) and then immediately the correct screen.
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && isInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, isInitialized]);
 
-  if (!fontsLoaded) {
-    return null;
+  if (!fontsLoaded || !isInitialized) {
+    return null; // Splash screen remains visible while we wait
   }
 
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthInitializer />
+        {/* AuthInitializer removed — useAuth() above already handles initialisation */}
         <CartInitializer />
         <PushInitializer />
         <StatusBar style="auto" />
