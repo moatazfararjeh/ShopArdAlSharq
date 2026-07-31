@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.ardalsharq.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -35,8 +35,7 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.USE_FINGERPRINT"
       ],
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
