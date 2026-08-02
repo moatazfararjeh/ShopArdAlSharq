@@ -354,7 +354,7 @@
 				CODE_SIGN_ENTITLEMENTS = FoodBox/FoodBox.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = R5PHXA6C4L;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -369,7 +369,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -397,7 +397,7 @@
 				CODE_SIGN_ENTITLEMENTS = FoodBox/FoodBox.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = R5PHXA6C4L;
 				INFOPLIST_FILE = FoodBox/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "FoodBox فود بوكس";
@@ -407,7 +407,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

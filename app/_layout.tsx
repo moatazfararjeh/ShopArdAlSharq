@@ -1,19 +1,40 @@
 import '../global.css';
 import '../i18n';
 import { useEffect } from 'react';
-import { I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
+import { ErrorUtils, I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Set default font family + RTL rendering for all Text and TextInput components.
-// Icons use their own fontFamily so they remain unaffected.
-// writingDirection: 'rtl' — tells iOS/Android to shape bidirectional Unicode text RTL.
-// textAlign: 'right'      — anchors every text block to the right by default.
-// Components that need centering already set textAlign: 'center' explicitly.
-if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
-(Text as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
-if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
-(TextInput as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular', textAlign: 'right', writingDirection: 'rtl' };
+// ── Global JS error handler ────────────────────────────────────────────────
+// In production, React Native's default handler calls RCTExceptionsManager
+// .reportFatal → abort(), crashing the app (App Store 2.1a rejection).
+// Overriding here logs the error and lets the native RCTSetFatalHandler +
+// the React ErrorBoundary show a friendly screen instead of killing the process.
+try {
+  const _originalHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    console.error('[FoodBox] Unhandled JS error (isFatal=' + String(isFatal) + '):', error?.message, error?.stack);
+    if (!isFatal) {
+      _originalHandler?.(error, isFatal);
+    }
+    // Fatal errors: swallowed here — RCTSetFatalHandler (AppDelegate) prevents
+    // abort(), and the React ErrorBoundary renders the error screen.
+  });
+} catch {
+  // ErrorUtils not available on web
+}
+
+// ── Default font family + RTL for all Text / TextInput ─────────────────────
+// Wrapped in try/catch: React 19 may throw when patching defaultProps on
+// host components, especially during cold launch on iPadOS 26.
+try {
+  if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+  (Text as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular' };
+} catch { /* ignore */ }
+try {
+  if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+  (TextInput as any).defaultProps.style = { fontFamily: 'NotoSansArabic-Regular', textAlign: 'right', writingDirection: 'rtl' };
+} catch { /* ignore */ }
 
 SplashScreen.preventAutoHideAsync();
 
@@ -75,6 +96,10 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[FoodBox] ErrorBoundary caught:', error?.message);
+    console.error('[FoodBox] Component stack:', info?.componentStack);
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -95,11 +120,6 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function AuthInitializer() {
-  useAuth();
-  return null;
-}
-
 function CartInitializer() {
   useCartSync();
   return null;
@@ -117,10 +137,8 @@ export default function RootLayout() {
     'NotoSansArabic-Bold': require('../assets/fonts/NotoSansArabic-Bold.ttf'),
   });
 
-  // Start auth initialization here so it runs in parallel with font loading.
-  // useAuth() subscribes to the Zustand store and keeps the subscription alive
-  // for the lifetime of the root layout (which never unmounts).
-  const { isInitialized } = useAuth();
+  // Start auth initialization in parallel with font loading.
+  useAuth();
 
   useEffect(() => {
     I18nManager.forceRTL(true);
@@ -130,23 +148,20 @@ export default function RootLayout() {
     }
   }, []);
 
-  // Keep the native splash screen visible until BOTH fonts and auth are ready.
-  // This avoids the custom loading-spinner flash: the user sees the splash screen
-  // (which looks intentional) and then immediately the correct screen.
+  // Hide the splash screen as soon as fonts are ready.
   useEffect(() => {
-    if (fontsLoaded && isInitialized) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, isInitialized]);
+  }, [fontsLoaded]);
 
-  if (!fontsLoaded || !isInitialized) {
-    return null; // Splash screen remains visible while we wait
+  if (!fontsLoaded) {
+    return null;
   }
 
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        {/* AuthInitializer removed — useAuth() above already handles initialisation */}
         <CartInitializer />
         <PushInitializer />
         <StatusBar style="auto" />
@@ -158,4 +173,3 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
-

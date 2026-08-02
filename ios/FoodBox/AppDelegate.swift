@@ -23,6 +23,17 @@ class AppDelegate: ExpoAppDelegate {
     UserDefaults.standard.synchronize()
     UIView.appearance().semanticContentAttribute = .forceRightToLeft
 
+    // ── Override the default fatal JS-error handler ───────────────────────────
+    // In production builds React Native calls abort() for any unhandled JS
+    // exception, which triggers an EXC_CRASH and fails App Review (2.1a).
+    // Setting a custom handler lets the JS ErrorBoundary display a friendly
+    // error screen instead of killing the process.
+    RCTSetFatalHandler { error in
+      guard let error = error else { return }
+      NSLog("[FoodBox] JS fatal error (non-crashing): %@", error.localizedDescription)
+      // Intentionally do NOT call abort() — the React ErrorBoundary handles UI.
+    }
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -71,11 +82,7 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 
   override func bundleURL() -> URL? {
 #if DEBUG
-    // Returns nil when Metro is not running; fall back to embedded bundle if present.
-    if let metroURL = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry") {
-      return metroURL
-    }
-    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
 #else
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
