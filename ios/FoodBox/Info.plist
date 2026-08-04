@@ -73,13 +73,13 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to access your camera</string>
+	<string>$(PRODUCT_NAME) uses the camera to let you take a photo of your commercial registration document when creating a vendor account.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to access your photos</string>
+	<string>$(PRODUCT_NAME) accesses your photo library to let you upload your commercial registration document or business certificate (as an image or PDF) when creating a vendor account.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

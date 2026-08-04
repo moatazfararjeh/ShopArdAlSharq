@@ -23,8 +23,9 @@ export const registerSchema = z
       .max(120, 'اسم الشركة يجب ألا يتجاوز 120 حرفًا'),
     commercialRegisterNumber: z
       .string()
-      .min(1, 'رقم السجل التجاري مطلوب')
-      .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا'),
+      .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا')
+      .optional()
+      .or(z.literal('')),
     phone: z
       .string()
       .optional()
@@ -44,14 +45,6 @@ export const registerSchema = z
         'كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل',
       ),
     confirmPassword: z.string().min(1, 'تأكيد كلمة المرور مطلوب'),
-    companyName: z
-      .string()
-      .min(2, 'اسم الشركة مطلوب (حرفان على الأقل)')
-      .max(120, 'اسم الشركة يجب ألا يتجاوز 120 حرفًا'),
-    commercialRegisterNumber: z
-      .string()
-      .min(1, 'رقم السجل التجاري مطلوب')
-      .max(50, 'رقم السجل التجاري يجب ألا يتجاوز 50 حرفًا'),
     commercialRegisterUri: z.string().optional(),
     commercialRegisterName: z.string().optional(),
     commercialRegisterMime: z.string().optional(),

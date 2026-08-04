@@ -263,7 +263,7 @@ export default function RegisterScreen() {
           {/* Commercial Register Upload */}
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-              السجل التجاري <Text style={{ color: '#ef4444' }}>*</Text>
+              السجل التجاري <Text style={{ color: '#6b7280', fontWeight: '400' }}>(اختياري)</Text>
             </Text>
             <TouchableOpacity
               onPress={pickDocument}
