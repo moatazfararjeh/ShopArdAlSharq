@@ -637,7 +637,7 @@ export default function CheckoutScreen() {
           <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(summary.total)}</Text>
         </View>
         <Button
-          title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
+          title={placeOrder.isPending ? '' : hasCommercialRegister === false ? '📄 رفع السجل التجاري' : t('checkout.placeOrder')}
           onPress={hasCommercialRegister === false
             ? () => router.push('/(customer)/profile' as any)
             : handleSubmit(onSubmit, (fieldErrors) => {
