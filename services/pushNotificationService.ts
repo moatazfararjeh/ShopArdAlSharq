@@ -157,6 +157,65 @@ function generateUUID(): string {
   });
 }
 
+// ─── New order → notify all admins ───────────────────────────────────────────
+
+/**
+ * Called immediately after a customer places an order.
+ * Sends a push notification + in-app notification to every admin / super_admin.
+ */
+export async function sendNewOrderAdminNotification(
+  orderId: string,
+  orderNumber: string,
+  totalAmount: number,
+): Promise<void> {
+  try {
+    // Fetch every admin / super_admin profile
+    const { data: admins } = await (supabase as any)
+      .from('profiles')
+      .select('id, expo_push_token')
+      .in('role', ['admin', 'super_admin']);
+
+    if (!admins || admins.length === 0) return;
+
+    const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+    const titleAr = `🛒 طلب جديد #${orderNumber}`;
+    const titleEn = `🛒 New Order #${orderNumber}`;
+    const bodyAr  = `تم استلام طلب جديد بقيمة ${totalAmount.toLocaleString('ar-JO')} د.أ — يتطلب إجراءك.`;
+    const bodyEn  = `A new order worth ${totalAmount.toFixed(2)} JOD has been received — action required.`;
+
+    // 1. Insert in-app notification for each admin
+    try {
+      await (supabase as any).from('notifications').insert(
+        admins.map((a: { id: string }) => ({
+          user_id:  a.id,
+          title_ar: titleAr,
+          title_en: titleEn,
+          body_ar:  bodyAr,
+          body_en:  bodyEn,
+          type:     'order_placed',
+          is_read:  false,
+          data:     { orderId, orderNumber },
+        }))
+      );
+    } catch { /* best-effort */ }
+
+    // 2. Send push notification to each admin that has a valid token
+    const messages: PushMessage[] = admins
+      .filter((a: any) => a.expo_push_token && EXPO_TOKEN_RE.test(a.expo_push_token))
+      .map((a: any) => ({
+        to:    a.expo_push_token as string,
+        title: titleAr,
+        body:  bodyAr,
+        sound: 'default' as const,
+        data:  { orderId, orderNumber, isAdminOrder: true },
+      }));
+
+    if (messages.length > 0) {
+      await sendExpoPushNotification(messages);
+    }
+  } catch { /* best-effort — never block the order flow */ }
+}
+
 // ─── Order status notification ────────────────────────────────────────────────
 
 /**

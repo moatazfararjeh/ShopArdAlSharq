@@ -44,7 +44,15 @@ export function usePlaceOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CheckoutPayload) => placeOrder(payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.lists() }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: orderKeys.lists() });
+      // Notify all admins about the new order — detached, never blocks checkout
+      void sendNewOrderAdminNotification(
+        result.order_id,
+        result.order_number,
+        result.total_amount,
+      ).catch(() => {});
+    },
   });
 }
 
