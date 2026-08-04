@@ -157,6 +157,55 @@ function generateUUID(): string {
   });
 }
 
+// ─── New order → notify the customer who placed it ───────────────────────────
+
+/**
+ * Sends an order-received confirmation to the customer immediately after checkout.
+ */
+export async function sendNewOrderCustomerNotification(
+  orderId: string,
+  orderNumber: string,
+  totalAmount: number,
+  userId: string,
+): Promise<void> {
+  try {
+    const titleAr = `✅ تم استلام طلبك #${orderNumber}`;
+    const titleEn = `✅ Order Received #${orderNumber}`;
+    const bodyAr  = `طلبك بقيمة ${totalAmount.toLocaleString('ar-JO')} د.أ تحت المراجعة، سنقوم بتأكيده قريباً.`;
+    const bodyEn  = `Your order worth ${totalAmount.toFixed(2)} JOD is under review, we will confirm it shortly.`;
+
+    // 1. Insert in-app notification
+    await insertNotification({
+      userId,
+      titleAr,
+      titleEn,
+      bodyAr,
+      bodyEn,
+      type: 'order_placed',
+      data: { orderId, orderNumber },
+    });
+
+    // 2. Send push notification
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('expo_push_token')
+      .eq('id', userId)
+      .single();
+
+    const token = (profile as { expo_push_token?: string | null } | null)?.expo_push_token;
+    const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+    if (!token || !EXPO_TOKEN_RE.test(token)) return;
+
+    await sendExpoPushNotification([{
+      to:    token,
+      title: titleAr,
+      body:  bodyAr,
+      sound: 'default',
+      data:  { orderId, orderNumber },
+    }]);
+  } catch { /* best-effort */ }
+}
+
 // ─── New order → notify all admins ───────────────────────────────────────────
 
 /**

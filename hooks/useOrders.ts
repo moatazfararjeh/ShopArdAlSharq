@@ -42,11 +42,21 @@ export function useOrder(id: string) {
 
 export function usePlaceOrder() {
   const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.session?.user?.id);
   return useMutation({
     mutationFn: (payload: CheckoutPayload) => placeOrder(payload),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: orderKeys.lists() });
-      // Notify all admins about the new order — detached, never blocks checkout
+      // Notify the customer — order received confirmation
+      if (userId) {
+        void sendNewOrderCustomerNotification(
+          result.order_id,
+          result.order_number,
+          result.total_amount,
+          userId,
+        ).catch(() => {});
+      }
+      // Notify all admins — new order requires action
       void sendNewOrderAdminNotification(
         result.order_id,
         result.order_number,
