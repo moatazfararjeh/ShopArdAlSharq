@@ -637,10 +637,8 @@ export default function CheckoutScreen() {
           <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(summary.total)}</Text>
         </View>
         <Button
-          title={placeOrder.isPending ? '' : hasCommercialRegister === false ? '📄 رفع السجل التجاري' : t('checkout.placeOrder')}
-          onPress={hasCommercialRegister === false
-            ? () => router.push('/(customer)/profile' as any)
-            : handleSubmit(onSubmit, (fieldErrors) => {
+          title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
+          onPress={handleSubmit(onSubmit, (fieldErrors) => {
             const firstMsg = Object.values(fieldErrors)
               .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
               [0] as string | undefined;
