@@ -3,8 +3,10 @@ import { getOrders, getOrderById, placeOrder, updateOrderStatus } from '@/servic
 import { GetOrdersParams } from '@/services/orderService';
 import { CheckoutPayload } from '@/types/models';
 import { OrderStatus } from '@/types/database.types';
-import { sendOrderStatusNotification } from '@/services/pushNotificationService';
+import { sendOrderStatusNotification, sendNewOrderAdminNotification, sendNewOrderCustomerNotification } from '@/services/pushNotificationService';
+import { sendOrderReceivedWhatsApp, sendNewOrderAdminWhatsApp, sendOrderStatusWhatsApp } from '@/services/whatsappService';
 import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/lib/supabase';
 
 export const orderKeys = {
   all: ['orders'] as const,
@@ -45,23 +47,42 @@ export function usePlaceOrder() {
   const userId = useAuthStore((s) => s.session?.user?.id);
   return useMutation({
     mutationFn: (payload: CheckoutPayload) => placeOrder(payload),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       qc.invalidateQueries({ queryKey: orderKeys.lists() });
-      // Notify the customer — order received confirmation
+
+      // Fetch customer profile for phone number
+      const { data: customerProfile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', userId!)
+        .single()
+        .catch(() => ({ data: null }));
+
+      // Fetch all admin profiles for phone numbers
+      const { data: adminProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, phone')
+        .in('role', ['admin', 'super_admin'])
+        .catch(() => ({ data: [] }));
+
+      // Push notifications (in-app + push)
       if (userId) {
-        void sendNewOrderCustomerNotification(
-          result.order_id,
-          result.order_number,
-          result.total_amount,
-          userId,
-        ).catch(() => {});
+        void sendNewOrderCustomerNotification(result.order_id, result.order_number, result.total_amount, userId).catch(() => {});
       }
-      // Notify all admins — new order requires action
-      void sendNewOrderAdminNotification(
-        result.order_id,
-        result.order_number,
-        result.total_amount,
-      ).catch(() => {});
+      void sendNewOrderAdminNotification(result.order_id, result.order_number, result.total_amount).catch(() => {});
+
+      // WhatsApp messages
+      const customerPhone = (customerProfile as any)?.phone;
+      if (customerPhone) {
+        void sendOrderReceivedWhatsApp(customerPhone, result.order_number, result.total_amount).catch(() => {});
+      }
+      if (adminProfiles?.length) {
+        for (const admin of adminProfiles as Array<{ id: string; phone: string | null }>) {
+          if (admin.phone) {
+            void sendNewOrderAdminWhatsApp(admin.phone, result.order_number, result.total_amount, result.order_id).catch(() => {});
+          }
+        }
+      }
     },
   });
 }
@@ -71,8 +92,19 @@ export function useUpdateOrderStatus() {
   return useMutation({
     mutationFn: async ({ id, status, note }: { id: string; status: OrderStatus; note?: string }) => {
       const order = await updateOrderStatus(id, status, note);
-      // Explicitly detached — never blocks the mutation from resolving
+      // Push notification to customer
       void sendOrderStatusNotification(order.id, order.order_number, order.user_id, status).catch(() => {});
+      // WhatsApp to customer
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', order.user_id)
+        .single()
+        .catch(() => ({ data: null }));
+      const phone = (profile as any)?.phone;
+      if (phone) {
+        void sendOrderStatusWhatsApp(phone, String(order.order_number), status).catch(() => {});
+      }
       return order;
     },
     onSuccess: (_, variables) => {
