@@ -211,6 +211,8 @@ export default function CheckoutScreen() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveThisAddress, setSaveThisAddress] = useState(true);
+  // Commercial register validation: null = still loading, true = ok, false = missing
+  const [hasCommercialRegister, setHasCommercialRegister] = useState<boolean | null>(null);
 
   // Derive current step for progress bar
   const step: 1 | 2 | 3 = selectedAddressId !== null || savedAddresses.length === 0 ? 2 : 1;
@@ -267,6 +269,19 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
+
+    // Check commercial register document
+    supabase
+      .from('profiles')
+      .select('commercial_register_url')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => {
+        setHasCommercialRegister(!!(data as any)?.commercial_register_url);
+      })
+      .catch(() => setHasCommercialRegister(true)); // fail-open
+
+    // Load saved addresses
     supabase
       .from('addresses')
       .select('id, label, recipient_name, phone, city, district, street, is_default')
@@ -285,6 +300,16 @@ export default function CheckoutScreen() {
 
   async function onSubmit(values: CheckoutFormValues) {
     setSubmitError(null);
+
+    // Block order if commercial register document is missing
+    if (hasCommercialRegister === false) {
+      const msg = 'يرجى رفع السجل التجاري في ملفك الشخصي قبل إتمام الطلب';
+      setSubmitError(msg);
+      showToast(msg, 'error');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
@@ -383,6 +408,33 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 200 }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Commercial register missing banner */}
+        {hasCommercialRegister === false && (
+          <TouchableOpacity
+            onPress={() => router.push('/(customer)/profile' as any)}
+            activeOpacity={0.85}
+            style={{
+              marginBottom: 14, borderRadius: 14,
+              backgroundColor: '#fff7ed',
+              borderWidth: 1.5, borderColor: '#f97316',
+              padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 28 }}>📄</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#c2410c', marginBottom: 3 }}>
+                السجل التجاري مطلوب
+              </Text>
+              <Text style={{ fontSize: 12, color: '#9a3412', lineHeight: 18 }}>
+                يجب رفع صورة السجل التجاري في ملفك الشخصي قبل إتمام الطلب.{'\n'}
+                <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>
+                  اضغط هنا للذهاب إلى الملف الشخصي ←
+                </Text>
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Error banner */}
         {(submitError || placeOrder.error) && (
           <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: '#fef2f2', padding: 12 }}>
@@ -586,7 +638,9 @@ export default function CheckoutScreen() {
         </View>
         <Button
           title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
-          onPress={handleSubmit(onSubmit, (fieldErrors) => {
+          onPress={hasCommercialRegister === false
+            ? () => router.push('/(customer)/profile' as any)
+            : handleSubmit(onSubmit, (fieldErrors) => {
             const firstMsg = Object.values(fieldErrors)
               .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
               [0] as string | undefined;
