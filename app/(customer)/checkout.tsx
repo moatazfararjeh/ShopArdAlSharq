@@ -408,25 +408,25 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 200 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Commercial register missing banner */}
+        {/* Commercial register missing — soft reminder only */}
         {hasCommercialRegister === false && (
           <TouchableOpacity
             onPress={() => router.push('/(customer)/profile' as any)}
             activeOpacity={0.85}
             style={{
               marginBottom: 14, borderRadius: 14,
-              backgroundColor: '#fff7ed',
-              borderWidth: 1.5, borderColor: '#f97316',
+              backgroundColor: '#fffbeb',
+              borderWidth: 1.5, borderColor: '#fbbf24',
               padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
             }}
           >
-            <Text style={{ fontSize: 28 }}>📄</Text>
+            <Text style={{ fontSize: 26 }}>📄</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#c2410c', marginBottom: 3 }}>
-                السجل التجاري مطلوب
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#92400e', marginBottom: 3 }}>
+                تذكير: السجل التجاري غير مرفق
               </Text>
-              <Text style={{ fontSize: 12, color: '#9a3412', lineHeight: 18 }}>
-                يجب رفع صورة السجل التجاري في ملفك الشخصي قبل إتمام الطلب.{'\n'}
+              <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>
+                يُنصح برفع السجل التجاري في ملفك الشخصي لتسريع معالجة طلبك.{'\n'}
                 <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>
                   اضغط هنا للذهاب إلى الملف الشخصي ←
                 </Text>
@@ -638,7 +638,9 @@ export default function CheckoutScreen() {
         </View>
         <Button
           title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
-          onPress={handleSubmit(onSubmit, (fieldErrors) => {
+          onPress={hasCommercialRegister === false
+            ? () => router.push('/(customer)/profile' as any)
+            : handleSubmit(onSubmit, (fieldErrors) => {
             const firstMsg = Object.values(fieldErrors)
               .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
               [0] as string | undefined;
