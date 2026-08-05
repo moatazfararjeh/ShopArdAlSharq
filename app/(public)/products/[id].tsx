@@ -243,9 +243,8 @@ function ShareButton({ productId, productName }: { productId: string; productNam
   async function handleShare() {
     const url = Platform.OS === 'web'
       ? window.location.href
-      : `https://ardalsharq.com/products/${productId}`;
+      : `ardalsharq://products/${productId}`;
 
-    // Record the share event immediately
     recordEvent.mutate({
       productId,
       eventType: 'share',
@@ -260,10 +259,13 @@ function ShareButton({ productId, productName }: { productId: string; productNam
           await navigator.clipboard.writeText(url);
         }
       } else {
-        await Share.share({ message: `${productName}\n${url}` });
+        await Share.share({
+          title: productName,
+          message: `${productName}\n${url}`,
+        });
       }
     } catch (_) {
-      // User cancelled or clipboard failed — event already recorded
+      // User cancelled — event already recorded
     }
   }
 
