@@ -34,6 +34,7 @@ const ACTIONS: Array<{
   { label: 'إشعار ترويجي',    route: '/(admin)/send-notification',  icon: 'megaphone-outline',  color: '#ec4899', bg: '#fdf2f8' },
   { label: 'إحصاء الإشعار',   route: '/(admin)/notification-stats', icon: 'stats-chart-outline',color: C.muted,   bg: '#f1f5f9' },
   { label: 'الحسابات',         route: '/(admin)/users/',             icon: 'people-outline',     color: '#ef4444', bg: '#fff1f2' },
+  { label: 'تقرير المنتجات',  route: '/(admin)/products/report',   icon: 'document-text-outline', color: '#16a34a', bg: '#f0fdf4' },
 ];
 
 export default function AdminDashboardScreen() {
