@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useProductsPage, useUpdateProduct } from '@/hooks/useProducts';
-import { formatPrice } from '@/utils/formatPrice';
+import { useBrands } from '@/hooks/useBrands';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,7 +22,7 @@ function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 40 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -33,13 +33,11 @@ function exportToExcel(rows: any[]) {
 function EditableCell({
   value,
   onSave,
-  prefix,
   suffix,
   numeric,
 }: {
   value: number | null;
   onSave: (v: number | null) => Promise<void>;
-  prefix?: string;
   suffix?: string;
   numeric?: boolean;
 }) {
@@ -105,7 +103,7 @@ function EditableCell({
   return (
     <TouchableOpacity style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }} onPress={startEdit}>
       <Text style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
-        {value != null ? `${prefix ?? ''}${value}${suffix ?? ''}` : '—'}
+        {value != null ? `${value}${suffix ?? ''}` : '—'}
       </Text>
       <Ionicons name="pencil-outline" size={12} color={C.muted} />
     </TouchableOpacity>
@@ -148,13 +146,55 @@ function ProductRow({ product, locale, idx }: { product: any; locale: string; id
   );
 }
 
+// ─── Brand section header ─────────────────────────────────────────────────────
+function BrandHeader({
+  name,
+  count,
+  collapsed,
+  onToggle,
+}: {
+  name: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.7}
+      style={{
+        flexDirection: 'row', alignItems: 'center',
+        justifyContent: 'space-between',
+        marginHorizontal: 0, marginTop: 12, marginBottom: 0,
+        paddingHorizontal: 14, paddingVertical: 10,
+        backgroundColor: '#1e293b',
+        borderRightWidth: 4, borderRightColor: C.brand,
+      }}
+    >
+      <Ionicons
+        name={collapsed ? 'chevron-back' : 'chevron-down'}
+        size={14}
+        color="#94a3b8"
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#e3652322', borderRadius: 20 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: C.brand }}>{count}</Text>
+        </View>
+        <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'right' }}>{name}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ProductsReportScreen() {
   const router = useRouter();
   const locale = getCurrentLocale();
   const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
+  const { data: brands } = useBrands(false);
 
   const products = useMemo(() => {
     const all = data?.data ?? [];
@@ -162,13 +202,32 @@ export default function ProductsReportScreen() {
     return q ? all.filter((p) => getProductName(p, locale).toLowerCase().includes(q)) : all;
   }, [data, search, locale]);
 
+  const grouped = useMemo(() => {
+    return products.reduce<Record<string, any[]>>((acc, p) => {
+      const key = p.brand_id ?? 'no-brand';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(p);
+      return acc;
+    }, {});
+  }, [products]);
+
+  function getBrandName(brandId: string): string {
+    if (brandId === 'no-brand') return 'أخرى';
+    return brands?.find((b) => b.id === brandId)?.name ?? brandId;
+  }
+
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
   const excelRows = useMemo(() =>
     products.map((p) => ({
-      'اسم الصنف':          getProductName(p, locale),
-      'السعر بالكرتونة':    p.price_per_carton ?? '—',
-      'التعبئة في الكرتون': p.pieces_per_carton ?? '—',
+      'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
+      'اسم الصنف':           getProductName(p, locale),
+      'السعر بالكرتونة':     p.price_per_carton ?? '—',
+      'التعبئة في الكرتون':  p.pieces_per_carton ?? '—',
     })),
-    [products, locale],
+    [products, locale, brands],
   );
 
   return (
@@ -190,7 +249,7 @@ export default function ProductsReportScreen() {
         )}
       </View>
 
-      {/* Search */}
+      {/* Search + controls */}
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 10, paddingHorizontal: 12, gap: 8 }}>
           <Ionicons name="search-outline" size={16} color={C.muted} />
@@ -202,9 +261,26 @@ export default function ProductsReportScreen() {
             style={{ flex: 1, paddingVertical: 10, fontSize: 14, color: C.text, textAlign: 'right' }}
           />
         </View>
-        <Text style={{ fontSize: 12, color: C.muted, marginTop: 6, textAlign: 'right' }}>
-          {isLoading ? 'جاري التحميل...' : `${products.length} صنف — اضغط على أي قيمة لتعديلها`}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity onPress={() => setCollapsed({})} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>فتح الكل</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                const all: Record<string, boolean> = {};
+                Object.keys(grouped).forEach((id) => { all[id] = true; });
+                setCollapsed(all);
+              }}
+              style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>طي الكل</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 12, color: C.muted }}>
+            {isLoading ? 'جاري التحميل...' : `${products.length} صنف — ${Object.keys(grouped).length} براند`}
+          </Text>
+        </View>
       </View>
 
       {isLoading ? (
@@ -212,19 +288,29 @@ export default function ProductsReportScreen() {
           <ActivityIndicator size="large" color={C.brand} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {/* Table header */}
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+          {/* Table column header */}
           <View style={{
             flexDirection: 'row', backgroundColor: C.header,
-            borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 4,
+            paddingHorizontal: 12, paddingVertical: 8,
           }}>
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>السعر بالكرتونة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>التعبئة/كرتون</Text>
           </View>
 
-          {products.map((p, idx) => (
-            <ProductRow key={p.id} product={p} locale={locale} idx={idx} />
+          {Object.entries(grouped).map(([brandId, items]) => (
+            <View key={brandId}>
+              <BrandHeader
+                name={getBrandName(brandId)}
+                count={items.length}
+                collapsed={!!collapsed[brandId]}
+                onToggle={() => toggleCollapse(brandId)}
+              />
+              {!collapsed[brandId] && items.map((p, idx) => (
+                <ProductRow key={p.id} product={p} locale={locale} idx={idx} />
+              ))}
+            </View>
           ))}
 
           {products.length === 0 && (
