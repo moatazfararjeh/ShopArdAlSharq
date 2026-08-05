@@ -105,10 +105,6 @@ export default function RegisterScreen() {
   };
 
   async function onSubmit(values: RegisterFormValues) {
-    if (!docUri) {
-      showAlert('السجل التجاري مطلوب', 'يرجى رفع صورة السجل التجاري قبل إكمال التسجيل');
-      return;
-    }
     try {
       const result = await registerMutation.mutateAsync({
         ...values,
