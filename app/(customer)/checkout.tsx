@@ -203,7 +203,7 @@ export default function CheckoutScreen() {
   const { summary, clearCart } = useCart();
   const cartItems = useCartStore((s) => s.items);
   const placeOrder = usePlaceOrder();
-  const { session } = useAuthStore();
+  const { session, profile } = useAuthStore();
   const { show: showToast } = useToastStore();
   const recordEvent = useRecordProductEvent();
   const scrollRef = useRef<any>(null);
@@ -211,8 +211,8 @@ export default function CheckoutScreen() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveThisAddress, setSaveThisAddress] = useState(true);
-  // Commercial register validation: null = still loading, true = ok, false = missing
-  const [hasCommercialRegister, setHasCommercialRegister] = useState<boolean | null>(null);
+  // Commercial register validation: derived directly from store so it updates immediately after upload
+  const hasCommercialRegister = profile ? !!(profile as any).commercial_register_url : null;
 
   // Derive current step for progress bar
   const step: 1 | 2 | 3 = selectedAddressId !== null || savedAddresses.length === 0 ? 2 : 1;
@@ -269,17 +269,6 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
-
-    // Check commercial register document
-    supabase
-      .from('profiles')
-      .select('commercial_register_url')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        setHasCommercialRegister(!!(data as any)?.commercial_register_url);
-      })
-      .catch(() => setHasCommercialRegister(true)); // fail-open
 
     // Load saved addresses
     supabase
