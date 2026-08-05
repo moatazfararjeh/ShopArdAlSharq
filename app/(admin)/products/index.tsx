@@ -92,7 +92,7 @@ function ProductRow({
           {inStock && (
             <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#eff6ff' }}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#2563eb' }}>
-                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.unit_type === 'carton' && item.pieces_per_carton ? ` (${item.pieces_per_carton} قطعة/كرتون)` : ''}`}
+                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} قطعة/كرتون)` : ''}`}
               </Text>
             </View>
           )}
