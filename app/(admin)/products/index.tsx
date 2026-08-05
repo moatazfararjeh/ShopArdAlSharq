@@ -86,9 +86,16 @@ function ProductRow({
             backgroundColor: inStock ? '#f0fdf4' : '#fff1f2',
           }}>
             <Text style={{ fontSize: 10, fontWeight: '700', color: inStock ? '#16a34a' : '#ef4444' }}>
-              {inStock ? `متوفر • ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}` : 'غير متوفر'}
+              {inStock ? 'متوفر' : 'غير متوفر'}
             </Text>
           </View>
+          {inStock && (
+            <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#eff6ff' }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#2563eb' }}>
+                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}`}
+              </Text>
+            </View>
+          )}
           {(item.product_images?.length ?? 0) === 0 && (
             <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#fff7ed' }}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#f59e0b' }}>بدون صورة</Text>
