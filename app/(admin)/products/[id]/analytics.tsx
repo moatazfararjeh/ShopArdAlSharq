@@ -8,6 +8,7 @@ import { useProductStatistics, useProductDailyStats, useCartUsers, useRefreshPro
 import { useProduct } from '@/hooks/useProducts';
 import { getProductName } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
+import { formatDate } from '@/utils/formatDate';
 
 interface StatCardProps {
   icon: string;
@@ -211,12 +212,12 @@ export default function ProductAnalyticsScreen() {
           <Text className="text-base font-bold text-gray-900 mb-2">معلومات إضافية</Text>
           {stats?.last_viewed_at && (
             <Text className="text-sm text-gray-600 mb-1">
-              آخر مشاهدة: {new Date(stats.last_viewed_at).toLocaleDateString('ar-SA')}
+              آخر مشاهدة: {formatDate(stats.last_viewed_at)}
             </Text>
           )}
           {stats?.last_purchased_at && (
             <Text className="text-sm text-gray-600">
-              آخر شراء: {new Date(stats.last_purchased_at).toLocaleDateString('ar-SA')}
+              آخر شراء: {formatDate(stats.last_purchased_at)}
             </Text>
           )}
         </View>

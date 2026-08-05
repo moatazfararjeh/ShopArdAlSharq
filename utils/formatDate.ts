@@ -1,30 +1,28 @@
-/**
- * Formats an ISO date string for display.
- * Falls back gracefully if the input is invalid.
- */
-export function formatDate(isoString: string, locale: string = 'ar-JO'): string {
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return isoString;
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+function toDDMMYYYY(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
 }
 
 /**
- * Formats both date and time.
+ * Formats an ISO date string as DD-MM-YYYY.
  */
-export function formatDateTime(isoString: string, locale: string = 'ar-JO'): string {
+export function formatDate(isoString: string, _locale?: string): string {
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return isoString;
-  return date.toLocaleString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return toDDMMYYYY(date);
+}
+
+/**
+ * Formats both date and time as DD-MM-YYYY HH:MM.
+ */
+export function formatDateTime(isoString: string, _locale?: string): string {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return isoString;
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${toDDMMYYYY(date)} ${hh}:${min}`;
 }
 
 /**
