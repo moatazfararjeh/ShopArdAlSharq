@@ -471,7 +471,7 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
     limit: 30,
   });
   const products = (data?.data ?? [])
-    .filter((p) => p.discount_price != null && p.discount_price < p.price)
+    .filter((p) => p.discount_price != null && p.discount_price > 0 && p.discount_price < p.price)
     .slice(0, 12);
 
   if (!isLoading && products.length === 0) return null;
