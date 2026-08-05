@@ -639,7 +639,14 @@ export default function CheckoutScreen() {
         <Button
           title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
           onPress={hasCommercialRegister === false
-            ? () => router.push('/(customer)/profile' as any)
+            ? () => Alert.alert(
+                'تذكير: السجل التجاري',
+                'لم يتم رفع السجل التجاري بعد. يُرجى رفعه من صفحة الملف الشخصي لاستكمال الطلبات المستقبلية.',
+                [
+                  { text: 'رفع الآن', onPress: () => router.push('/(customer)/profile' as any) },
+                  { text: 'تخطي', style: 'cancel' },
+                ],
+              )
             : handleSubmit(onSubmit, (fieldErrors) => {
             const firstMsg = Object.values(fieldErrors)
               .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
