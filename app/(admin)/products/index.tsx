@@ -60,6 +60,7 @@ function ProductRow({
 }) {
   const thumbUrl = item.product_images?.[0]?.url ?? null;
   const inStock = item.is_available && item.stock_quantity > 0;
+  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'قطعة' : '';
 
   return (
     <View style={{
@@ -85,7 +86,7 @@ function ProductRow({
             backgroundColor: inStock ? '#f0fdf4' : '#fff1f2',
           }}>
             <Text style={{ fontSize: 10, fontWeight: '700', color: inStock ? '#16a34a' : '#ef4444' }}>
-              {inStock ? `متوفر • ${item.stock_quantity}` : 'غير متوفر'}
+              {inStock ? `متوفر • ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}` : 'غير متوفر'}
             </Text>
           </View>
           {(item.product_images?.length ?? 0) === 0 && (
