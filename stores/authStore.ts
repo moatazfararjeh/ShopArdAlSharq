@@ -47,96 +47,67 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   initialize: () => {
-    // Guard against double-initialization
     if (get().isInitialized) return Promise.resolve(() => {});
-
-    // If initialization is already in progress, return the same promise
-    // to avoid concurrent calls racing.
     if (initPromise) return initPromise;
 
     initPromise = new Promise<() => void>((resolve) => {
-      let resolved = false;
+      // `settled` = we know the session; unblock the loading screen immediately.
+      // Profile fetch then happens in the background — it must never gate isInitialized.
+      let settled = false;
 
-      const finishInit = async (session: Session | null) => {
-        if (resolved) return;
-        resolved = true;
-
-        try {
-          if (session?.user) {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (data) {
-              get().setProfile(data as Profile);
-            }
-          }
-        } catch {
-          // profile fetch failed — continue anyway
-        }
-
-        set({
-          session,
-          isAuthenticated: !!session,
-          isInitialized: true,
-          isLoading: false,
-        });
+      const settle = (session: Session | null) => {
+        if (settled) return;
+        settled = true;
+        set({ session, isAuthenticated: !!session, isInitialized: true, isLoading: false });
       };
 
-      // Use onAuthStateChange which fires INITIAL_SESSION without navigator.locks.
-      // This avoids the hanging getSession() issue on web.
+      const fetchProfile = async (userId: string) => {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          if (data) get().setProfile(data as Profile);
+        } catch {
+          // non-blocking
+        }
+      };
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        // If token refresh failed, clear local state so the user is sent to login
         if (event === 'TOKEN_REFRESHED' && !session) {
-          set({
-            session: null,
-            isAuthenticated: false,
-            profile: null,
-            isAdmin: false,
-          });
-          if (!resolved) {
-            set({ isInitialized: true, isLoading: false });
-            resolved = true;
+          set({ session: null, isAuthenticated: false, profile: null, isAdmin: false });
+          if (!settled) {
+            settle(null);
             resolve(() => subscription.unsubscribe());
           }
           return;
         }
 
-        if (!resolved) {
-          // First event is always the initial session
-          await finishInit(session);
+        if (!settled) {
+          // Unblock the loading screen immediately, then fetch profile in background.
+          settle(session);
           resolve(() => subscription.unsubscribe());
+          if (session?.user) await fetchProfile(session.user.id);
         } else {
           // Subsequent auth changes (sign in/out, token refresh)
-          set({
-            session,
-            isAuthenticated: !!session,
-          });
-
+          set({ session, isAuthenticated: !!session });
           if (session?.user) {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            get().setProfile(data ? (data as Profile) : null);
+            await fetchProfile(session.user.id);
           } else {
             get().setProfile(null);
           }
         }
       });
 
-      // Timeout fallback — if onAuthStateChange doesn't fire within 3s,
-      // mark as initialized anyway so the app is never stuck loading.
+      // Timeout fallback — if onAuthStateChange never fires (offline / Supabase down),
+      // show login after 1.5 s instead of spinning forever.
       setTimeout(() => {
-        if (!resolved) {
-          finishInit(null);
+        if (!settled) {
+          settle(null);
           resolve(() => subscription.unsubscribe());
         }
-      }, 3000);
+      }, 1500);
     });
 
     return initPromise;
