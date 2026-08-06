@@ -2,7 +2,7 @@
   "expo": {
     "name": "FoodBox",
     "slug": "ardalsharq",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "ardalsharq",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.ardalsharq.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
