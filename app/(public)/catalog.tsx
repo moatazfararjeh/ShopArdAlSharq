@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, Dimensions, TouchableOpacity,
-  ActivityIndicator, PanResponder, Platform, Alert,
+  ActivityIndicator, PanResponder, Platform, Alert, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -9,23 +9,27 @@ import { useRouter } from 'expo-router';
 
 import { useProductsPage } from '@/hooks/useProducts';
 import { useBrands } from '@/hooks/useBrands';
+import { useCategories } from '@/hooks/useCategories';
 import { getCurrentLocale } from '@/i18n';
-import { Product, Brand } from '@/types/models';
+import { Product, Brand, Category } from '@/types/models';
 
 // ── Design constants ───────────────────────────────────────────────────────────
-const HEADER_BG = '#FFFFFF';       // white — logo is visible against it
+const HEADER_BG     = '#FFFFFF';
 const HEADER_BORDER = '#e36523';   // orange accent line below header
-const DARK      = '#2C2F34';
-const ACCENT    = '#e36523';
-const WHITE     = '#FFFFFF';
-const LIGHT     = '#f8f8f8';
-const PAGE_BG   = '#FAFAFA';
+const DARK           = '#2C2F34';
+const ACCENT          = '#e36523'; // orange
+const WHITE            = '#FFFFFF';
+const LIGHT              = '#f8f8f8';
+const PAGE_BG              = '#FAFAFA';
 
 // Company info
 const COMPANY_AR  = 'شركة أرض الشرق الحديثة';
 const COMPANY_SUB = 'لتوزيع المواد الغذائية';
 const PHONE1      = '0792881832';
 const PHONE2      = '0795277537';
+
+const PAGE_SIZE = 6;
+const OTHER_LABEL_AR = 'منتجات أخرى';
 
 // ── Window size hook ──────────────────────────────────────────────────────────
 function useWindowSize() {
@@ -48,50 +52,125 @@ function useWindowSize() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// GROUPING — shared by the on-screen book and the PDF export so both stay in sync
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface CatalogGroup {
+  brand: Brand | null;
+  category: Category | null;
+  products: Product[];
+}
+
+function buildCatalogGroups(products: Product[], brands: Brand[], categories: Category[]): CatalogGroup[] {
+  const brandMap = new Map(brands.map((b) => [b.id, b]));
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
+
+  const brandOrder: (string | null)[] = [];
+  const byBrand = new Map<string | null, Map<string | null, Product[]>>();
+
+  for (const p of products) {
+    const brandKey = p.brand_id && brandMap.has(p.brand_id) ? p.brand_id : null;
+    const categoryKey = p.category_id && categoryMap.has(p.category_id) ? p.category_id : null;
+
+    if (!byBrand.has(brandKey)) {
+      byBrand.set(brandKey, new Map());
+      brandOrder.push(brandKey);
+    }
+    const byCategory = byBrand.get(brandKey)!;
+    if (!byCategory.has(categoryKey)) byCategory.set(categoryKey, []);
+    byCategory.get(categoryKey)!.push(p);
+  }
+
+  brandOrder.sort((a, b) => {
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return brandMap.get(a)!.sort_order - brandMap.get(b)!.sort_order;
+  });
+
+  const groups: CatalogGroup[] = [];
+  for (const brandKey of brandOrder) {
+    const byCategory = byBrand.get(brandKey)!;
+    const categoryKeys = Array.from(byCategory.keys());
+    categoryKeys.sort((a, b) => {
+      if (a === null && b === null) return 0;
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return categoryMap.get(a)!.sort_order - categoryMap.get(b)!.sort_order;
+    });
+
+    for (const categoryKey of categoryKeys) {
+      const list = byCategory.get(categoryKey)!;
+      for (let i = 0; i < list.length; i += PAGE_SIZE) {
+        groups.push({
+          brand: brandKey ? brandMap.get(brandKey)! : null,
+          category: categoryKey ? categoryMap.get(categoryKey)! : null,
+          products: list.slice(i, i + PAGE_SIZE),
+        });
+      }
+    }
+  }
+  return groups;
+}
+
+/** A single product's card scales up when its page has very few items, mirroring the reference catalog. */
+function cardWidthPct(count: number, cols: number): number {
+  if (count === 1) return 60;
+  if (count === 2) return 45;
+  return cols === 3 ? 30 : 47;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PDF EXPORT — web: print API; native: expo-print (dynamic import)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildPrintHtml(products: Product[]): string {
-  const rows = products.map((p) => {
-    const imageUrl = p.product_images?.find((img) => img.is_primary)?.url
-      ?? p.product_images?.[0]?.url ?? '';
-    const nameAr = p.name_ar;
-    const nameEn = p.name_en ?? '';
-    const brand = (p as any).brands?.name ?? '';
-    const chips: string[] = [];
-    if (p.weight) chips.push(`<span class="chip"><span class="chip-icon">⚖️</span><strong>${p.weight}</strong> ${p.weight_unit ?? 'كغ'}</span>`);
-    if (p.pieces_per_carton) chips.push(`<span class="chip"><span class="chip-icon">📦</span><strong>${p.pieces_per_carton}</strong> حبة / كرتون</span>`);
+function buildGroupPageHtml(group: CatalogGroup, pageNumber: number): string {
+  const categoryLabel = group.category?.name_ar ?? OTHER_LABEL_AR;
+  const brandHeader = group.brand?.image_url
+    ? `<img src="${group.brand.image_url}" alt="${group.brand.name}" />`
+    : `<div class="brand-name">${group.brand?.name ?? OTHER_LABEL_AR}</div>`;
 
+  const count = group.products.length;
+  const gridColsClass = count === 1 ? 'cols-1' : count === 2 ? 'cols-2' : '';
+
+  const cards = group.products.map((p) => {
+    const imageUrl = p.product_images?.find((img) => img.is_primary)?.url ?? p.product_images?.[0]?.url;
+    const weight = p.weight ? `${p.weight} ${p.weight_unit ?? 'كغ'}` : '—';
+    const packaging = p.pieces_per_carton ?? '—';
     return `
-      <div class="product-page">
-        <div class="header">
-          <div class="header-logo">فود بوكس</div>
-          <div class="header-center">
-            <div class="company-ar">${COMPANY_AR}</div>
-            <div class="company-sub">${COMPANY_SUB}</div>
-          </div>
-          <div class="header-right">
-            ${brand ? `<span class="brand-tag">${brand}</span>` : ''}
-          </div>
+      <div class="product-card">
+        <div class="img-wrap">
+          ${imageUrl ? `<img src="${imageUrl}" alt="${p.name_ar}" />` : '<span class="no-img">📦</span>'}
         </div>
-        <div class="accent-bar"></div>
-        <div class="name-banner">
-          <div class="name-ar">${nameAr}</div>
-          ${nameEn ? `<div class="name-en">${nameEn}</div>` : ''}
-        </div>
-        ${chips.length ? `<div class="chips-row">${chips.join('')}</div>` : ''}
-        <div class="image-area">
-          ${imageUrl
-            ? `<img src="${imageUrl}" alt="${nameAr}" />`
-            : '<div class="no-image">📦 لا توجد صورة</div>'}
-        </div>
-        <div class="footer">
-          <span>📱 ${PHONE1}</span>
-          <span class="sep">|</span>
-          <span>📱 ${PHONE2}</span>
+        <div class="p-name">${p.name_ar}</div>
+        <div class="p-stats">
+          <div class="p-stat"><span class="lbl">التعبئة</span><span class="val">${packaging}</span></div>
+          <div class="p-stat"><span class="lbl">الوزن</span><span class="val">${weight}</span></div>
         </div>
       </div>`;
   }).join('');
+
+  return `
+    <div class="cat-page">
+      <div class="cat-frame grid-frame">
+        <div class="grid-main">
+          <div class="brand-header">${brandHeader}</div>
+          <div class="products-grid ${gridColsClass}">${cards}</div>
+          <div class="grid-footer"><strong>فود بوكس</strong><span>${COMPANY_AR}</span></div>
+        </div>
+        <div class="category-tab"><span>${categoryLabel}</span></div>
+      </div>
+      <div class="page-badge">${pageNumber}</div>
+    </div>`;
+}
+
+function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
+  const brandCards = brands.map((b) => `
+    <div class="brand-card">
+      ${b.image_url ? `<img src="${b.image_url}" alt="${b.name}" />` : `<span>${b.name}</span>`}
+    </div>`).join('');
+
+  const groupPages = groups.map((g, i) => buildGroupPageHtml(g, i + 3)).join('');
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -103,159 +182,139 @@ function buildPrintHtml(products: Product[]): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #fff; direction: rtl; }
 
-    .product-page {
-      width: 210mm;
-      height: 297mm;
-      page-break-after: always;
-      break-after: page;
-      display: flex;
-      flex-direction: column;
-      background: #fafafa;
-      border: 1px solid #ddd;
-      overflow: hidden;
+    .cat-page {
+      width: 210mm; height: 297mm;
+      page-break-after: always; break-after: page;
+      background: ${PAGE_BG}; position: relative; overflow: hidden;
+      padding: 6mm; box-sizing: border-box;
+    }
+    .cat-frame {
+      width: 100%; height: 100%;
+      border: 2px solid ${ACCENT}; border-radius: 14px;
+      background: #fff; box-sizing: border-box; overflow: hidden;
+      display: flex; flex-direction: column; position: relative;
+    }
+    .cat-frame.dark { background: ${DARK}; }
+
+    /* Cover */
+    .cover-logo { font-size: 26px; font-weight: 900; color: ${DARK}; }
+    .cover-badge {
+      background: #f8f8f8; border: 1.5px solid ${ACCENT}55; border-radius: 12px;
+      padding: 14px 26px; margin: 16px 0;
+    }
+    .cover-badge .title { font-size: 22px; font-weight: 900; color: ${ACCENT}; letter-spacing: 2px; }
+    .cover-badge .sub { font-size: 10px; color: #999; margin-top: 4px; }
+    .cover-company { font-size: 15px; font-weight: 800; color: ${DARK}; }
+    .cover-company-sub { font-size: 11px; color: #888; margin-top: 3px; }
+    .cover-footer { background: ${ACCENT}; color: #fff; text-align: center; padding: 10px; font-size: 11px; }
+
+    /* Brand index */
+    .brands-title { text-align: center; font-size: 16px; font-weight: 900; color: ${DARK}; padding: 16px 0 6px; }
+    .brands-grid { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 14px; padding: 10px 24px 24px; }
+    .brand-card {
+      width: 28%; aspect-ratio: 1.6; border-radius: 10px; background: #f8f8f8;
+      display: flex; align-items: center; justify-content: center; padding: 10px;
+    }
+    .brand-card img { max-width: 90%; max-height: 90%; object-fit: contain; }
+    .brand-card span { font-size: 12px; font-weight: 800; color: ${DARK}; text-align: center; }
+
+    /* Grid pages */
+    .grid-frame { flex-direction: row; }
+    .grid-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .brand-header { text-align: center; padding: 12px 12px 6px; }
+    .brand-header img { max-width: 150px; max-height: 48px; object-fit: contain; }
+    .brand-header .brand-name { font-size: 15px; font-weight: 900; color: ${DARK}; }
+    .products-grid {
+      flex: 1; display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; padding: 6px 14px; align-content: start;
+    }
+    .products-grid.cols-1 { grid-template-columns: 1fr; justify-items: center; }
+    .products-grid.cols-2 { grid-template-columns: repeat(2, 1fr); justify-items: center; }
+    .product-card {
+      border: 1.5px solid ${ACCENT}55; border-radius: 10px; padding: 7px;
+      background: #fff; display: flex; flex-direction: column; width: 100%;
+    }
+    .product-card .img-wrap {
+      aspect-ratio: 1; background: #f8f8f8; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .product-card img { max-width: 90%; max-height: 90%; object-fit: contain; }
+    .product-card .no-img { font-size: 26px; color: #ccc; }
+    .product-card .p-name { font-size: 11px; font-weight: 800; color: ${DARK}; text-align: center; margin-top: 5px; min-height: 28px; }
+    .product-card .p-stats { display: flex; border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; }
+    .product-card .p-stat { flex: 1; text-align: center; }
+    .product-card .p-stat:first-child { border-left: 1px solid #eee; }
+    .product-card .lbl { font-size: 8px; color: #999; display: block; }
+    .product-card .val { font-size: 10px; font-weight: 800; color: ${DARK}; }
+    .grid-footer { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-top: 1px solid #eee; }
+    .grid-footer strong { font-size: 10px; color: ${DARK}; }
+    .grid-footer span { font-size: 9px; color: #888; }
+    .category-tab { width: 24px; background: ${ACCENT}; display: flex; align-items: center; justify-content: center; }
+    .category-tab span {
+      color: #fff; font-size: 12px; font-weight: 800;
+      writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap;
+    }
+    .page-badge {
+      position: absolute; bottom: 10mm; left: 10mm; width: 24px; height: 24px; border-radius: 50%;
+      background: ${ACCENT}; color: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900; z-index: 5;
     }
 
-    /* Header */
-    .header {
-      background: #fff;
-      border-bottom: 3px solid ${ACCENT};
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .header-logo {
-      font-size: 22px;
-      font-weight: 900;
-      color: ${DARK};
-    }
-    .header-logo span { color: ${ACCENT}; }
-    .header-center { text-align: center; flex: 1; }
-    .company-ar { font-size: 13px; font-weight: 800; color: ${DARK}; }
-    .company-sub { font-size: 10px; color: #888; margin-top: 2px; }
-    .header-right { min-width: 60px; text-align: left; }
-    .brand-tag {
-      background: ${ACCENT}22;
-      color: ${ACCENT};
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-
-    .accent-bar { height: 4px; background: ${ACCENT}; }
-
-    /* Name banner */
-    .name-banner {
-      background: ${ACCENT};
-      margin: 16px 20px;
-      border-radius: 40px;
-      padding: 12px 24px;
-      text-align: center;
-    }
-    .name-ar { color: #fff; font-size: 17px; font-weight: 900; }
-    .name-en { color: rgba(255,255,255,0.85); font-size: 12px; margin-top: 3px; }
-
-    /* Image */
-    .image-area {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 30px;
-      background: #fff;
-      margin: 0 20px;
-      border-radius: 12px;
-      border: 1px solid #eee;
-    }
-    .image-area img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
-    .no-image {
-      font-size: 48px;
-      color: #ccc;
-      text-align: center;
-    }
-
-    /* Info chips row */
-    .chips-row {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 8px 20px;
-    }
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #fff;
-      border: 1.5px solid ${ACCENT}55;
-      border-radius: 20px;
-      padding: 5px 14px;
-      font-size: 14px;
-      color: #333;
-      font-weight: 600;
-    }
-    .chip strong { font-size: 15px; font-weight: 900; color: ${DARK}; }
-    .chip-icon { font-size: 15px; }
-
-    /* Footer */
-    .footer {
-      background: ${DARK};
-      color: #fff;
-      text-align: center;
-      padding: 8px 16px;
-      font-size: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-top: auto;
-    }
-    .sep { color: ${ACCENT}; }
+    /* Back page */
+    .back-title { font-size: 22px; font-weight: 900; color: #fff; }
+    .back-sub { font-size: 13px; color: #aaa; margin-bottom: 20px; }
+    .back-row { display: flex; align-items: center; justify-content: center; gap: 10px; background: ${ACCENT}22; border-radius: 12px; padding: 10px 20px; width: 80%; margin: 6px auto; color: #fff; font-size: 13px; }
+    .back-copy { font-size: 10px; color: #777; margin-top: 30px; }
 
     @media print {
       @page { size: A4 portrait; margin: 0; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .product-page { border: none; }
     }
   </style>
 </head>
 <body>
   <!-- Cover -->
-  <div class="product-page" style="align-items:center;justify-content:center;background:#fff;">
-    <div style="font-size:36px;font-weight:900;color:${DARK};margin-bottom:8px;">
-      فود بوكس
+  <div class="cat-page">
+    <div class="cat-frame">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; padding:30px;">
+        <div class="cover-logo">فود بوكس</div>
+        <div class="cover-badge">
+          <div class="title">كتالوج المنتجات</div>
+          <div class="sub">PRODUCT CATALOG</div>
+        </div>
+        <div class="cover-company">${COMPANY_AR}</div>
+        <div class="cover-company-sub">${COMPANY_SUB}</div>
+      </div>
+      <div class="cover-footer">📞 ${PHONE1} | ${PHONE2}</div>
     </div>
-    <div style="width:80px;height:4px;background:${ACCENT};border-radius:2px;margin-bottom:24px;"></div>
-    <div style="font-size:28px;font-weight:900;color:${ACCENT};letter-spacing:3px;margin-bottom:6px;">كتالوج المنتجات</div>
-    <div style="font-size:14px;color:#888;margin-bottom:4px;">PRODUCT CATALOG</div>
-    <div style="font-size:16px;font-weight:800;color:${DARK};margin-top:20px;">${COMPANY_AR}</div>
-    <div style="font-size:12px;color:#aaa;">${COMPANY_SUB}</div>
-    <div style="margin-top:40px;font-size:12px;color:#666;">📞 ${PHONE1} | ${PHONE2}</div>
   </div>
 
-  ${rows}
+  <!-- Brand index -->
+  <div class="cat-page">
+    <div class="cat-frame">
+      <div class="brands-title">العلامات التجارية</div>
+      <div class="brands-grid">${brandCards}</div>
+    </div>
+  </div>
+
+  ${groupPages}
 
   <!-- Back -->
-  <div class="product-page" style="align-items:center;justify-content:center;background:${DARK};">
-    <div style="font-size:28px;font-weight:900;color:#fff;margin-bottom:8px;">شكراً لاطلاعكم</div>
-    <div style="font-size:13px;color:#aaa;margin-bottom:30px;">للطلب والاستفسار تواصل معنا</div>
-    <div style="color:#fff;font-size:13px;margin-bottom:10px;">📱 مندوب عمان: +962${PHONE2}</div>
-    <div style="color:#fff;font-size:13px;">📱 مندوب الزرقاء: +962${PHONE1}</div>
-    <div style="color:#555;font-size:10px;margin-top:40px;">© 2026 ${COMPANY_AR}</div>
+  <div class="cat-page">
+    <div class="cat-frame dark" style="align-items:center; justify-content:center; text-align:center; padding:30px; gap:10px;">
+      <div class="back-title">شكراً لاطلاعكم</div>
+      <div class="back-sub">للطلب والاستفسار تواصل معنا</div>
+      <div class="back-row">📱 مندوب عمان: +962${PHONE2}</div>
+      <div class="back-row">📱 مندوب الزرقاء: +962${PHONE1}</div>
+      <div class="back-copy">© 2026 ${COMPANY_AR}</div>
+    </div>
   </div>
 </body>
 </html>`;
 }
 
-async function exportToPDF(products: Product[]) {
-  const html = buildPrintHtml(products);
+async function exportToPDF(groups: CatalogGroup[], brands: Brand[]) {
+  const html = buildPrintHtml(groups, brands);
 
   if (Platform.OS === 'web') {
     const win = window.open('', '_blank');
@@ -281,10 +340,11 @@ async function exportToPDF(products: Product[]) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface PageData {
-  type: 'cover' | 'product' | 'back';
-  product?: Product;
-  globalIndex?: number;
-  totalCount?: number;
+  type: 'cover' | 'brands' | 'grid' | 'back';
+  group?: CatalogGroup;
+  brands?: Brand[];
+  pageNumber?: number;
+  totalPages?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -299,6 +359,7 @@ export default function PublicCatalogScreen() {
     { enabled: true },
   );
   const { data: brands } = useBrands(true);
+  const { data: categories } = useCategories(true);
   const allProducts: Product[] = data?.data ?? [];
 
   if (isLoading) {
@@ -310,39 +371,32 @@ export default function PublicCatalogScreen() {
     );
   }
 
-  return <CatalogBook products={allProducts} brands={brands ?? []} locale={locale} />;
+  return <CatalogBook products={allProducts} brands={brands ?? []} categories={categories ?? []} locale={locale} />;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATALOG BOOK
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function CatalogBook({ products, brands, locale }: { products: Product[]; brands: Brand[]; locale: string }) {
+function CatalogBook({ products, brands, categories, locale }: {
+  products: Product[]; brands: Brand[]; categories: Category[]; locale: string;
+}) {
   const { width: winW, height: winH } = useWindowSize();
   const isDesktop = winW >= 900;
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
 
-  const orderedProducts = useMemo(() => {
-    const brandMap = new Map(brands.map((b) => [b.id, b]));
-    const withBrand = products.filter((p) => p.brand_id && brandMap.has(p.brand_id));
-    const noBrand   = products.filter((p) => !p.brand_id || !brandMap.has(p.brand_id));
-    withBrand.sort((a, b) => {
-      const bA = brandMap.get(a.brand_id!)!;
-      const bB = brandMap.get(b.brand_id!)!;
-      return bA.sort_order - bB.sort_order;
-    });
-    return [...withBrand, ...noBrand];
-  }, [products, brands]);
+  const groups = useMemo(() => buildCatalogGroups(products, brands, categories), [products, brands, categories]);
 
   const pages: PageData[] = useMemo(() => {
-    const result: PageData[] = [{ type: 'cover' }];
-    orderedProducts.forEach((p, i) => {
-      result.push({ type: 'product', product: p, globalIndex: i + 1, totalCount: orderedProducts.length });
-    });
-    result.push({ type: 'back' });
-    return result;
-  }, [orderedProducts]);
+    const base: PageData[] = [
+      { type: 'cover' },
+      { type: 'brands', brands },
+      ...groups.map((g): PageData => ({ type: 'grid', group: g })),
+      { type: 'back' },
+    ];
+    return base.map((p, i) => ({ ...p, pageNumber: i + 1, totalPages: base.length }));
+  }, [groups, brands]);
 
   const spreads: [PageData, PageData | null][] = useMemo(() => {
     const result: [PageData, PageData | null][] = [];
@@ -383,7 +437,7 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
   async function handleExport() {
     setExporting(true);
     try {
-      await exportToPDF(orderedProducts);
+      await exportToPDF(groups, brands);
     } finally {
       setExporting(false);
     }
@@ -501,10 +555,11 @@ function CatalogBook({ products, brands, locale }: { products: Product[]; brands
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function CatalogPage({ page, locale, width, height }: { page: PageData; locale: string; width: number; height: number }) {
-  if (page.type === 'cover')   return <CoverPage   width={width} height={height} />;
-  if (page.type === 'back')    return <BackPage    width={width} height={height} />;
-  if (page.type === 'product' && page.product)
-    return <ProductPage product={page.product} locale={locale} index={page.globalIndex!} total={page.totalCount!} width={width} height={height} />;
+  if (page.type === 'cover') return <CoverPage width={width} height={height} />;
+  if (page.type === 'brands') return <BrandIndexPage brands={page.brands ?? []} width={width} height={height} />;
+  if (page.type === 'back') return <BackPage width={width} height={height} />;
+  if (page.type === 'grid' && page.group)
+    return <GridPage group={page.group} locale={locale} pageNumber={page.pageNumber!} width={width} height={height} />;
   return <View style={{ flex: 1, backgroundColor: LIGHT }} />;
 }
 
@@ -514,177 +569,206 @@ function CatalogPage({ page, locale, width, height }: { page: PageData; locale: 
 
 function CoverPage({ width, height }: { width: number; height: number }) {
   return (
-    <View style={{ width, height, backgroundColor: WHITE, overflow: 'hidden' }}>
-      <View style={{ position: 'absolute', top: -100, right: -80, width: 300, height: 300, borderRadius: 150, backgroundColor: ACCENT + '10' }} />
-      <View style={{ position: 'absolute', bottom: -80, left: -60, width: 240, height: 240, borderRadius: 120, backgroundColor: DARK + '06' }} />
-      <View style={{ width: '100%', height: 8, backgroundColor: ACCENT }} />
-      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, backgroundColor: ACCENT }} />
+    <View style={{ width, height, backgroundColor: PAGE_BG, overflow: 'hidden' }}>
+      <View style={{
+        flex: 1, margin: 8, borderWidth: 2, borderColor: ACCENT, borderRadius: 16,
+        backgroundColor: WHITE, overflow: 'hidden',
+      }}>
+        <View style={{ position: 'absolute', top: -100, right: -80, width: 300, height: 300, borderRadius: 150, backgroundColor: ACCENT + '10' }} />
+        <View style={{ position: 'absolute', bottom: -80, left: -60, width: 240, height: 240, borderRadius: 120, backgroundColor: DARK + '06' }} />
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 14 }}>
-        <Image source={require('@/assets/logo.png')} style={{ width: 200, height: 80 }} contentFit="contain" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 14 }}>
+          <Image source={require('@/assets/logo.png')} style={{ width: 200, height: 80 }} contentFit="contain" />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '80%' }}>
-          <View style={{ flex: 1, height: 1.5, backgroundColor: ACCENT + '40' }} />
-          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT }} />
-          <View style={{ flex: 1, height: 1.5, backgroundColor: ACCENT + '40' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '80%' }}>
+            <View style={{ flex: 1, height: 1.5, backgroundColor: ACCENT + '40' }} />
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT }} />
+            <View style={{ flex: 1, height: 1.5, backgroundColor: ACCENT + '40' }} />
+          </View>
+
+          <View style={{ backgroundColor: LIGHT, borderWidth: 1.5, borderColor: ACCENT + '55', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', gap: 4 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: ACCENT, textAlign: 'center', letterSpacing: 2 }}>كتالوج المنتجات</Text>
+            <Text style={{ fontSize: 10, color: '#999', textAlign: 'center' }}>PRODUCT CATALOG</Text>
+          </View>
+
+          <View style={{ alignItems: 'center', marginTop: 6 }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: DARK, textAlign: 'center' }}>{COMPANY_AR}</Text>
+            <Text style={{ fontSize: 11, color: '#888', marginTop: 3, textAlign: 'center' }}>{COMPANY_SUB}</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+            {['🧀', '🥩', '🥦', '🛒', '🥚'].map((emoji) => (
+              <View key={emoji} style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1.5, borderColor: ACCENT + '35', alignItems: 'center', justifyContent: 'center', backgroundColor: LIGHT }}>
+                <Text style={{ fontSize: 20 }}>{emoji}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        <View style={{ backgroundColor: DARK, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: ACCENT, textAlign: 'center', letterSpacing: 2 }}>كتالوج المنتجات</Text>
-          <Text style={{ fontSize: 10, color: WHITE + '99', textAlign: 'center' }}>PRODUCT CATALOG</Text>
+        <View style={{ backgroundColor: ACCENT, paddingVertical: 8, alignItems: 'center', gap: 2 }}>
+          <Text style={{ color: WHITE, fontSize: 11, fontWeight: '700' }}>📞 {PHONE1}  |  {PHONE2}</Text>
+          <Text style={{ color: WHITE + 'cc', fontSize: 9 }}>للطلب والاستفسار عبر واتساب</Text>
         </View>
-
-        <View style={{ alignItems: 'center', marginTop: 6 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: DARK, textAlign: 'center' }}>{COMPANY_AR}</Text>
-          <Text style={{ fontSize: 11, color: '#888', marginTop: 3, textAlign: 'center' }}>{COMPANY_SUB}</Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-          {['🧀', '🥩', '🥦', '🛒', '🥚'].map((emoji) => (
-            <View key={emoji} style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1.5, borderColor: ACCENT + '35', alignItems: 'center', justifyContent: 'center', backgroundColor: LIGHT }}>
-              <Text style={{ fontSize: 20 }}>{emoji}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={{ backgroundColor: DARK, paddingVertical: 8, alignItems: 'center', gap: 2 }}>
-        <Text style={{ color: ACCENT, fontSize: 11, fontWeight: '700' }}>📞 {PHONE1}  |  {PHONE2}</Text>
-        <Text style={{ color: '#aaa', fontSize: 9 }}>للطلب والاستفسار عبر واتساب</Text>
       </View>
     </View>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PRODUCT PAGE
+// BRAND INDEX PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function ProductPage({ product, locale, index, total, width, height }: {
-  product: Product; locale: string; index: number; total: number; width: number; height: number;
-}) {
-  const nameAr = product.name_ar;
-  const nameEn = product.name_en;
-  const imageUrl = product.product_images?.find((img) => img.is_primary)?.url
-    ?? product.product_images?.[0]?.url;
-  const brandName = (product as any).brands?.name ?? null;
-
-  // Build individual info chips
-  const chips: { icon: string; value: string; label: string }[] = [];
-  if (product.weight)
-    chips.push({ icon: '⚖️', value: `${product.weight}`, label: product.weight_unit ?? 'كغ' });
-  if (product.pieces_per_carton)
-    chips.push({ icon: '📦', value: `${product.pieces_per_carton}`, label: 'حبة / كرتون' });
-  if (product.unit_type === 'kg' || product.price_per_kg)
-    chips.push({ icon: '🏷️', value: 'بالكيلو', label: '' });
-  if (product.unit_type === 'carton' || product.price_per_carton)
-    chips.push({ icon: '🗃️', value: 'بالكرتون', label: '' });
-
+function BrandIndexPage({ brands, width, height }: { brands: Brand[]; width: number; height: number }) {
   return (
     <View style={{ width, height, backgroundColor: PAGE_BG }}>
-
-      {/* ── Header — white background so logo is visible ── */}
       <View style={{
-        backgroundColor: HEADER_BG,
-        borderBottomWidth: 3,
-        borderBottomColor: HEADER_BORDER,
-        paddingHorizontal: 12, paddingVertical: 8,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        flex: 1, margin: 8, borderWidth: 2, borderColor: ACCENT, borderRadius: 16,
+        backgroundColor: WHITE, padding: 16,
       }}>
-        <Image source={require('@/assets/logo.png')} style={{ width: 90, height: 36 }} contentFit="contain" />
-
-        <View style={{ alignItems: 'center', flex: 1 }}>
-          <Text style={{ color: DARK, fontSize: 10, fontWeight: '800', textAlign: 'center' }}>{COMPANY_AR}</Text>
-          <Text style={{ color: '#888', fontSize: 8, marginTop: 1, textAlign: 'center' }}>{COMPANY_SUB}</Text>
-        </View>
-
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: '#aaa', fontSize: 9 }}>{index} / {total}</Text>
-          {brandName && (
-            <View style={{ backgroundColor: ACCENT + '20', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 }}>
-              <Text style={{ color: ACCENT, fontSize: 8, fontWeight: '700' }}>{brandName}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* ── Product name banner ── */}
-      <View style={{
-        backgroundColor: ACCENT,
-        marginHorizontal: 14, marginTop: 10,
-        borderRadius: 30, paddingVertical: 9, paddingHorizontal: 18,
-        alignItems: 'center', gap: 2,
-      }}>
-        <Text style={{ color: WHITE, fontSize: 14, fontWeight: '900', textAlign: 'center' }} numberOfLines={1}>
-          {nameAr}
+        <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: '900', color: DARK, marginBottom: 12 }}>
+          العلامات التجارية
         </Text>
-        {nameEn && (
-          <Text style={{ color: WHITE + 'cc', fontSize: 11, textAlign: 'center' }} numberOfLines={1}>
-            {nameEn}
-          </Text>
-        )}
-      </View>
-
-      {/* ── Info chips — weight, units, carton size ── */}
-      {chips.length > 0 && (
-        <View style={{
-          flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap',
-          gap: 8, marginHorizontal: 14, marginTop: 8,
-        }}>
-          {chips.map((chip, i) => (
-            <View key={i} style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: WHITE,
-              borderWidth: 1.5, borderColor: ACCENT + '55',
-              borderRadius: 20,
-              paddingHorizontal: 12, paddingVertical: 5,
-              shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'flex-start', gap: 10 }}
+        >
+          {brands.map((b) => (
+            <View key={b.id} style={{
+              width: '30%', aspectRatio: 1.6, borderRadius: 10, backgroundColor: LIGHT,
+              alignItems: 'center', justifyContent: 'center', padding: 8,
+              shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
             }}>
-              <Text style={{ fontSize: 14 }}>{chip.icon}</Text>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: DARK }}>{chip.value}</Text>
-              {chip.label !== '' && (
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#666' }}>{chip.label}</Text>
+              {b.image_url ? (
+                <Image source={{ uri: b.image_url }} style={{ width: '90%', height: '90%' }} contentFit="contain" />
+              ) : (
+                <Text style={{ fontSize: 11, fontWeight: '800', color: DARK, textAlign: 'center' }}>{b.name}</Text>
               )}
             </View>
           ))}
-        </View>
-      )}
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
 
-      {/* ── Product image ── */}
+// ═══════════════════════════════════════════════════════════════════════════════
+// GRID PAGE — several products per page, grouped by brand + category
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function GridPage({ group, locale, pageNumber, width, height }: {
+  group: CatalogGroup; locale: string; pageNumber: number; width: number; height: number;
+}) {
+  const cols = width > 420 ? 3 : 2;
+  const widthPct = cardWidthPct(group.products.length, cols);
+  const categoryLabel = group.category
+    ? (locale === 'ar' ? group.category.name_ar : (group.category.name_en ?? group.category.name_ar))
+    : OTHER_LABEL_AR;
+  const brandName = group.brand?.name ?? OTHER_LABEL_AR;
+
+  return (
+    <View style={{ width, height, backgroundColor: PAGE_BG }}>
       <View style={{
-        flex: 1, alignItems: 'center', justifyContent: 'center',
-        paddingHorizontal: 16, paddingVertical: 8,
-        marginHorizontal: 14, marginTop: 8,
-        backgroundColor: WHITE, borderRadius: 12,
-        borderWidth: 1, borderColor: '#eee',
+        flex: 1, margin: 8, borderWidth: 2, borderColor: ACCENT, borderRadius: 16,
+        backgroundColor: WHITE, overflow: 'hidden', flexDirection: 'row',
       }}>
+        {/* Main content */}
+        <View style={{ flex: 1 }}>
+          {/* Brand header */}
+          <View style={{ alignItems: 'center', paddingTop: 14, paddingBottom: 6, paddingHorizontal: 12 }}>
+            {group.brand?.image_url ? (
+              <Image source={{ uri: group.brand.image_url }} style={{ width: 120, height: 44 }} contentFit="contain" />
+            ) : (
+              <Text style={{ fontSize: 16, fontWeight: '900', color: DARK }}>{brandName}</Text>
+            )}
+          </View>
+
+          {/* Products grid — scrollable so it never clips on short/narrow viewports */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              flexDirection: 'row', flexWrap: 'wrap',
+              alignContent: 'flex-start', justifyContent: 'center',
+              paddingHorizontal: 10, gap: 8,
+            }}
+          >
+            {group.products.map((p) => (
+              <ProductCard key={p.id} product={p} widthPct={widthPct} />
+            ))}
+          </ScrollView>
+
+          {/* Footer */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#eee',
+          }}>
+            <Image source={require('@/assets/logo.png')} style={{ width: 60, height: 22 }} contentFit="contain" />
+            <Text style={{ fontSize: 9, color: '#888' }}>{COMPANY_AR}</Text>
+          </View>
+        </View>
+
+        {/* Vertical category tab */}
+        <View style={{ width: 26, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: WHITE, fontSize: 11, fontWeight: '800',
+              transform: [{ rotate: '-90deg' }], width: height * 0.6,
+              textAlign: 'center',
+            }}
+          >
+            {categoryLabel}
+          </Text>
+        </View>
+      </View>
+
+      {/* Page number badge */}
+      <View style={{
+        position: 'absolute', bottom: 14, left: 14,
+        width: 26, height: 26, borderRadius: 13, backgroundColor: ACCENT,
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Text style={{ color: WHITE, fontSize: 11, fontWeight: '900' }}>{pageNumber}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ProductCard({ product, widthPct }: { product: Product; widthPct: number }) {
+  const imageUrl = product.product_images?.find((img) => img.is_primary)?.url
+    ?? product.product_images?.[0]?.url;
+  const hasStats = !!product.weight || !!product.pieces_per_carton;
+
+  return (
+    <View style={{
+      width: `${widthPct}%`, borderWidth: 1.5, borderColor: ACCENT + '55',
+      borderRadius: 10, backgroundColor: WHITE, padding: 6, marginBottom: 8,
+    }}>
+      <View style={{ aspectRatio: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: LIGHT, borderRadius: 8, overflow: 'hidden' }}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={{ width: '90%', height: '90%' }} contentFit="contain" />
         ) : (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 42 }}>📦</Text>
-            <Text style={{ color: '#ccc', fontSize: 11, marginTop: 6 }}>لا توجد صورة</Text>
-          </View>
+          <Text style={{ fontSize: 22 }}>📦</Text>
         )}
       </View>
-
-      <View style={{ height: 8 }} />
-
-      {/* ── Footer ── */}
-      <View style={{
-        backgroundColor: DARK, paddingVertical: 7,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <Text style={{ fontSize: 10 }}>📱</Text>
-          <Text style={{ fontSize: 9, color: WHITE, fontWeight: '600' }}>{PHONE1}</Text>
+      <Text numberOfLines={2} style={{ fontSize: 10, fontWeight: '800', color: DARK, textAlign: 'center', marginTop: 4, minHeight: 26 }}>
+        {product.name_ar}
+      </Text>
+      {hasStats && (
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#eee', marginTop: 4, paddingTop: 4 }}>
+          <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#eee' }}>
+            <Text style={{ fontSize: 7, color: '#999' }}>الوزن</Text>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: DARK }}>
+              {product.weight ? `${product.weight} ${product.weight_unit ?? 'كغ'}` : '—'}
+            </Text>
+          </View>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={{ fontSize: 7, color: '#999' }}>التعبئة</Text>
+            <Text style={{ fontSize: 9, fontWeight: '800', color: DARK }}>
+              {product.pieces_per_carton ?? '—'}
+            </Text>
+          </View>
         </View>
-        <Text style={{ fontSize: 9, color: ACCENT, fontWeight: '700' }}>للتواصل</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <Text style={{ fontSize: 10 }}>📱</Text>
-          <Text style={{ fontSize: 9, color: WHITE, fontWeight: '600' }}>{PHONE2}</Text>
-        </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -695,32 +779,37 @@ function ProductPage({ product, locale, index, total, width, height }: {
 
 function BackPage({ width, height }: { width: number; height: number }) {
   return (
-    <View style={{ width, height, backgroundColor: DARK, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-      <View style={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: ACCENT + '20' }} />
-      <View style={{ position: 'absolute', bottom: -60, right: -60, width: 240, height: 240, borderRadius: 120, borderWidth: 1, borderColor: WHITE + '08' }} />
+    <View style={{ width, height, backgroundColor: PAGE_BG }}>
+      <View style={{
+        flex: 1, margin: 8, borderWidth: 2, borderColor: ACCENT, borderRadius: 16,
+        backgroundColor: DARK, alignItems: 'center', justifyContent: 'center', padding: 30, overflow: 'hidden',
+      }}>
+        <View style={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: ACCENT + '30' }} />
+        <View style={{ position: 'absolute', bottom: -60, right: -60, width: 240, height: 240, borderRadius: 120, borderWidth: 1, borderColor: WHITE + '08' }} />
 
-      <Image source={require('@/assets/logo.png')} style={{ width: 160, height: 60, marginBottom: 20 }} contentFit="contain" />
+        <Image source={require('@/assets/logo.png')} style={{ width: 160, height: 60, marginBottom: 20 }} contentFit="contain" />
 
-      <Text style={{ fontSize: 22, fontWeight: '900', color: WHITE, textAlign: 'center', marginBottom: 6 }}>شكراً لاطلاعكم</Text>
-      <Text style={{ fontSize: 13, color: '#aaa', textAlign: 'center', marginBottom: 28 }}>للطلب والاستفسار تواصل معنا</Text>
+        <Text style={{ fontSize: 22, fontWeight: '900', color: WHITE, textAlign: 'center', marginBottom: 6 }}>شكراً لاطلاعكم</Text>
+        <Text style={{ fontSize: 13, color: '#aaa', textAlign: 'center', marginBottom: 28 }}>للطلب والاستفسار تواصل معنا</Text>
 
-      <View style={{ gap: 10, width: '100%', alignItems: 'center' }}>
-        {[
-          { label: 'مندوب عمان', phone: PHONE2 },
-          { label: 'مندوب الزرقاء', phone: PHONE1 },
-        ].map(({ label, phone }) => (
-          <View key={phone} style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            backgroundColor: WHITE + '08', borderRadius: 12,
-            paddingHorizontal: 20, paddingVertical: 10, width: '100%', justifyContent: 'center',
-          }}>
-            <Text style={{ fontSize: 16 }}>📱</Text>
-            <Text style={{ fontSize: 13, color: WHITE, fontWeight: '600' }}>{label}: +962{phone}</Text>
-          </View>
-        ))}
+        <View style={{ gap: 10, width: '100%', alignItems: 'center' }}>
+          {[
+            { label: 'مندوب عمان', phone: PHONE2 },
+            { label: 'مندوب الزرقاء', phone: PHONE1 },
+          ].map(({ label, phone }) => (
+            <View key={phone} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: ACCENT + '15', borderRadius: 12,
+              paddingHorizontal: 20, paddingVertical: 10, width: '100%', justifyContent: 'center',
+            }}>
+              <Text style={{ fontSize: 16 }}>📱</Text>
+              <Text style={{ fontSize: 13, color: WHITE, fontWeight: '600' }}>{label}: +962{phone}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={{ fontSize: 10, color: '#666', marginTop: 36 }}>© 2026 {COMPANY_AR} — جميع الحقوق محفوظة</Text>
       </View>
-
-      <Text style={{ fontSize: 10, color: '#555', marginTop: 36 }}>© 2026 {COMPANY_AR} — جميع الحقوق محفوظة</Text>
     </View>
   );
 }
