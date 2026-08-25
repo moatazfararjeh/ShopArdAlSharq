@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Database } from '@/types/database.types';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -67,3 +67,21 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: Platform.OS === 'web',
   },
 });
+
+// RN's JS timers are throttled/suspended while backgrounded, so the
+// autoRefreshToken timer can miss a refresh while the app is away. Without
+// this, resuming the app can silently run on an expired session (empty data,
+// no redirect to login) until something else happens to touch auth state.
+// Pausing/resuming it around app foreground/background, per Supabase's own
+// React Native guidance, forces a fresh check on resume: a valid session
+// refreshes, an expired one fires SIGNED_OUT, and the existing route guards
+// (app/(customer)/_layout.tsx, app/(admin)/_layout.tsx) redirect to login.
+if (Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}
