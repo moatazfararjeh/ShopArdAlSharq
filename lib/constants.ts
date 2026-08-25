@@ -4,7 +4,7 @@ export const APP_NAME = process.env.EXPO_PUBLIC_APP_NAME ?? 'ArdAlsharq';
 export const APP_URL = (process.env.EXPO_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
 export const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? 'https://shop.ardalsharq.com/privacy-policy';
 export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@ardalsharq.com';
-export const APP_STORE_URL = 'https://apps.apple.com/app/id6794620646';
+export const APP_STORE_URL = 'https://apps.apple.com/sa/app/foodbox-%D9%81%D9%88%D8%AF-%D8%A8%D9%88%D9%83%D8%B3/id6794620646';
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.ardalsharq.app';
 export const DEFAULT_LOCALE = process.env.EXPO_PUBLIC_DEFAULT_LOCALE ?? 'ar';
 export const SUPPORTED_LOCALES = ['ar', 'en'] as const;

@@ -7,7 +7,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { useUnreadCount } from '@/hooks/useNotifications';
-import { PRIVACY_POLICY_URL } from '@/lib/constants';
+import { PRIVACY_POLICY_URL, APP_STORE_URL, PLAY_STORE_URL } from '@/lib/constants';
 
 const NAV_ITEMS = [
   { label: 'الرئيسية', icon: 'home-outline'    as const, activeIcon: 'home'    as const, path: '/home' },
@@ -199,10 +199,13 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
                 </View>
                 <View style={{ gap: 12 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>حمّل تطبيقنا</Text>
-                  <Text style={{ fontSize: 13, color: '#aaa' }}>قريباً على المتاجر</Text>
-                  <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' as any, opacity: 0.5 }}>
-                    <View style={footerStyles.appBtn}><Text style={footerStyles.appBtnText}>App Store</Text></View>
-                    <View style={footerStyles.appBtn}><Text style={footerStyles.appBtnText}>Google Play</Text></View>
+                  <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' as any }}>
+                    <TouchableOpacity style={footerStyles.appBtn} onPress={() => Linking.openURL(APP_STORE_URL)}>
+                      <Text style={footerStyles.appBtnText}>App Store</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={footerStyles.appBtn} onPress={() => Linking.openURL(PLAY_STORE_URL)}>
+                      <Text style={footerStyles.appBtnText}>Google Play</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
