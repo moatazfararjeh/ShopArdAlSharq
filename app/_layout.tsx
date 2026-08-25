@@ -82,6 +82,8 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartSync } from '@/hooks/useCart';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useForceUpdate } from '@/hooks/useForceUpdate';
+import { UpdateRequiredScreen } from '@/components/UpdateRequiredScreen';
 import { Toast } from '@/components/ui/Toast';
 import React from 'react';
 
@@ -123,6 +125,15 @@ class ErrorBoundary extends React.Component<
 function CartInitializer() {
   useCartSync();
   return null;
+}
+
+// Blocks the app with an "update required" screen when the installed native
+// version is below the configured minimum — must render inside
+// QueryClientProvider since useForceUpdate uses React Query. No-op on web.
+function ForceUpdateGate({ children }: { children: React.ReactNode }) {
+  const { needsUpdate, storeUrl, message } = useForceUpdate();
+  if (needsUpdate) return <UpdateRequiredScreen storeUrl={storeUrl} message={message} />;
+  return <>{children}</>;
 }
 
 function PushInitializer() {
@@ -189,9 +200,11 @@ export default function RootLayout() {
         <CartInitializer />
         <PushInitializer />
         <StatusBar style="auto" />
-        <View style={{ flex: 1, direction: 'rtl' }}>
-          <Stack screenOptions={{ headerShown: false }} />
-        </View>
+        <ForceUpdateGate>
+          <View style={{ flex: 1, direction: 'rtl' }}>
+            <Stack screenOptions={{ headerShown: false }} />
+          </View>
+        </ForceUpdateGate>
         <Toast />
       </QueryClientProvider>
     </ErrorBoundary>

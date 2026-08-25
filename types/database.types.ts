@@ -179,6 +179,14 @@ export interface NotificationRow {
   created_at: string;
 }
 
+export interface AppVersionConfigRow {
+  id: number;
+  ios_min_version: string;
+  android_min_version: string;
+  update_message_ar: string;
+  updated_at: string;
+}
+
 // ─── Supabase Database interface ─────────────────────────────────────────────
 
 export interface Database {
@@ -197,6 +205,7 @@ export interface Database {
       favorites:    { Row: FavoriteRow;     Insert: Omit<FavoriteRow, 'id' | 'created_at'>;                  Update: Partial<Pick<FavoriteRow, never>>; Relationships: [] };
       reviews:      { Row: ReviewRow;       Insert: Omit<ReviewRow, 'id' | 'created_at' | 'updated_at'>;     Update: Partial<Omit<ReviewRow, 'id' | 'user_id' | 'product_id' | 'created_at'>>; Relationships: [] };
       notifications: { Row: NotificationRow; Insert: Omit<NotificationRow, 'id' | 'created_at'>; Update: Partial<Pick<NotificationRow, 'is_read' | 'read_at'>>; Relationships: [] };
+      app_version_config: { Row: AppVersionConfigRow; Insert: never; Update: Partial<Omit<AppVersionConfigRow, 'id'>>; Relationships: [] };
     };
     Views: {};
     Functions: {
