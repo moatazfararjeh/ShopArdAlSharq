@@ -172,7 +172,7 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
                 <View style={{ gap: 14 }}>
                   <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>ابقى على تواصل معنا</Text>
                   <View style={{ flexDirection: 'row', gap: 14 }}>
-                    <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61587917750474/')}><Text style={footerStyles.socialIcon}>f</Text></TouchableOpacity>
+                    <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61587917750474')}><Text style={footerStyles.socialIcon}>f</Text></TouchableOpacity>
                     <TouchableOpacity style={footerStyles.socialBtn} onPress={() => Linking.openURL('https://www.instagram.com/ardalsharq.1/')}><Ionicons name="logo-instagram" size={16} color="#fff" /></TouchableOpacity>
                   </View>
                 </View>
