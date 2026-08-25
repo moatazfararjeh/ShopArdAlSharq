@@ -68,7 +68,7 @@ export default function LoginScreen() {
           await AsyncStorage.removeItem(REMEMBER_ME_KEY);
         }
       }
-      router.replace('/(customer)/home');
+      router.push('/(customer)/home');
     } catch (err: unknown) {
       // Error displayed via mutation state
     }
@@ -80,7 +80,7 @@ export default function LoginScreen() {
       const credentials = await getCredentials();
       if (credentials) {
         await loginMutation.mutateAsync(credentials);
-        router.replace('/(customer)/home');
+        router.push('/(customer)/home');
       }
     } catch {
       // Error displayed via mutation state
