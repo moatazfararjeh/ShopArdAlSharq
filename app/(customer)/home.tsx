@@ -578,7 +578,6 @@ function MiniCartBar() {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function HomeScreen() {
-  console.log('[DEBUG home.tsx] HomeScreen function body executing, t=', Date.now());
   const { t }       = useTranslation();
   const router      = useRouter();
   const locale      = getCurrentLocale();
@@ -613,10 +612,8 @@ export default function HomeScreen() {
   const discoverCardW = isDesktop ? 185 : 150;
   const bannerW       = isWeb ? windowWidth - sidebarW : windowWidth;
 
-  console.log('[DEBUG home.tsx] about to call useCategories/useBrands, t=', Date.now());
-  const { data: categories, status: catStatus, fetchStatus: catFetchStatus, error: catError } = useCategories();
+  const { data: categories } = useCategories();
   const { data: brands } = useBrands();
-  console.log('[DEBUG home.tsx] categories hook result: status=', catStatus, 'fetchStatus=', catFetchStatus, 'error=', catError, 't=', Date.now());
   const selectedBrandObj = brands?.find((b) => b.id === selectedBrand);
   const selectedCategoryObj = categories?.find((c) => c.id === selectedCategory);
 

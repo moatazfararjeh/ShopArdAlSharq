@@ -131,7 +131,6 @@ function PushInitializer() {
 }
 
 export default function RootLayout() {
-  console.log('[DEBUG _layout] RootLayout function body executing, t=', Date.now());
   const [fontsLoaded] = useFonts({
     'NotoSansArabic-Regular': require('../assets/fonts/NotoSansArabic-Regular.ttf'),
     'NotoSansArabic-SemiBold': require('../assets/fonts/NotoSansArabic-SemiBold.ttf'),

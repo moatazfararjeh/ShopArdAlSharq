@@ -18,10 +18,7 @@ export const categoryKeys = {
 export function useCategories(activeOnly = true) {
   return useQuery({
     queryKey: categoryKeys.list(activeOnly),
-    queryFn: () => {
-      console.log('[DEBUG useCategories] queryFn INVOKED, t=', Date.now());
-      return getCategories({ activeOnly });
-    },
+    queryFn: () => getCategories({ activeOnly }),
   });
 }
 

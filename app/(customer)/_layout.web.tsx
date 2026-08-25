@@ -11,7 +11,6 @@ const STANDALONE_PAGES: string[] = [];
 export default function CustomerWebLayoutRoute() {
   const { isAuthenticated, isInitialized } = useAuth();
   const pathname = usePathname();
-  console.log('[DEBUG customer/_layout.web] render, isInitialized=', isInitialized, 'isAuthenticated=', isAuthenticated, 'pathname=', pathname, 't=', Date.now());
 
   const isPublicPage = PUBLIC_PAGES.includes(pathname);
   const isStandalone = STANDALONE_PAGES.includes(pathname);
