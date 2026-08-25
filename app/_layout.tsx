@@ -1,7 +1,7 @@
 import '../global.css';
 import '../i18n';
 import { useEffect } from 'react';
-import { ErrorUtils, I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
+import { AppState, ErrorUtils, I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -146,6 +146,30 @@ export default function RootLayout() {
       document.documentElement.setAttribute('dir', 'rtl');
       document.documentElement.setAttribute('lang', 'ar');
     }
+  }, []);
+
+  // Web: browser back/forward can restore the page from bfcache instead of
+  // re-mounting it, so React Query's `refetchOnMount` never fires and the
+  // screen is left showing stale/empty data. Force a refetch in that case.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) queryClient.invalidateQueries();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
+
+  // Native: resuming from the background is not a remount, so
+  // `refetchOnMount` never fires either. Nothing was listening to app
+  // foreground/background transitions, so only a full kill+relaunch ever
+  // refreshed data. Refetch explicitly whenever the app becomes active again.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') queryClient.invalidateQueries();
+    });
+    return () => subscription.remove();
   }, []);
 
   // Hide the splash screen as soon as fonts are ready.
