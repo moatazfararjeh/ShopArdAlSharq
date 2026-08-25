@@ -56,6 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let settled = false;
 
       const settle = (session: Session | null) => {
+        console.log('[DEBUG authStore] settle() called, hasSession=', !!session, 't=', Date.now());
         if (settled) return;
         settled = true;
         set({ session, isAuthenticated: !!session, isInitialized: true, isLoading: false });
@@ -74,7 +75,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       };
 
+      console.log('[DEBUG authStore] initialize() called, setting up onAuthStateChange, t=', Date.now());
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[DEBUG authStore] onAuthStateChange fired, event=', event, 'hasSession=', !!session, 't=', Date.now());
         if (event === 'TOKEN_REFRESHED' && !session) {
           set({ session: null, isAuthenticated: false, profile: null, isAdmin: false });
           if (!settled) {
@@ -103,6 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Timeout fallback — if onAuthStateChange never fires (offline / Supabase down),
       // show login after 1.5 s instead of spinning forever.
       setTimeout(() => {
+        console.log('[DEBUG authStore] 1.5s timeout fired, settled=', settled, 't=', Date.now());
         if (!settled) {
           settle(null);
           resolve(() => subscription.unsubscribe());
