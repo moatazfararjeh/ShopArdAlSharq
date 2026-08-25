@@ -251,6 +251,13 @@ function mergeWithFavorites(products: Product[], favProducts: Product[], favIds:
   return [...allFavs, ...nonFavs];
 }
 
+/** Stable-partition: in-stock products first, out-of-stock ones pushed to the end. */
+function sortAvailableFirst(products: Product[]): Product[] {
+  const inStock = products.filter(p => p.stock_quantity !== 0);
+  const outOfStock = products.filter(p => p.stock_quantity === 0);
+  return [...inStock, ...outOfStock];
+}
+
 // ─── Per-category horizontal product row ──────────────────────────────────────
 function CategoryProductsSection({
   category, locale, cardWidth, onSeeAll,
@@ -258,13 +265,16 @@ function CategoryProductsSection({
   const router = useRouter();
   const { data: favIds } = useFavoriteIds();
   const { data: favProducts } = useFavoriteProducts();
+  // Over-fetch beyond the 10 actually shown: the newest 10 alone can be mostly
+  // out-of-stock, and reordering client-side can't pull in more in-stock
+  // items than were fetched — so fetch a bigger pool, then slice after sorting.
   const { data, isLoading } = useProductsPage({
     categoryId: category.id,
-    limit: 10,
+    limit: 30,
     availableOnly: true,
     sortBy: 'newest',
   });
-  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], category.id);
+  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], category.id)).slice(0, 10);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -315,27 +325,42 @@ function CategoryProductsSection({
 
 // ─── Per-brand horizontal product row ─────────────────────────────────────────
 function BrandProductsSection({
-  brand, locale, cardWidth,
-}: { brand: Brand; locale: string; cardWidth: number }) {
+  brand, locale, cardWidth, onSeeAll,
+}: { brand: Brand; locale: string; cardWidth: number; onSeeAll: () => void }) {
   const router = useRouter();
   const { data: favIds } = useFavoriteIds();
   const { data: favProducts } = useFavoriteProducts();
   const { data, isLoading } = useProductsPage({
     brandId: brand.id,
-    limit: 10,
+    limit: 30,
     availableOnly: true,
     sortBy: 'newest',
   });
-  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], undefined, brand.id);
+  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], undefined, brand.id)).slice(0, 10);
 
   if (!isLoading && products.length === 0) return null;
 
   return (
     <View style={{ marginBottom: 28 }}>
       {/* Section header */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>{brand.name}</Text>
-        <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+      <View style={{
+        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+        paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any,
+      }}>
+        <View>
+          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>{brand.name}</Text>
+          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
+        </View>
+        {data && data.count > products.length && (
+          <TouchableOpacity onPress={onSeeAll} style={{
+            flexDirection: 'row', alignItems: 'center', gap: 4,
+            backgroundColor: '#fff7ed', borderRadius: 20,
+            paddingHorizontal: 12, paddingVertical: 5,
+          }}>
+            <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
+            <Ionicons name="chevron-forward" size={12} color={BRAND} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading ? (
@@ -367,11 +392,11 @@ function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWid
   const { data: favProducts } = useFavoriteProducts();
   const { data, isLoading } = useProductsPage({
     noBrand: true,
-    limit: 10,
+    limit: 30,
     availableOnly: true,
     sortBy: 'newest',
   });
-  const products = mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? []);
+  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [])).slice(0, 10);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -412,10 +437,10 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
   const { data, isLoading } = useProductsPage({
     availableOnly: true,
     sortBy: 'newest',
-    limit: 20,
+    limit: 60,
   });
   const rawProducts: Product[] = data?.data ?? [];
-  const products = mergeWithFavorites(rawProducts, favProducts ?? [], favIds ?? []);
+  const products = sortAvailableFirst(mergeWithFavorites(rawProducts, favProducts ?? [], favIds ?? [])).slice(0, 20);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -886,6 +911,7 @@ export default function HomeScreen() {
             brand={brand}
             locale={locale}
             cardWidth={discoverCardW}
+            onSeeAll={() => setSelectedBrand(brand.id)}
           />
         ))}
 
