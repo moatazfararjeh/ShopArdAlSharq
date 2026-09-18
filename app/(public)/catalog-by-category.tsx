@@ -29,7 +29,8 @@ const PHONE1      = '0792881832';
 const PHONE2      = '0795277537';
 
 const PAGE_SIZE = 6;
-const OTHER_LABEL_AR = 'منتجات أخرى';
+const OTHER_CATEGORY_LABEL_AR = 'فئة أخرى';
+const OTHER_BRAND_LABEL_AR = 'علامة أخرى';
 
 // ── Window size hook ──────────────────────────────────────────────────────────
 function useWindowSize() {
@@ -52,12 +53,12 @@ function useWindowSize() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GROUPING — shared by the on-screen book and the PDF export so both stay in sync
+// GROUPING — primary: category, secondary: brand (mirrors the brand-primary catalog)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface CatalogGroup {
-  brand: Brand | null;
   category: Category | null;
+  brand: Brand | null;
   products: Product[];
 }
 
@@ -65,46 +66,46 @@ function buildCatalogGroups(products: Product[], brands: Brand[], categories: Ca
   const brandMap = new Map(brands.map((b) => [b.id, b]));
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  const brandOrder: (string | null)[] = [];
-  const byBrand = new Map<string | null, Map<string | null, Product[]>>();
+  const categoryOrder: (string | null)[] = [];
+  const byCategory = new Map<string | null, Map<string | null, Product[]>>();
 
   for (const p of products) {
-    const brandKey = p.brand_id && brandMap.has(p.brand_id) ? p.brand_id : null;
     const categoryKey = p.category_id && categoryMap.has(p.category_id) ? p.category_id : null;
+    const brandKey = p.brand_id && brandMap.has(p.brand_id) ? p.brand_id : null;
 
-    if (!byBrand.has(brandKey)) {
-      byBrand.set(brandKey, new Map());
-      brandOrder.push(brandKey);
+    if (!byCategory.has(categoryKey)) {
+      byCategory.set(categoryKey, new Map());
+      categoryOrder.push(categoryKey);
     }
-    const byCategory = byBrand.get(brandKey)!;
-    if (!byCategory.has(categoryKey)) byCategory.set(categoryKey, []);
-    byCategory.get(categoryKey)!.push(p);
+    const byBrand = byCategory.get(categoryKey)!;
+    if (!byBrand.has(brandKey)) byBrand.set(brandKey, []);
+    byBrand.get(brandKey)!.push(p);
   }
 
-  brandOrder.sort((a, b) => {
+  categoryOrder.sort((a, b) => {
     if (a === null && b === null) return 0;
     if (a === null) return 1;
     if (b === null) return -1;
-    return brandMap.get(a)!.sort_order - brandMap.get(b)!.sort_order;
+    return categoryMap.get(a)!.sort_order - categoryMap.get(b)!.sort_order;
   });
 
   const groups: CatalogGroup[] = [];
-  for (const brandKey of brandOrder) {
-    const byCategory = byBrand.get(brandKey)!;
-    const categoryKeys = Array.from(byCategory.keys());
-    categoryKeys.sort((a, b) => {
+  for (const categoryKey of categoryOrder) {
+    const byBrand = byCategory.get(categoryKey)!;
+    const brandKeys = Array.from(byBrand.keys());
+    brandKeys.sort((a, b) => {
       if (a === null && b === null) return 0;
       if (a === null) return 1;
       if (b === null) return -1;
-      return categoryMap.get(a)!.sort_order - categoryMap.get(b)!.sort_order;
+      return brandMap.get(a)!.sort_order - brandMap.get(b)!.sort_order;
     });
 
-    for (const categoryKey of categoryKeys) {
-      const list = byCategory.get(categoryKey)!;
+    for (const brandKey of brandKeys) {
+      const list = byBrand.get(brandKey)!;
       for (let i = 0; i < list.length; i += PAGE_SIZE) {
         groups.push({
-          brand: brandKey ? brandMap.get(brandKey)! : null,
           category: categoryKey ? categoryMap.get(categoryKey)! : null,
+          brand: brandKey ? brandMap.get(brandKey)! : null,
           products: list.slice(i, i + PAGE_SIZE),
         });
       }
@@ -125,10 +126,10 @@ function cardWidthPct(count: number, cols: number): number {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildGroupPageHtml(group: CatalogGroup, pageNumber: number): string {
-  const categoryLabel = group.category?.name_ar ?? OTHER_LABEL_AR;
-  const brandHeader = group.brand?.image_url
-    ? `<img src="${group.brand.image_url}" alt="${group.brand.name}" />`
-    : `<div class="brand-name">${group.brand?.name ?? OTHER_LABEL_AR}</div>`;
+  const brandLabel = group.brand?.name ?? OTHER_BRAND_LABEL_AR;
+  const categoryHeader = group.category?.image_url
+    ? `<img src="${group.category.image_url}" alt="${group.category.name_ar}" />`
+    : `<div class="brand-name">${group.category?.name_ar ?? OTHER_CATEGORY_LABEL_AR}</div>`;
 
   const count = group.products.length;
   const gridColsClass = count === 1 ? 'cols-1' : count === 2 ? 'cols-2' : '';
@@ -154,20 +155,20 @@ function buildGroupPageHtml(group: CatalogGroup, pageNumber: number): string {
     <div class="cat-page">
       <div class="cat-frame grid-frame">
         <div class="grid-main">
-          <div class="brand-header">${brandHeader}</div>
+          <div class="brand-header">${categoryHeader}</div>
           <div class="products-grid ${gridColsClass}">${cards}</div>
           <div class="grid-footer"><strong>فود بوكس</strong><span>${COMPANY_AR}</span></div>
         </div>
-        <div class="category-tab"><span>${categoryLabel}</span></div>
+        <div class="category-tab"><span>${brandLabel}</span></div>
       </div>
       <div class="page-badge">${pageNumber}</div>
     </div>`;
 }
 
-function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
-  const brandCards = brands.map((b) => `
+function buildPrintHtml(groups: CatalogGroup[], categories: Category[]): string {
+  const categoryCards = categories.map((c) => `
     <div class="brand-card">
-      ${b.image_url ? `<img src="${b.image_url}" alt="${b.name}" />` : `<span>${b.name}</span>`}
+      ${c.image_url ? `<img src="${c.image_url}" alt="${c.name_ar}" />` : `<span>${c.name_ar}</span>`}
     </div>`).join('');
 
   const groupPages = groups.map((g, i) => buildGroupPageHtml(g, i + 3)).join('');
@@ -177,7 +178,7 @@ function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width" />
-  <title>كتالوج المنتجات — ${COMPANY_AR}</title>
+  <title>كتالوج المنتجات حسب الفئة — ${COMPANY_AR}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #fff; direction: rtl; }
@@ -208,7 +209,7 @@ function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
     .cover-company-sub { font-size: 11px; color: #888; margin-top: 3px; }
     .cover-footer { background: ${ACCENT}; color: #fff; text-align: center; padding: 10px; font-size: 11px; }
 
-    /* Brand index */
+    /* Category index */
     .brands-title { text-align: center; font-size: 16px; font-weight: 900; color: ${DARK}; padding: 16px 0 6px; }
     .brands-grid { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 14px; padding: 10px 24px 24px; }
     .brand-card {
@@ -279,8 +280,8 @@ function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
       <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; padding:30px;">
         <div class="cover-logo">فود بوكس</div>
         <div class="cover-badge">
-          <div class="title">كتالوج المنتجات</div>
-          <div class="sub">PRODUCT CATALOG</div>
+          <div class="title">كتالوج المنتجات حسب الفئة</div>
+          <div class="sub">PRODUCT CATALOG BY CATEGORY</div>
         </div>
         <div class="cover-company">${COMPANY_AR}</div>
         <div class="cover-company-sub">${COMPANY_SUB}</div>
@@ -289,11 +290,11 @@ function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
     </div>
   </div>
 
-  <!-- Brand index -->
+  <!-- Category index -->
   <div class="cat-page">
     <div class="cat-frame">
-      <div class="brands-title">العلامات التجارية</div>
-      <div class="brands-grid">${brandCards}</div>
+      <div class="brands-title">الفئات</div>
+      <div class="brands-grid">${categoryCards}</div>
     </div>
   </div>
 
@@ -313,8 +314,8 @@ function buildPrintHtml(groups: CatalogGroup[], brands: Brand[]): string {
 </html>`;
 }
 
-async function exportToPDF(groups: CatalogGroup[], brands: Brand[]) {
-  const html = buildPrintHtml(groups, brands);
+async function exportToPDF(groups: CatalogGroup[], categories: Category[]) {
+  const html = buildPrintHtml(groups, categories);
 
   if (Platform.OS === 'web') {
     const win = window.open('', '_blank');
@@ -340,9 +341,9 @@ async function exportToPDF(groups: CatalogGroup[], brands: Brand[]) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface PageData {
-  type: 'cover' | 'brands' | 'grid' | 'back';
+  type: 'cover' | 'categories' | 'grid' | 'back';
   group?: CatalogGroup;
-  brands?: Brand[];
+  categories?: Category[];
   pageNumber?: number;
   totalPages?: number;
 }
@@ -351,7 +352,7 @@ interface PageData {
 // ROOT SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export default function PublicCatalogScreen() {
+export default function PublicCatalogByCategoryScreen() {
   const locale = getCurrentLocale();
 
   const { data, isLoading } = useProductsPage(
@@ -391,12 +392,12 @@ function CatalogBook({ products, brands, categories, locale }: {
   const pages: PageData[] = useMemo(() => {
     const base: PageData[] = [
       { type: 'cover' },
-      { type: 'brands', brands },
+      { type: 'categories', categories },
       ...groups.map((g): PageData => ({ type: 'grid', group: g })),
       { type: 'back' },
     ];
     return base.map((p, i) => ({ ...p, pageNumber: i + 1, totalPages: base.length }));
-  }, [groups, brands]);
+  }, [groups, categories]);
 
   const spreads: [PageData, PageData | null][] = useMemo(() => {
     const result: [PageData, PageData | null][] = [];
@@ -437,7 +438,7 @@ function CatalogBook({ products, brands, categories, locale }: {
   async function handleExport() {
     setExporting(true);
     try {
-      await exportToPDF(groups, brands);
+      await exportToPDF(groups, categories);
     } finally {
       setExporting(false);
     }
@@ -460,10 +461,10 @@ function CatalogBook({ products, brands, categories, locale }: {
           <Text style={{ color: WHITE, fontSize: 12, fontWeight: '700' }}>تسجيل الدخول</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/(public)/catalog-by-category')}>
-          <Text style={{ color: WHITE, fontSize: 13, fontWeight: '800' }}>كتالوج المنتجات</Text>
+        <TouchableOpacity onPress={() => router.push('/(public)/catalog')}>
+          <Text style={{ color: WHITE, fontSize: 13, fontWeight: '800' }}>كتالوج حسب الفئة</Text>
           <Text style={{ color: ACCENT, fontSize: 9, fontWeight: '700', textAlign: 'center', marginTop: 1 }}>
-            تصنيف حسب الفئة ›
+            تصنيف حسب العلامة التجارية ›
           </Text>
         </TouchableOpacity>
 
@@ -561,7 +562,7 @@ function CatalogBook({ products, brands, categories, locale }: {
 
 function CatalogPage({ page, locale, width, height }: { page: PageData; locale: string; width: number; height: number }) {
   if (page.type === 'cover') return <CoverPage width={width} height={height} />;
-  if (page.type === 'brands') return <BrandIndexPage brands={page.brands ?? []} width={width} height={height} />;
+  if (page.type === 'categories') return <CategoryIndexPage categories={page.categories ?? []} width={width} height={height} />;
   if (page.type === 'back') return <BackPage width={width} height={height} />;
   if (page.type === 'grid' && page.group)
     return <GridPage group={page.group} locale={locale} pageNumber={page.pageNumber!} width={width} height={height} />;
@@ -596,6 +597,10 @@ function CoverPage({ width, height }: { width: number; height: number }) {
             <Text style={{ fontSize: 10, color: '#999', textAlign: 'center' }}>PRODUCT CATALOG</Text>
           </View>
 
+          <View style={{ backgroundColor: ACCENT + '15', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>مصنّف حسب الفئة</Text>
+          </View>
+
           <View style={{ alignItems: 'center', marginTop: 6 }}>
             <Text style={{ fontSize: 15, fontWeight: '800', color: DARK, textAlign: 'center' }}>{COMPANY_AR}</Text>
             <Text style={{ fontSize: 11, color: '#888', marginTop: 3, textAlign: 'center' }}>{COMPANY_SUB}</Text>
@@ -620,10 +625,10 @@ function CoverPage({ width, height }: { width: number; height: number }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BRAND INDEX PAGE
+// CATEGORY INDEX PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function BrandIndexPage({ brands, width, height }: { brands: Brand[]; width: number; height: number }) {
+function CategoryIndexPage({ categories, width, height }: { categories: Category[]; width: number; height: number }) {
   return (
     <View style={{ width, height, backgroundColor: PAGE_BG }}>
       <View style={{
@@ -631,22 +636,22 @@ function BrandIndexPage({ brands, width, height }: { brands: Brand[]; width: num
         backgroundColor: WHITE, padding: 16,
       }}>
         <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: '900', color: DARK, marginBottom: 12 }}>
-          العلامات التجارية
+          الفئات
         </Text>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'flex-start', gap: 10 }}
         >
-          {brands.map((b) => (
-            <View key={b.id} style={{
+          {categories.map((c) => (
+            <View key={c.id} style={{
               width: '30%', aspectRatio: 1.6, borderRadius: 10, backgroundColor: LIGHT,
               alignItems: 'center', justifyContent: 'center', padding: 8,
               shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
             }}>
-              {b.image_url ? (
-                <Image source={{ uri: b.image_url }} style={{ width: '90%', height: '90%' }} contentFit="contain" />
+              {c.image_url ? (
+                <Image source={{ uri: c.image_url }} style={{ width: '90%', height: '90%' }} contentFit="contain" />
               ) : (
-                <Text style={{ fontSize: 11, fontWeight: '800', color: DARK, textAlign: 'center' }}>{b.name}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: DARK, textAlign: 'center' }}>{c.name_ar}</Text>
               )}
             </View>
           ))}
@@ -657,7 +662,7 @@ function BrandIndexPage({ brands, width, height }: { brands: Brand[]; width: num
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GRID PAGE — several products per page, grouped by brand + category
+// GRID PAGE — several products per page, grouped by category + brand
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function GridPage({ group, locale, pageNumber, width, height }: {
@@ -665,10 +670,10 @@ function GridPage({ group, locale, pageNumber, width, height }: {
 }) {
   const cols = width > 420 ? 3 : 2;
   const widthPct = cardWidthPct(group.products.length, cols);
-  const categoryLabel = group.category
+  const brandLabel = group.brand?.name ?? OTHER_BRAND_LABEL_AR;
+  const categoryName = group.category
     ? (locale === 'ar' ? group.category.name_ar : (group.category.name_en ?? group.category.name_ar))
-    : OTHER_LABEL_AR;
-  const brandName = group.brand?.name ?? OTHER_LABEL_AR;
+    : OTHER_CATEGORY_LABEL_AR;
 
   return (
     <View style={{ width, height, backgroundColor: PAGE_BG }}>
@@ -678,12 +683,12 @@ function GridPage({ group, locale, pageNumber, width, height }: {
       }}>
         {/* Main content */}
         <View style={{ flex: 1 }}>
-          {/* Brand header */}
+          {/* Category header */}
           <View style={{ alignItems: 'center', paddingTop: 14, paddingBottom: 6, paddingHorizontal: 12 }}>
-            {group.brand?.image_url ? (
-              <Image source={{ uri: group.brand.image_url }} style={{ width: 120, height: 44 }} contentFit="contain" />
+            {group.category?.image_url ? (
+              <Image source={{ uri: group.category.image_url }} style={{ width: 120, height: 44 }} contentFit="contain" />
             ) : (
-              <Text style={{ fontSize: 16, fontWeight: '900', color: DARK }}>{brandName}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: DARK }}>{categoryName}</Text>
             )}
           </View>
 
@@ -711,7 +716,7 @@ function GridPage({ group, locale, pageNumber, width, height }: {
           </View>
         </View>
 
-        {/* Vertical category tab */}
+        {/* Vertical brand tab */}
         <View style={{ width: 26, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <View style={{
             width: height * 0.6, height: 26,
@@ -725,7 +730,7 @@ function GridPage({ group, locale, pageNumber, width, height }: {
                 textAlign: 'center', width: '100%',
               }}
             >
-              {categoryLabel}
+              {brandLabel}
             </Text>
           </View>
         </View>

@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Modal, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useProductsPage, useUpdateProduct } from '@/hooks/useProducts';
 import { useBrands } from '@/hooks/useBrands';
+import { useCategories } from '@/hooks/useCategories';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,7 +23,7 @@ function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -110,13 +111,115 @@ function EditableCell({
   );
 }
 
+// ─── Inline-editable select cell (category / brand) ──────────────────────────
+function EditableSelectCell({
+  value,
+  options,
+  onSave,
+  allowNone,
+  noneLabel,
+}: {
+  value: string | null;
+  options: { id: string; name: string }[];
+  onSave: (id: string | null) => Promise<void>;
+  allowNone?: boolean;
+  noneLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const currentName = options.find((o) => o.id === value)?.name ?? (allowNone ? (noneLabel ?? '—') : '—');
+
+  async function choose(id: string | null) {
+    setOpen(false);
+    if (id === value) return;
+    setSaving(true);
+    try {
+      await onSave(id);
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (saving) {
+    return (
+      <View style={{ flex: 2, alignItems: 'flex-end', paddingHorizontal: 4 }}>
+        <ActivityIndicator size="small" color={C.brand} />
+      </View>
+    );
+  }
+
+  const listData = allowNone ? [{ id: '__none__', name: noneLabel ?? 'بدون' }, ...options] : options;
+
+  return (
+    <>
+      <TouchableOpacity
+        style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}
+        onPress={() => setOpen(true)}
+      >
+        <Text numberOfLines={2} ellipsizeMode="tail" style={{ flexShrink: 1, fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
+          {currentName}
+        </Text>
+        <Ionicons name="pencil-outline" size={12} color={C.muted} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setOpen(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{
+            width: 300, maxHeight: 420, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden',
+          }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.header }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'right' }}>اختر قيمة</Text>
+            </View>
+            <FlatList
+              data={listData}
+              style={{ maxHeight: 360 }}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const itemValue = item.id === '__none__' ? null : item.id;
+                const selected = itemValue === value;
+                return (
+                  <TouchableOpacity
+                    onPress={() => choose(itemValue)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      paddingHorizontal: 16, paddingVertical: 12,
+                      borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+                      backgroundColor: selected ? '#fff7ed' : '#fff',
+                    }}
+                  >
+                    {selected && <Ionicons name="checkmark" size={16} color={C.brand} />}
+                    <Text style={{ flex: 1, fontSize: 14, color: selected ? C.brand : C.text, fontWeight: selected ? '700' : '400', textAlign: 'right' }}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+}
+
 // ─── Row ──────────────────────────────────────────────────────────────────────
-function ProductRow({ product, locale, idx }: { product: any; locale: string; idx: number }) {
+function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
+  product: any; locale: string; idx: number;
+  categoryOptions: { id: string; name: string }[];
+  brandOptions: { id: string; name: string }[];
+}) {
   const queryClient = useQueryClient();
   const update = useUpdateProduct(product.id);
 
-  const save = useCallback(async (field: string, value: number | null) => {
-    await update.mutateAsync({ [field]: value });
+  const save = useCallback(async (field: string, value: number | string | null) => {
+    await update.mutateAsync({ [field]: value } as any);
     queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [update, queryClient]);
 
@@ -130,6 +233,18 @@ function ProductRow({ product, locale, idx }: { product: any; locale: string; id
       <Text style={{ flex: 3, fontSize: 13, fontWeight: '600', color: C.text, textAlign: 'right' }} numberOfLines={2}>
         {getProductName(product, locale)}
       </Text>
+      <EditableSelectCell
+        value={product.category_id ?? null}
+        options={categoryOptions}
+        onSave={(v) => save('category_id', v)}
+      />
+      <EditableSelectCell
+        value={product.brand_id ?? null}
+        options={brandOptions}
+        onSave={(v) => save('brand_id', v)}
+        allowNone
+        noneLabel="بدون ماركة"
+      />
       <EditableCell
         value={product.price_per_carton}
         onSave={(v) => save('price_per_carton', v)}
@@ -195,6 +310,21 @@ export default function ProductsReportScreen() {
 
   const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
   const { data: brands } = useBrands(false);
+  const { data: categories } = useCategories(false);
+
+  const categoryOptions = useMemo(
+    () => (categories ?? []).map((c) => ({ id: c.id, name: c.name_ar })),
+    [categories],
+  );
+  const brandOptions = useMemo(
+    () => (brands ?? []).map((b) => ({ id: b.id, name: b.name })),
+    [brands],
+  );
+
+  function getCategoryDisplayName(categoryId: string | null | undefined): string {
+    if (!categoryId) return '—';
+    return categories?.find((c) => c.id === categoryId)?.name_ar ?? '—';
+  }
 
   const products = useMemo(() => {
     const all = data?.data ?? [];
@@ -223,11 +353,12 @@ export default function ProductsReportScreen() {
   const excelRows = useMemo(() =>
     products.map((p) => ({
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
+      'الفئة':                getCategoryDisplayName(p.category_id),
       'اسم الصنف':           getProductName(p, locale),
       'السعر بالكرتونة':     p.price_per_carton ?? '—',
       'التعبئة في الكرتون':  p.pieces_per_carton ?? '—',
     })),
-    [products, locale, brands],
+    [products, locale, brands, categories],
   );
 
   return (
@@ -295,6 +426,8 @@ export default function ProductsReportScreen() {
             paddingHorizontal: 12, paddingVertical: 8,
           }}>
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>السعر بالكرتونة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>التعبئة/كرتون</Text>
           </View>
@@ -308,7 +441,14 @@ export default function ProductsReportScreen() {
                 onToggle={() => toggleCollapse(brandId)}
               />
               {!collapsed[brandId] && items.map((p, idx) => (
-                <ProductRow key={p.id} product={p} locale={locale} idx={idx} />
+                <ProductRow
+                  key={p.id}
+                  product={p}
+                  locale={locale}
+                  idx={idx}
+                  categoryOptions={categoryOptions}
+                  brandOptions={brandOptions}
+                />
               ))}
             </View>
           ))}
