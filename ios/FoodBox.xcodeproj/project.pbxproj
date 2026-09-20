@@ -11,6 +11,7 @@
 		2C9F52CAF909EC512C4B3AF1 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4913E68B8D58D0284BC8E1D9 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		46DB85CDA74A6AAE45B97168 /* libPods-FoodBox.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D5BA65C70C1A3E0ECA0F9D6 /* libPods-FoodBox.a */; };
+		A85822E530608D9D00012976 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85822E430608D9D00012976 /* SceneDelegate.swift */; };
 		B37FFF156D8337EAE20B8E19 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 72D050310587F212C9FCECE3 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -24,6 +25,7 @@
 		5D5BA65C70C1A3E0ECA0F9D6 /* libPods-FoodBox.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-FoodBox.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		72D050310587F212C9FCECE3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = FoodBox/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		78D570F916C5E0284686C392 /* Pods-FoodBox.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FoodBox.debug.xcconfig"; path = "Target Support Files/Pods-FoodBox/Pods-FoodBox.debug.xcconfig"; sourceTree = "<group>"; };
+		A85822E430608D9D00012976 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = FoodBox/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B737018C9839EE7E071E8DE0 /* Pods-FoodBox.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FoodBox.release.xcconfig"; path = "Target Support Files/Pods-FoodBox/Pods-FoodBox.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -54,6 +56,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				72D050310587F212C9FCECE3 /* PrivacyInfo.xcprivacy */,
+				A85822E430608D9D00012976 /* SceneDelegate.swift */,
 			);
 			name = FoodBox;
 			sourceTree = "<group>";
@@ -339,6 +342,7 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				2C9F52CAF909EC512C4B3AF1 /* ExpoModulesProvider.swift in Sources */,
+				A85822E530608D9D00012976 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,7 +368,7 @@
 				INFOPLIST_FILE = FoodBox/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "FoodBox فود بوكس";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -402,7 +406,7 @@
 				INFOPLIST_FILE = FoodBox/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "FoodBox فود بوكس";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
