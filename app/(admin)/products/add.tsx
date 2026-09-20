@@ -74,6 +74,11 @@ export default function AddProductScreen() {
     },
   });
 
+  // Once any unit price (piece/kg/carton) is set, the main "price" field
+  // mirrors whichever unit price was last edited — never entered independently,
+  // so it can't drift from what's actually charged.
+  const anyUnitPriceSet = !!watch('price_per_piece') || !!watch('price_per_kg') || !!watch('price_per_carton');
+
   async function onSubmit(values: ProductFormValues) {
     const newProduct = await createMutation.mutateAsync({
       name_ar: values.name_ar,
@@ -266,7 +271,17 @@ export default function AddProductScreen() {
           <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>التسعير والمخزون</Text>
           <Controller control={control} name="price"
             render={({ field: { onChange, value, onBlur } }) => (
-              <Input label="السعر *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.price?.message} />
+              <Input
+                label="السعر *"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                keyboardType="decimal-pad"
+                editable={!anyUnitPriceSet}
+                style={anyUnitPriceSet ? { backgroundColor: '#f1f5f9', color: C.muted } : undefined}
+                hint={anyUnitPriceSet ? 'يُحدَّث تلقائياً حسب آخر سعر وحدة تم إدخاله' : undefined}
+                error={errors.price?.message}
+              />
             )}
           />
           <Controller control={control} name="discount_price"
@@ -324,7 +339,7 @@ export default function AddProductScreen() {
                     value={isEnabled}
                     onValueChange={(v) => {
                       if (!v) setValue(key, '');
-                      else setValue(key, '0');
+                      else { setValue(key, '0'); setValue('price', '0'); }
                     }}
                     trackColor={{ true: C.brand, false: '#e2e8f0' }}
                   />
@@ -334,7 +349,14 @@ export default function AddProductScreen() {
                   <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
                     <Controller control={control} name={key}
                       render={({ field: { onChange, value, onBlur } }) => (
-                        <Input label={priceLabel} value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={(errors as any)[key]?.message} />
+                        <Input
+                          label={priceLabel}
+                          value={value ?? ''}
+                          onChangeText={(text) => { onChange(text); if (text.trim() !== '') setValue('price', text); }}
+                          onBlur={onBlur}
+                          keyboardType="decimal-pad"
+                          error={(errors as any)[key]?.message}
+                        />
                       )}
                     />
                     {key === 'price_per_carton' && (

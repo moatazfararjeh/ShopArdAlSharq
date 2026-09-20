@@ -23,7 +23,7 @@ function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -102,11 +102,11 @@ function EditableCell({
   }
 
   return (
-    <TouchableOpacity style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }} onPress={startEdit}>
+    <TouchableOpacity style={{ flex: 2, paddingHorizontal: 4 }} onPress={startEdit}>
       <Text style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
         {value != null ? `${value}${suffix ?? ''}` : '—'}
       </Text>
-      <Ionicons name="pencil-outline" size={12} color={C.muted} />
+      <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
     </TouchableOpacity>
   );
 }
@@ -156,13 +156,13 @@ function EditableSelectCell({
   return (
     <>
       <TouchableOpacity
-        style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}
+        style={{ flex: 2, paddingHorizontal: 4 }}
         onPress={() => setOpen(true)}
       >
-        <Text numberOfLines={2} ellipsizeMode="tail" style={{ flexShrink: 1, fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
+        <Text numberOfLines={2} ellipsizeMode="tail" style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
           {currentName}
         </Text>
-        <Ionicons name="pencil-outline" size={12} color={C.muted} />
+        <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -215,11 +215,12 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
   categoryOptions: { id: string; name: string }[];
   brandOptions: { id: string; name: string }[];
 }) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const update = useUpdateProduct(product.id);
 
-  const save = useCallback(async (field: string, value: number | string | null) => {
-    await update.mutateAsync({ [field]: value } as any);
+  const save = useCallback(async (patch: Record<string, number | string | null>) => {
+    await update.mutateAsync(patch as any);
     queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [update, queryClient]);
 
@@ -230,30 +231,53 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
       paddingHorizontal: 12, paddingVertical: 10,
       borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
     }}>
-      <Text style={{ flex: 3, fontSize: 13, fontWeight: '600', color: C.text, textAlign: 'right' }} numberOfLines={2}>
-        {getProductName(product, locale)}
-      </Text>
+      <TouchableOpacity
+        style={{ flex: 3 }}
+        onPress={() => router.push(`/(admin)/products/${product.id}/edit` as any)}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '600', color: C.brand, textAlign: 'right', textDecorationLine: 'underline' }} numberOfLines={2}>
+          {getProductName(product, locale)}
+        </Text>
+      </TouchableOpacity>
       <EditableSelectCell
         value={product.category_id ?? null}
         options={categoryOptions}
-        onSave={(v) => save('category_id', v)}
+        onSave={(v) => save({ category_id: v })}
       />
       <EditableSelectCell
         value={product.brand_id ?? null}
         options={brandOptions}
-        onSave={(v) => save('brand_id', v)}
+        onSave={(v) => save({ brand_id: v })}
         allowNone
         noneLabel="بدون ماركة"
       />
       <EditableCell
+        value={product.price}
+        onSave={(v) => save({ price: v })}
+        suffix=" د.أ"
+        numeric
+      />
+      <EditableCell
+        value={product.price_per_piece}
+        onSave={(v) => save(v != null ? { price_per_piece: v, price: v } : { price_per_piece: v })}
+        suffix=" د.أ"
+        numeric
+      />
+      <EditableCell
+        value={product.price_per_kg}
+        onSave={(v) => save(v != null ? { price_per_kg: v, price: v } : { price_per_kg: v })}
+        suffix=" د.أ"
+        numeric
+      />
+      <EditableCell
         value={product.price_per_carton}
-        onSave={(v) => save('price_per_carton', v)}
+        onSave={(v) => save(v != null ? { price_per_carton: v, price: v } : { price_per_carton: v })}
         suffix=" د.أ"
         numeric
       />
       <EditableCell
         value={product.pieces_per_carton}
-        onSave={(v) => save('pieces_per_carton', v)}
+        onSave={(v) => save({ pieces_per_carton: v })}
         suffix=" قطعة"
         numeric
       />
@@ -355,6 +379,9 @@ export default function ProductsReportScreen() {
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
       'الفئة':                getCategoryDisplayName(p.category_id),
       'اسم الصنف':           getProductName(p, locale),
+      'سعر المنتج':          p.price ?? '—',
+      'سعر الحبة':           p.price_per_piece ?? '—',
+      'سعر الكيلو':          p.price_per_kg ?? '—',
       'السعر بالكرتونة':     p.price_per_carton ?? '—',
       'التعبئة في الكرتون':  p.pieces_per_carton ?? '—',
     })),
@@ -428,6 +455,9 @@ export default function ProductsReportScreen() {
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>سعر المنتج</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>سعر الحبة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>سعر الكيلو</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>السعر بالكرتونة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>التعبئة/كرتون</Text>
           </View>
