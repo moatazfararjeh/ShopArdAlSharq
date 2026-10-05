@@ -14,6 +14,7 @@ import {
   type PlanItem,
   type PlanStatus,
   type ApplyResult,
+  type UnitType,
 } from '@/services/erpStockImport';
 
 const C = {
@@ -36,7 +37,15 @@ const STATUS_LABEL: Record<PlanStatus, string> = {
   fractional: 'رصيد كسري',
 };
 
-const STATUS_ORDER: PlanStatus[] = ['unit_mismatch', 'duplicate', 'fractional', 'no_unit_type', 'not_linked', 'unchanged'];
+const UNIT_LABEL: Record<UnitType | 'none', string> = {
+  piece: 'حبة',
+  kg: 'كيلو',
+  carton: 'كرتون',
+  tin: 'تنك',
+  none: 'بدون نوع',
+};
+
+const STATUS_ORDER: PlanStatus[] =['unit_mismatch', 'duplicate', 'fractional', 'no_unit_type', 'not_linked', 'unchanged'];
 
 function confirmAsync(message: string): Promise<boolean> {
   if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
@@ -182,6 +191,12 @@ export default function ImportStockScreen() {
                   <Text style={{ fontSize: 18, fontWeight: '900', color: C.text, textAlign: 'right' }}>{plan.missingFromFile.length}</Text>
                   <Text style={{ fontSize: 11, color: C.muted, textAlign: 'right' }}>منتجات مربوطة وغير موجودة بالملف</Text>
                 </View>
+                <View style={{ minWidth: 130, flexGrow: 1, borderRadius: 12, padding: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#2563eb', textAlign: 'right' }}>
+                    {(plan.items.filter((i) => i.status === 'ready' && i.unitTo != null && i.unitTo !== i.unitFrom)).length}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: C.muted, textAlign: 'right' }}>تغيير نوع الوحدة من الملف</Text>
+                </View>
               </View>
             </View>
 
@@ -290,9 +305,18 @@ function PlanRow({ item }: { item: PlanItem }) {
         كود ERP: {item.erpCode}{item.productName ? ` — ${item.erpName}` : ''}
       </Text>
       {isReady ? (
-        <Text style={{ fontSize: 12, fontWeight: '700', color: C.brand, textAlign: 'right' }}>
-          {item.before} ← {item.after}
-        </Text>
+        <>
+          {item.before !== item.after && (
+            <Text style={{ fontSize: 12, fontWeight: '700', color: C.brand, textAlign: 'right' }}>
+              المخزون: {item.before} ← {item.after}
+            </Text>
+          )}
+          {item.unitTo != null && item.unitTo !== item.unitFrom && (
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563eb', textAlign: 'right' }}>
+              نوع الوحدة: {UNIT_LABEL[item.unitFrom ?? 'none']} ← {UNIT_LABEL[item.unitTo]}
+            </Text>
+          )}
+        </>
       ) : (
         <Text style={{ fontSize: 12, color: '#b45309', textAlign: 'right' }}>
           {STATUS_LABEL[item.status]}{item.reason ? ` — ${item.reason}` : ''}

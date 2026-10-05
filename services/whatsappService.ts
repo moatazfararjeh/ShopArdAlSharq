@@ -18,37 +18,6 @@ async function sendWhatsApp(to: string, message: string): Promise<void> {
   }
 }
 
-// ─── Customer: order received confirmation ────────────────────────────────────
-
-export async function sendOrderReceivedWhatsApp(
-  phone: string,
-  orderNumber: string,
-  totalAmount: number,
-): Promise<void> {
-  const message =
-    `✅ *تم استلام طلبك #${orderNumber}*\n\n` +
-    `شكراً لك! تم استلام طلبك بقيمة *${totalAmount.toFixed(2)} د.أ* بنجاح.\n` +
-    `سيتم مراجعة طلبك وتأكيده في أقرب وقت.\n\n` +
-    `شكراً لتسوقك معنا 🛒`;
-  await sendWhatsApp(phone, message);
-}
-
-// ─── Admin: new order alert ───────────────────────────────────────────────────
-
-export async function sendNewOrderAdminWhatsApp(
-  adminPhone: string,
-  orderNumber: string,
-  totalAmount: number,
-  orderId: string,
-): Promise<void> {
-  const message =
-    `🛒 *طلب جديد يتطلب إجراءك #${orderNumber}*\n\n` +
-    `📦 قيمة الطلب: *${totalAmount.toFixed(2)} د.أ*\n` +
-    `🔖 رقم الطلب: ${orderNumber}\n\n` +
-    `يرجى فتح لوحة الإدارة ومراجعة الطلب.`;
-  await sendWhatsApp(adminPhone, message);
-}
-
 // ─── Customer: order status update ───────────────────────────────────────────
 
 const ORDER_STATUS_WHATSAPP: Partial<Record<string, string>> = {

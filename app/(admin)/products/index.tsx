@@ -60,7 +60,7 @@ function ProductRow({
 }) {
   const thumbUrl = item.product_images?.[0]?.url ?? null;
   const inStock = item.is_available && item.stock_quantity > 0;
-  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'حبة' : '';
+  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'حبة' : item.unit_type === 'tin' ? 'تنك' : '';
 
   return (
     <View style={{

@@ -326,7 +326,7 @@ export default function AddProductScreen() {
           <Controller control={control} name="unit_type"
             render={({ field: { onChange, value } }) => (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }] as const).map(({ key, label }) => {
+                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }, { key: 'tin', label: 'تنك' }] as const).map(({ key, label }) => {
                   const selected = value === key;
                   return (
                     <TouchableOpacity

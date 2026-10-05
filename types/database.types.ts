@@ -58,7 +58,7 @@ export interface ProductRow {
   is_featured: boolean;
   weight: number | null;
   weight_unit: string | null;
-  unit_type: 'piece' | 'kg' | 'carton' | null;
+  unit_type: 'piece' | 'kg' | 'carton' | 'tin' | null;
   price_per_piece: number | null;
   price_per_carton: number | null;
   price_per_kg: number | null;

@@ -3,6 +3,8 @@ import type { Product } from '@/types/models';
 
 const HEADER_CODE = 'رمز المادة';
 
+export type UnitType = 'piece' | 'kg' | 'carton' | 'tin';
+
 export interface ErpRow {
   code: string;
   name: string;
@@ -29,6 +31,8 @@ export interface PlanItem {
   productName: string | null;
   before: number | null;
   after: number | null;
+  unitFrom: UnitType | null;
+  unitTo: UnitType | null;
   reason: string | null;
 }
 
@@ -63,20 +67,29 @@ export async function parseErpStockFile(buffer: ArrayBuffer): Promise<ErpRow[]> 
   return rows;
 }
 
-function targetFor(product: Product, row: ErpRow): { value: number | null; reason: string | null } {
-  switch (product.unit_type) {
+export function suggestUnitType(row: ErpRow): UnitType | null {
+  if (row.baseUnit === 'كيلو') return 'kg';
+  if (row.baseUnit === 'كرتونة') return 'carton';
+  if (row.baseUnit === 'تنك') return 'tin';
+  if (row.baseUnit === 'حبة') return row.largeUnit === 'كرتونة' ? 'carton' : 'piece';
+  return null;
+}
+
+function stockFor(unit: UnitType, row: ErpRow): { value: number | null; reason: string | null } {
+  switch (unit) {
     case 'carton':
       if (row.baseUnit === 'كرتونة') return { value: row.baseBalance, reason: null };
       if (row.largeUnit === 'كرتونة' && row.largeBalance != null) return { value: row.largeBalance, reason: null };
-      return { value: null, reason: `المنتج بالكرتون والملف بوحدة ${row.baseUnit}` };
+      return { value: null, reason: `نوع الوحدة كرتون والملف بوحدة ${row.baseUnit}` };
     case 'piece':
       if (row.baseUnit === 'حبة') return { value: row.baseBalance, reason: null };
-      return { value: null, reason: `المنتج بالحبة والملف بوحدة ${row.baseUnit}` };
+      return { value: null, reason: `نوع الوحدة حبة والملف بوحدة ${row.baseUnit}` };
     case 'kg':
       if (row.baseUnit === 'كيلو') return { value: row.baseBalance, reason: null };
-      return { value: null, reason: `المنتج بالكيلو والملف بوحدة ${row.baseUnit}` };
-    default:
-      return { value: null, reason: null };
+      return { value: null, reason: `نوع الوحدة كيلو والملف بوحدة ${row.baseUnit}` };
+    case 'tin':
+      if (row.baseUnit === 'تنك') return { value: row.baseBalance, reason: null };
+      return { value: null, reason: `نوع الوحدة تنك والملف بوحدة ${row.baseUnit}` };
   }
 }
 
@@ -96,6 +109,8 @@ export function buildImportPlan(rows: ErpRow[], products: Product[]): ImportPlan
       productName: null,
       before: null,
       after: null,
+      unitFrom: null,
+      unitTo: null,
       reason: null,
     };
 
@@ -108,28 +123,32 @@ export function buildImportPlan(rows: ErpRow[], products: Product[]): ImportPlan
       return { ...base, reason: 'لا يوجد منتج مربوط بهذا الكود' };
     }
 
+    const current = (product.unit_type as UnitType | null) ?? null;
     const withProduct: PlanItem = {
       ...base,
       productId: product.id,
       productName: product.name_ar,
       before: product.stock_quantity,
+      unitFrom: current,
     };
 
-    if (product.unit_type == null) {
-      return { ...withProduct, status: 'no_unit_type', reason: 'لم يتم تحديد نوع الوحدة للمنتج' };
+    const effective = suggestUnitType(row) ?? current;
+    if (effective == null) {
+      return { ...withProduct, status: 'no_unit_type', reason: 'الملف لا يحدد وحدة مطابقة (كيس/تنك) والمنتج بدون نوع وحدة' };
     }
 
-    const { value, reason } = targetFor(product, row);
+    const unitTo = effective !== current ? effective : null;
+    const { value, reason } = stockFor(effective, row);
     if (value == null) {
-      return { ...withProduct, status: 'unit_mismatch', reason };
+      return { ...withProduct, status: 'unit_mismatch', unitTo, reason };
     }
     if (!Number.isInteger(value)) {
-      return { ...withProduct, status: 'fractional', after: value, reason: 'الرصيد ليس عدداً صحيحاً' };
+      return { ...withProduct, status: 'fractional', after: value, unitTo, reason: 'الرصيد ليس عدداً صحيحاً' };
     }
-    if (value === product.stock_quantity) {
+    if (value === product.stock_quantity && unitTo == null) {
       return { ...withProduct, status: 'unchanged', after: value };
     }
-    return { ...withProduct, status: 'ready', after: value };
+    return { ...withProduct, status: 'ready', after: value, unitTo };
   });
 
   const fileCodes = new Set(rows.map((r) => r.code));
@@ -158,8 +177,11 @@ export async function applyImportPlan(
     const item = ready[i];
     onProgress(i, ready.length);
 
+    const payload: Record<string, unknown> = { stock_quantity: item.after };
+    if (item.unitTo) payload.unit_type = item.unitTo;
+
     const { data, error } = await (supabase.from('products') as any)
-      .update({ stock_quantity: item.after })
+      .update(payload)
       .eq('id', item.productId)
       .eq('stock_quantity', item.before)
       .select('id');
@@ -173,18 +195,21 @@ export async function applyImportPlan(
       continue;
     }
 
-    const { error: logError } = await (supabase.from('inventory_logs') as any).insert({
-      product_id: item.productId,
-      action: 'adjustment',
-      quantity_change: (item.after as number) - (item.before as number),
-      quantity_before: item.before,
-      quantity_after: item.after,
-      note: `استيراد أرصدة ERP — كود ${item.erpCode}`,
-      performed_by: userId,
-    });
-    if (logError) {
-      result.failed.push({ item, message: `تم تحديث الكمية لكن فشل تسجيل الحركة: ${logError.message}` });
-      continue;
+    const stockChanged = item.after !== item.before;
+    if (stockChanged) {
+      const { error: logError } = await (supabase.from('inventory_logs') as any).insert({
+        product_id: item.productId,
+        action: 'adjustment',
+        quantity_change: (item.after as number) - (item.before as number),
+        quantity_before: item.before,
+        quantity_after: item.after,
+        note: `استيراد أرصدة ERP — كود ${item.erpCode}`,
+        performed_by: userId,
+      });
+      if (logError) {
+        result.failed.push({ item, message: `تم تحديث الكمية لكن فشل تسجيل الحركة: ${logError.message}` });
+        continue;
+      }
     }
     result.updated++;
   }

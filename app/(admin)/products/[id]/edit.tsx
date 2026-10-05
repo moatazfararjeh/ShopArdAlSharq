@@ -103,7 +103,7 @@ export default function EditProductScreen() {
       is_featured: product.is_featured ?? false,
       weight: product.weight != null ? String(product.weight) : '',
       weight_unit: product.weight_unit ?? '',
-      unit_type: (product.unit_type as 'piece' | 'kg' | 'carton') ?? undefined,
+      unit_type: (product.unit_type as 'piece' | 'kg' | 'carton' | 'tin') ?? undefined,
       price_per_piece: product.price_per_piece != null ? String(product.price_per_piece) : '',
       price_per_carton: product.price_per_carton != null ? String(product.price_per_carton) : '',
       price_per_kg: product.price_per_kg != null ? String(product.price_per_kg) : '',
@@ -407,7 +407,7 @@ export default function EditProductScreen() {
           <Controller control={control} name="unit_type"
             render={({ field: { onChange, value } }) => (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }] as const).map(({ key, label }) => {
+                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }, { key: 'tin', label: 'تنك' }] as const).map(({ key, label }) => {
                   const selected = value === key;
                   return (
                     <TouchableOpacity

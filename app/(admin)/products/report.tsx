@@ -23,6 +23,7 @@ const UNIT_TYPE_OPTIONS = [
   { id: 'piece', name: 'حبة' },
   { id: 'kg', name: 'كيلو' },
   { id: 'carton', name: 'كرتون' },
+  { id: 'tin', name: 'تنك' },
 ];
 
 function exportToExcel(rows: any[]) {

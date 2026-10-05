@@ -48,7 +48,7 @@ export const productSchema = z.object({
       message: 'الوزن يجب أن يكون رقمًا موجبًا',
     }),
   weight_unit: z.string().max(10).optional().or(z.literal('')),
-  unit_type: z.enum(['piece', 'kg', 'carton']).optional(),
+  unit_type: z.enum(['piece', 'kg', 'carton', 'tin']).optional(),
   price_per_piece: z
     .string()
     .optional()
