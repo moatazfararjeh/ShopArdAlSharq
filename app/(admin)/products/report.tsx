@@ -19,11 +19,17 @@ const C = {
   header:'#0d1b2a',
 };
 
+const UNIT_TYPE_OPTIONS = [
+  { id: 'piece', name: 'حبة' },
+  { id: 'kg', name: 'كيلو' },
+  { id: 'carton', name: 'كرتون' },
+];
+
 function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -331,6 +337,23 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
         allowNone
         noneLabel="بدون ماركة"
       />
+      <EditableSelectCell
+        value={product.unit_type ?? null}
+        options={UNIT_TYPE_OPTIONS}
+        onSave={(v) => save({ unit_type: v })}
+        allowNone
+        noneLabel="بدون نوع"
+      />
+      <EditableCell
+        value={product.min_order_quantity}
+        onSave={async (v) => {
+          if (v == null || !Number.isInteger(v) || v < 1) {
+            throw new Error('أدنى كمية للبيع يجب أن تكون رقمًا صحيحًا 1 أو أكثر');
+          }
+          await save({ min_order_quantity: v });
+        }}
+        numeric
+      />
       <EditableCell
         value={product.price}
         onSave={(v) => save({ price: v })}
@@ -358,7 +381,7 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
       <EditableCell
         value={product.pieces_per_carton}
         onSave={(v) => save({ pieces_per_carton: v })}
-        suffix=" قطعة"
+        suffix=" حبة"
         numeric
       />
     </View>
@@ -458,6 +481,8 @@ export default function ProductsReportScreen() {
     products.map((p) => ({
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
       'الفئة':                getCategoryDisplayName(p.category_id),
+      'نوع الوحدة':          UNIT_TYPE_OPTIONS.find((o) => o.id === p.unit_type)?.name ?? '—',
+      'أدنى كمية للبيع':     p.min_order_quantity ?? 1,
       'اسم الصنف':           getProductName(p, locale),
       'كود ERP':             p.erp_code ?? '—',
       'سعر المنتج':          p.price ?? '—',
@@ -544,6 +569,8 @@ export default function ProductsReportScreen() {
             <Text style={[styles.hCell, { flex: 2 }]}>كود ERP</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>نوع الوحدة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>أدنى كمية للبيع</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر المنتج</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر الحبة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر الكيلو</Text>

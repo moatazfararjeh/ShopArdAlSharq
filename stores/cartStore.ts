@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CartItem, CartSummary } from '@/types/models';
+import { CartItem, CartSummary, getMinOrderQuantity } from '@/types/models';
 import { MAX_CART_ITEM_QUANTITY } from '@/lib/constants';
 
 interface CartState {
@@ -56,7 +56,8 @@ export const useCartStore = create<CartState>((set, get) => ({
           : i,
       );
     } else {
-      updated = [...items, { ...incomingItem, quantity: Math.min(incomingItem.quantity, MAX_CART_ITEM_QUANTITY) }];
+      const minQty = getMinOrderQuantity(incomingItem.product);
+      updated = [...items, { ...incomingItem, quantity: Math.min(Math.max(incomingItem.quantity, minQty), MAX_CART_ITEM_QUANTITY) }];
     }
     set({ items: updated, summary: computeSummary(updated) });
   },
@@ -73,10 +74,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       get().removeItem(productId, selectedUnit);
       return;
     }
-    const clamped = Math.min(quantity, MAX_CART_ITEM_QUANTITY);
     const updated = get().items.map((i) =>
       i.product_id === productId && (selectedUnit === undefined || i.selected_unit === selectedUnit)
-        ? { ...i, quantity: clamped }
+        ? { ...i, quantity: Math.min(Math.max(quantity, getMinOrderQuantity(i.product)), MAX_CART_ITEM_QUANTITY) }
         : i,
     );
     set({ items: updated, summary: computeSummary(updated) });

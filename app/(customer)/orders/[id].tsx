@@ -37,7 +37,7 @@ function printOrderWindow(order: Order, locale: string) {
     const imgUrl = (prod?.images?.[0] ?? prod?.product_images?.[0])?.url;
     const unitLabel = prod?.unit_type === 'carton' && prod.pieces_per_carton
       ? `كرتون (${prod.pieces_per_carton} حبة)`
-      : prod?.unit_type === 'kg' ? 'كغ' : 'قطعة';
+      : prod?.unit_type === 'kg' ? 'كغ' : 'حبة';
     const weightHtml = prod?.weight
       ? `<div class="item-weight">⚖️ ${prod.weight} ${prod.weight_unit ?? 'كغ'}</div>` : '';
     const imgHtml = imgUrl
@@ -418,7 +418,7 @@ export default function OrderDetailScreen() {
           const unitLabel =
             prod?.unit_type === 'carton' && prod.pieces_per_carton
               ? `كرتون (${prod.pieces_per_carton} حبة)`
-              : prod?.unit_type === 'kg' ? 'كغ' : 'قطعة';
+              : prod?.unit_type === 'kg' ? 'كغ' : 'حبة';
 
           return (
             <View

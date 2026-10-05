@@ -12,7 +12,7 @@ import { useProduct, useProductsPage } from '@/hooks/useProducts';
 import { useCart } from '@/hooks/useCart';
 import { useToastStore } from '@/stores/toastStore';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getProductDescription, hasDiscount } from '@/types/models';
+import { getProductName, getProductDescription, getMinOrderQuantity, hasDiscount } from '@/types/models';
 import { formatPrice, getDiscountPercent } from '@/utils/formatPrice';
 import { ProductCard } from '@/components/product/ProductCard';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
@@ -344,6 +344,8 @@ export default function ProductDetailScreen() {
   const { addItem } = useCart();
   const showToast = useToastStore((s) => s.show);
   const [quantity, setQuantity] = useState(1);
+  const minQty = product ? getMinOrderQuantity(product) : 1;
+  const orderQty = Math.max(quantity, minQty);
   const [selectedUnit, setSelectedUnit] = useState<'piece' | 'kg' | 'carton' | null>(null);
   const recordEvent = useRecordProductEvent();
   const userId = useAuthStore((s) => s.profile?.id);
@@ -405,7 +407,7 @@ export default function ProductDetailScreen() {
       id: '',
       cart_id: '',
       product_id: product!.id,
-      quantity,
+      quantity: orderQty,
       selected_unit: effectiveUnit,
       product: product!,
     });
@@ -587,16 +589,16 @@ export default function ProductDetailScreen() {
                 overflow: 'hidden', direction: 'ltr' as any,
               }}>
                 <TouchableOpacity
-                  onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                  style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: quantity === 1 ? '#f3f4f6' : '#fff7ed' }}
+                  onPress={() => setQuantity((q) => Math.max(minQty, q - 1))}
+                  style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: orderQty <= minQty ? '#f3f4f6' : '#fff7ed' }}
                 >
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: quantity === 1 ? '#c9bfb6' : BRAND }}>−</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: orderQty <= minQty ? '#c9bfb6' : BRAND }}>−</Text>
                 </TouchableOpacity>
                 <Text style={{ minWidth: 44, textAlign: 'center', fontSize: 17, fontWeight: '900', color: '#111827' }}>
-                  {quantity}
+                  {orderQty}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setQuantity((q) => Math.min(product.stock_quantity ?? 99, q + 1))}
+                  onPress={() => setQuantity((q) => Math.min(product.stock_quantity ?? 99, Math.max(minQty, q) + 1))}
                   style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: '#fff7ed' }}
                 >
                   <Text style={{ fontSize: 18, fontWeight: '700', color: BRAND }}>+</Text>
@@ -643,7 +645,7 @@ export default function ProductDetailScreen() {
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 11, color: '#9ca3af' }}>الإجمالي</Text>
           <Text style={{ fontSize: 22, fontWeight: '900', color: BRAND, lineHeight: 28 }}>
-            {formatPrice(displayPrice * quantity)}
+            {formatPrice(displayPrice * orderQty)}
           </Text>
           {hasUnitOptions && effectiveUnit && (
             <Text style={{ fontSize: 11, color: '#857d78' }}>
@@ -660,7 +662,7 @@ export default function ProductDetailScreen() {
           <AddToCartButton
             onPress={handleAddToCart}
             outOfStock={false}
-            totalPrice={formatPrice(displayPrice * quantity)}
+            totalPrice={formatPrice(displayPrice * orderQty)}
           />
         )}
       </View>

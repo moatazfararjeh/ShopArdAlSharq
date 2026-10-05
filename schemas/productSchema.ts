@@ -34,6 +34,11 @@ export const productSchema = z.object({
     .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 0, {
       message: 'الكمية يجب أن تكون رقمًا صحيحًا غير سالب',
     }),
+  min_order_quantity: z
+    .string()
+    .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 1, {
+      message: 'أدنى كمية للبيع يجب أن تكون 1 أو أكثر',
+    }),
   is_available: z.boolean(),
   is_featured: z.boolean(),
   weight: z

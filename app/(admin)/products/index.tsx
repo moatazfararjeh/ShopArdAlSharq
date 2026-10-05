@@ -60,7 +60,7 @@ function ProductRow({
 }) {
   const thumbUrl = item.product_images?.[0]?.url ?? null;
   const inStock = item.is_available && item.stock_quantity > 0;
-  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'قطعة' : '';
+  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'حبة' : '';
 
   return (
     <View style={{
@@ -92,7 +92,7 @@ function ProductRow({
           {inStock && (
             <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#eff6ff' }}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#2563eb' }}>
-                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} قطعة/كرتون)` : ''}`}
+                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} حبة/كرتون)` : ''}`}
               </Text>
             </View>
           )}

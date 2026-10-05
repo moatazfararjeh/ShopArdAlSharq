@@ -10,7 +10,7 @@ import { useRecordProductEvent } from '@/hooks/useAnalytics';
 import { useAuthStore } from '@/stores/authStore';
 import { Product } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, hasDiscount } from '@/types/models';
+import { getProductName, getMinOrderQuantity, hasDiscount } from '@/types/models';
 import { getDiscountPercent } from '@/utils/formatPrice';
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 
@@ -68,7 +68,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   function handleAddToCart() {
     if (outOfStock) return;
     recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-    addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, selected_unit: null, product });
+    addItem({ id: '', cart_id: '', product_id: product.id, quantity: getMinOrderQuantity(product), selected_unit: null, product });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
@@ -225,8 +225,9 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                 }}>
                   <TouchableOpacity
                     onPress={() => updateQuantity(product.id, cartQty - 1)}
+                    disabled={cartQty <= getMinOrderQuantity(product)}
                     activeOpacity={0.7}
-                    style={{ paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#fff0eb' }}
+                    style={{ paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#fff0eb', opacity: cartQty <= getMinOrderQuantity(product) ? 0.4 : 1 }}
                   >
                     <Text style={{ fontSize: 14, fontWeight: '900', color: BRAND, lineHeight: 16 }}>−</Text>
                   </TouchableOpacity>

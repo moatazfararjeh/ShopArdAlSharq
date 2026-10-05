@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import * as cartService from '@/services/cartService';
-import { CartItem } from '@/types/models';
+import { CartItem, getMinOrderQuantity } from '@/types/models';
 
 const cartKeys = {
   all: ['cart'] as const,
@@ -84,8 +84,11 @@ export function useCart() {
     summary,
     addItem: addMutation.mutate,
     removeItem: removeMutation.mutate,
-    updateQuantity: (productId: string, quantity: number) =>
-      updateQuantityMutation.mutate({ productId, quantity }),
+    updateQuantity: (productId: string, quantity: number) => {
+      const item = items.find((i) => i.product_id === productId);
+      const next = quantity > 0 && item ? Math.max(quantity, getMinOrderQuantity(item.product)) : quantity;
+      updateQuantityMutation.mutate({ productId, quantity: next });
+    },
     clearCart: clearMutation.mutate,
   };
 }

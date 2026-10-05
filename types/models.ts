@@ -43,6 +43,10 @@ export function getCategoryName(cat: Category, locale: SupportedLocale): string 
   return locale === 'ar' ? cat.name_ar : (cat.name_en ?? cat.name_ar);
 }
 
+export function getMinOrderQuantity(product: { min_order_quantity?: number | null }): number {
+  return Math.max(1, product.min_order_quantity ?? 1);
+}
+
 // ─── Banner ──────────────────────────────────────────────────────────────────
 
 export interface Banner {
@@ -125,6 +129,7 @@ export interface Product {
   price_per_kg: number | null;
   pieces_per_carton: number | null;
   erp_code: string | null;
+  min_order_quantity: number;
   flash_sale_price: number | null;
   flash_sale_ends_at: string | null;
   created_at: string;
