@@ -124,6 +124,7 @@ export interface Product {
   price_per_carton: number | null;
   price_per_kg: number | null;
   pieces_per_carton: number | null;
+  erp_code: string | null;
   flash_sale_price: number | null;
   flash_sale_ends_at: string | null;
   created_at: string;

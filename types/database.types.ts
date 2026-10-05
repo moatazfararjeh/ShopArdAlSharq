@@ -63,6 +63,7 @@ export interface ProductRow {
   price_per_carton: number | null;
   price_per_kg: number | null;
   pieces_per_carton: number | null;
+  erp_code: string | null;
   created_at: string;
   updated_at: string;
 }
