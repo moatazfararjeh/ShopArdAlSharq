@@ -123,6 +123,16 @@ function OrderCard({ item }: { item: Order }) {
         <Text style={{ fontSize: 11, color: C.muted }}>{formatDate(item.created_at)}</Text>
       </View>
 
+      {['pending', 'confirmed'].includes(item.status) && (
+        <TouchableOpacity
+          onPress={() => router.push(`/(admin)/orders/${item.id}/edit` as any)}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.brand }}
+        >
+          <Ionicons name="create-outline" size={14} color={C.brand} />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: C.brand }}>تعديل الطلب</Text>
+        </TouchableOpacity>
+      )}
+
       {/* ── Pipeline stepper ── */}
       <View style={{ marginBottom: 14 }}>
         <OrderStepper status={item.status} />

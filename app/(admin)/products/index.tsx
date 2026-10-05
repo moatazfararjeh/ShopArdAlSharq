@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -176,6 +177,7 @@ function BrandHeader({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AdminProductsScreen() {
+  const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
@@ -204,17 +206,15 @@ export default function AdminProductsScreen() {
     return brand?.name ?? brandId;
   }
 
-  function confirmDelete(id: string, name: string) {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) {
-        deleteMutation.mutate(id);
-      }
-      return;
-    }
-    Alert.alert(t('admin.confirmDelete'), name, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-    ]);
+  async function confirmDelete(id: string, name: string) {
+    const ok = await confirm({
+      title: t('admin.confirmDelete'),
+      message: name,
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(id);
   }
 
   return (
@@ -331,6 +331,7 @@ export default function AdminProductsScreen() {
           )}
         </ScrollView>
       )}
+      {dialog}
     </SafeAreaView>
   );
 }

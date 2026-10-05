@@ -59,6 +59,38 @@ export async function getOrderById(orderId: string): Promise<Order> {
   } as unknown as Order;
 }
 
+export interface AdminOrderItemInput {
+  product_id: string;
+  quantity: number;
+}
+
+export interface AdminUpdateOrderResult {
+  changed: boolean;
+  total?: number;
+  changes?: string[];
+}
+
+export async function adminUpdateOrderItems(
+  orderId: string,
+  items: AdminOrderItemInput[],
+  note: string | null,
+): Promise<AdminUpdateOrderResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('admin_update_order_items', {
+    p_order_id: orderId,
+    p_items: items,
+    p_note: note,
+  });
+  if (error) {
+    const msg = error.message ?? '';
+    if (/^(INSUFFICIENT_STOCK|PRODUCT_UNAVAILABLE|ORDER_NOT_EDITABLE|ORDER_NOT_FOUND|EMPTY_ORDER|FORBIDDEN)/.test(msg)) {
+      throw new Error(msg);
+    }
+    throw parseSupabaseError(error);
+  }
+  return data as AdminUpdateOrderResult;
+}
+
 export async function placeOrder(payload: CheckoutPayload): Promise<PlaceOrderResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc('place_order', {

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProductsPage } from '@/hooks/useProducts';
 import {
@@ -47,19 +48,10 @@ const UNIT_LABEL: Record<UnitType | 'none', string> = {
 
 const STATUS_ORDER: PlanStatus[] =['unit_mismatch', 'duplicate', 'fractional', 'no_unit_type', 'not_linked', 'unchanged'];
 
-function confirmAsync(message: string): Promise<boolean> {
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
-  return new Promise((resolve) => {
-    Alert.alert('تأكيد', message, [
-      { text: 'إلغاء', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'تحديث', onPress: () => resolve(true) },
-    ]);
-  });
-}
-
 export default function ImportStockScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const { data, isLoading: productsLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
   const products = data?.data ?? [];
 
@@ -104,7 +96,11 @@ export default function ImportStockScreen() {
   async function apply() {
     if (!plan) return;
     const readyCount = plan.items.filter((i) => i.status === 'ready').length;
-    const ok = await confirmAsync(`سيتم تحديث ${readyCount} منتج بالكميات من الملف. متابعة؟`);
+    const ok = await confirm({
+      title: 'تحديث المخزون',
+      message: `سيتم تحديث ${readyCount} منتج بالكميات ونوع الوحدة من الملف. متابعة؟`,
+      confirmText: 'تحديث',
+    });
     if (!ok) return;
 
     setApplying(true);
@@ -290,6 +286,7 @@ export default function ImportStockScreen() {
           </View>
         )}
       </ScrollView>
+      {dialog}
     </SafeAreaView>
   );
 }

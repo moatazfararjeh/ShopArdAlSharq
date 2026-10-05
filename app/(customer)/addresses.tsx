@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -23,6 +24,7 @@ interface Address {
 }
 
 export default function AddressesScreen() {
+  const { confirm, dialog } = useConfirm();
   const router = useRouter();
   const { session } = useAuthStore();
   const { show: showToast } = useToastStore();
@@ -56,15 +58,14 @@ export default function AddressesScreen() {
     showToast('تم تعيين العنوان الافتراضي', 'success');
   }
 
-  function confirmDelete(id: string) {
-    if (Platform.OS === 'web') {
-      if (window.confirm('هل تريد حذف هذا العنوان؟')) deleteAddress(id);
-      return;
-    }
-    Alert.alert('حذف العنوان', 'هل تريد حذف هذا العنوان؟', [
-      { text: 'إلغاء', style: 'cancel' },
-      { text: 'حذف', style: 'destructive', onPress: () => deleteAddress(id) },
-    ]);
+  async function confirmDelete(id: string) {
+    const ok = await confirm({
+      title: 'حذف العنوان',
+      message: 'هل تريد حذف هذا العنوان؟',
+      confirmText: 'حذف',
+      destructive: true,
+    });
+    if (ok) deleteAddress(id);
   }
 
   async function deleteAddress(id: string) {
@@ -172,6 +173,7 @@ export default function AddressesScreen() {
           ))}
         </ScrollView>
       )}
+      {dialog}
     </SafeAreaView>
   );
 }

@@ -154,6 +154,7 @@ export default function CartScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { items, summary } = useCart();
+  const insets = useSafeAreaInsets();
 
   if (items.length === 0) {
     return (
@@ -171,7 +172,6 @@ export default function CartScreen() {
   }
 
   const totalWithDelivery = summary.total;
-  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0', direction: 'rtl' as any }} edges={['top']}>

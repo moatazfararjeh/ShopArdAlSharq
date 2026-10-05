@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -38,6 +39,7 @@ export default function EditProductScreen() {
   const { data: brands } = useBrands(false);
   const { images, addImage, removeImage, setPrimary } = useProductImages(id);
   const { data: stockAlertCount = 0 } = useStockAlertSubscriberCount(id);
+  const { confirm, dialog } = useConfirm();
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -235,15 +237,14 @@ export default function EditProductScreen() {
                   </View>
                 )}
                 <TouchableOpacity
-                  onPress={() => {
-                    if (Platform.OS === 'web') {
-                      if (window.confirm('هل تريد حذف هذه الصورة؟')) removeImage.mutate(img);
-                      return;
-                    }
-                    Alert.alert('حذف الصورة', 'هل تريد حذف هذه الصورة؟', [
-                      { text: 'إلغاء', style: 'cancel' },
-                      { text: 'حذف', style: 'destructive', onPress: () => removeImage.mutate(img) },
-                    ]);
+                  onPress={async () => {
+                    const ok = await confirm({
+                      title: 'حذف الصورة',
+                      message: 'هل تريد حذف هذه الصورة؟',
+                      confirmText: 'حذف',
+                      destructive: true,
+                    });
+                    if (ok) removeImage.mutate(img);
                   }}
                   style={{
                     position: 'absolute', top: -6, right: -6,
@@ -602,6 +603,7 @@ export default function EditProductScreen() {
         </TouchableOpacity>
 
       </ScrollView>
+      {dialog}
     </SafeAreaView>
   );
 }
