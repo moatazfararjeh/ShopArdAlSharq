@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import {
   View, Text, TouchableOpacity, Alert, ScrollView, Platform,
   TextInput, ActivityIndicator, Linking, Switch,
@@ -113,6 +114,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 
 // ─── Profile screen ───────────────────────────────────────────────────────────
 export default function ProfileScreen() {
+  const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
   const router = useRouter();
   const { profile, session, setProfile } = useAuthStore();
@@ -285,25 +287,18 @@ export default function ProfileScreen() {
   );
 
   // ── Sign out ───────────────────────────────────────────────────────────────
-  function handleSignOut() {
-    if (Platform.OS === 'web') {
-      if (window.confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-        signOut.mutate(undefined, {
-          onSuccess: () => router.replace('/(public)/login' as any),
-        });
-      }
-      return;
-    }
-    Alert.alert(t('auth.logout'), 'هل أنت متأكد من تسجيل الخروج؟', [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('auth.logout'),
-        style: 'destructive',
-        onPress: () => signOut.mutate(undefined, {
-          onSuccess: () => router.replace('/(public)/login' as any),
-        }),
-      },
-    ]);
+  async function handleSignOut() {
+    const ok = await confirm({
+      title: t('auth.logout'),
+      message: 'هل أنت متأكد من تسجيل الخروج؟',
+      confirmText: t('auth.logout'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    if (!ok) return;
+    signOut.mutate(undefined, {
+      onSuccess: () => router.replace('/(public)/login' as any),
+    });
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -664,6 +659,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
+      {dialog}
     </SafeAreaView>
   );
 }

@@ -19,11 +19,18 @@ const C = {
   header:'#0d1b2a',
 };
 
+const UNIT_TYPE_OPTIONS = [
+  { id: 'piece', name: 'حبة' },
+  { id: 'kg', name: 'كيلو' },
+  { id: 'carton', name: 'كرتون' },
+  { id: 'tin', name: 'تنك' },
+];
+
 function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -105,6 +112,82 @@ function EditableCell({
     <TouchableOpacity style={{ flex: 2, paddingHorizontal: 4 }} onPress={startEdit}>
       <Text style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
         {value != null ? `${value}${suffix ?? ''}` : '—'}
+      </Text>
+      <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
+    </TouchableOpacity>
+  );
+}
+
+// ─── Inline-editable text cell (ERP code) ────────────────────────────────────
+function EditableTextCell({
+  value,
+  onSave,
+}: {
+  value: string | null;
+  onSave: (v: string | null) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraft(value ?? '');
+    setEditing(true);
+  }
+
+  async function commit() {
+    const next = draft.trim() === '' ? null : draft.trim();
+    if (next === value) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(next);
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }
+
+  if (saving) {
+    return (
+      <View style={{ flex: 2, alignItems: 'flex-end', paddingHorizontal: 4 }}>
+        <ActivityIndicator size="small" color={C.brand} />
+      </View>
+    );
+  }
+
+  if (editing) {
+    return (
+      <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          autoFocus
+          style={{
+            flex: 1, borderWidth: 1.5, borderColor: C.brand, borderRadius: 6,
+            paddingHorizontal: 6, paddingVertical: 4, fontSize: 12,
+            color: C.text, textAlign: 'right', backgroundColor: '#fff',
+          }}
+          onSubmitEditing={commit}
+        />
+        <TouchableOpacity onPress={commit} style={{ backgroundColor: '#16a34a', borderRadius: 6, padding: 4 }}>
+          <Ionicons name="checkmark" size={14} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setEditing(false)} style={{ backgroundColor: '#ef4444', borderRadius: 6, padding: 4 }}>
+          <Ionicons name="close" size={14} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity style={{ flex: 2, paddingHorizontal: 4 }} onPress={startEdit}>
+      <Text style={{ fontSize: 12, color: value ? C.text : C.muted, fontWeight: value ? '600' : '400', textAlign: 'right' }}>
+        {value ?? '—'}
       </Text>
       <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
     </TouchableOpacity>
@@ -239,6 +322,10 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
           {getProductName(product, locale)}
         </Text>
       </TouchableOpacity>
+      <EditableTextCell
+        value={product.erp_code ?? null}
+        onSave={(v) => save({ erp_code: v })}
+      />
       <EditableSelectCell
         value={product.category_id ?? null}
         options={categoryOptions}
@@ -250,6 +337,23 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
         onSave={(v) => save({ brand_id: v })}
         allowNone
         noneLabel="بدون ماركة"
+      />
+      <EditableSelectCell
+        value={product.unit_type ?? null}
+        options={UNIT_TYPE_OPTIONS}
+        onSave={(v) => save({ unit_type: v })}
+        allowNone
+        noneLabel="بدون نوع"
+      />
+      <EditableCell
+        value={product.min_order_quantity}
+        onSave={async (v) => {
+          if (v == null || !Number.isInteger(v) || v < 1) {
+            throw new Error('أدنى كمية للبيع يجب أن تكون رقمًا صحيحًا 1 أو أكثر');
+          }
+          await save({ min_order_quantity: v });
+        }}
+        numeric
       />
       <EditableCell
         value={product.price}
@@ -278,7 +382,7 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
       <EditableCell
         value={product.pieces_per_carton}
         onSave={(v) => save({ pieces_per_carton: v })}
-        suffix=" قطعة"
+        suffix=" حبة"
         numeric
       />
     </View>
@@ -378,7 +482,10 @@ export default function ProductsReportScreen() {
     products.map((p) => ({
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
       'الفئة':                getCategoryDisplayName(p.category_id),
+      'نوع الوحدة':          UNIT_TYPE_OPTIONS.find((o) => o.id === p.unit_type)?.name ?? '—',
+      'أدنى كمية للبيع':     p.min_order_quantity ?? 1,
       'اسم الصنف':           getProductName(p, locale),
+      'كود ERP':             p.erp_code ?? '—',
       'سعر المنتج':          p.price ?? '—',
       'سعر الحبة':           p.price_per_piece ?? '—',
       'سعر الكيلو':          p.price_per_kg ?? '—',
@@ -396,6 +503,13 @@ export default function ProductsReportScreen() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' }}>تقرير المنتجات</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(admin)/products/import-stock' as any)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.brand, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
+        >
+          <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>استيراد ERP</Text>
+        </TouchableOpacity>
         {Platform.OS === 'web' && (
           <TouchableOpacity
             onPress={() => exportToExcel(excelRows)}
@@ -453,8 +567,11 @@ export default function ProductsReportScreen() {
             paddingHorizontal: 12, paddingVertical: 8,
           }}>
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>كود ERP</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>نوع الوحدة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>أدنى كمية للبيع</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر المنتج</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر الحبة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>سعر الكيلو</Text>

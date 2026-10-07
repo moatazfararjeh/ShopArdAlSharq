@@ -237,6 +237,8 @@ export default function RegisterScreen() {
                 onBlur={onBlur}
                 error={errors.password?.message}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             )}
           />
@@ -252,6 +254,8 @@ export default function RegisterScreen() {
                 onBlur={onBlur}
                 error={errors.confirmPassword?.message}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             )}
           />

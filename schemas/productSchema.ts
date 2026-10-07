@@ -34,6 +34,11 @@ export const productSchema = z.object({
     .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 0, {
       message: 'الكمية يجب أن تكون رقمًا صحيحًا غير سالب',
     }),
+  min_order_quantity: z
+    .string()
+    .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 1, {
+      message: 'أدنى كمية للبيع يجب أن تكون 1 أو أكثر',
+    }),
   is_available: z.boolean(),
   is_featured: z.boolean(),
   weight: z
@@ -43,7 +48,7 @@ export const productSchema = z.object({
       message: 'الوزن يجب أن يكون رقمًا موجبًا',
     }),
   weight_unit: z.string().max(10).optional().or(z.literal('')),
-  unit_type: z.enum(['piece', 'kg', 'carton']).optional(),
+  unit_type: z.enum(['piece', 'kg', 'carton', 'tin']).optional(),
   price_per_piece: z
     .string()
     .optional()

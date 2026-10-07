@@ -51,29 +51,19 @@ export function usePlaceOrder() {
       qc.invalidateQueries({ queryKey: orderKeys.lists() });
 
       // Fetch customer profile for phone number
-      let customerProfile: { phone: string | null } | null = null;
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('phone')
-          .eq('id', userId!)
-          .single();
-        customerProfile = data as { phone: string | null } | null;
-      } catch {
-        customerProfile = null;
-      }
+      const { data: customerProfile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', userId!)
+        .single()
+        .catch(() => ({ data: null }));
 
       // Fetch all admin profiles for phone numbers
-      let adminProfiles: Array<{ id: string; phone: string | null }> = [];
-      try {
-        const { data } = await (supabase as any)
-          .from('profiles')
-          .select('id, phone')
-          .in('role', ['admin', 'super_admin']);
-        adminProfiles = data ?? [];
-      } catch {
-        adminProfiles = [];
-      }
+      const { data: adminProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, phone')
+        .in('role', ['admin', 'super_admin'])
+        .catch(() => ({ data: [] }));
 
       // Push notifications (in-app + push)
       if (userId) {
@@ -105,17 +95,12 @@ export function useUpdateOrderStatus() {
       // Push notification to customer
       void sendOrderStatusNotification(order.id, order.order_number, order.user_id, status).catch(() => {});
       // WhatsApp to customer
-      let profile: { phone: string | null } | null = null;
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('phone')
-          .eq('id', order.user_id)
-          .single();
-        profile = data as { phone: string | null } | null;
-      } catch {
-        profile = null;
-      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', order.user_id)
+        .single()
+        .catch(() => ({ data: null }));
       const phone = (profile as any)?.phone;
       if (phone) {
         void sendOrderStatusWhatsApp(phone, String(order.order_number), status).catch(() => {});

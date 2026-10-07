@@ -9,7 +9,7 @@ import { useCart } from '@/hooks/useCart';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getProductDescription } from '@/types/models';
+import { getProductName, getProductDescription, getMinOrderQuantity } from '@/types/models';
 import { CartItem as CartItemType } from '@/types/models';
 import { Image } from 'expo-image';
 import { getCartItemPrice } from '@/stores/cartStore';
@@ -123,14 +123,15 @@ function CartItemRow({ item }: { item: CartItemType }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, direction: 'ltr' as any }}>
               <TouchableOpacity
                 onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
+                disabled={item.quantity <= getMinOrderQuantity(item.product)}
                 style={{
                   width: 30, height: 30, borderRadius: 15,
-                  backgroundColor: item.quantity === 1 ? '#f3f4f6' : '#fff7ed',
+                  backgroundColor: item.quantity <= getMinOrderQuantity(item.product) ? '#f3f4f6' : '#fff7ed',
                   alignItems: 'center', justifyContent: 'center',
-                  borderWidth: 1, borderColor: item.quantity === 1 ? '#e5e7eb' : '#fed7aa',
+                  borderWidth: 1, borderColor: item.quantity <= getMinOrderQuantity(item.product) ? '#e5e7eb' : '#fed7aa',
                 }}
               >
-                <Text style={{ fontWeight: '800', color: item.quantity === 1 ? '#9ca3af' : BRAND, fontSize: 16, lineHeight: 18 }}>−</Text>
+                <Text style={{ fontWeight: '800', color: item.quantity <= getMinOrderQuantity(item.product) ? '#9ca3af' : BRAND, fontSize: 16, lineHeight: 18 }}>−</Text>
               </TouchableOpacity>
               <Text style={{ minWidth: 26, textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#111827' }}>
                 {item.quantity}
@@ -153,6 +154,7 @@ export default function CartScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { items, summary } = useCart();
+  const insets = useSafeAreaInsets();
 
   if (items.length === 0) {
     return (
@@ -170,7 +172,6 @@ export default function CartScreen() {
   }
 
   const totalWithDelivery = summary.total;
-  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f0', direction: 'rtl' as any }} edges={['top']}>

@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 import { useFavoriteProducts, useToggleFavorite } from '@/hooks/useFavorites';
 import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, hasDiscount, Product } from '@/types/models';
+import { getProductName, getMinOrderQuantity, hasDiscount, Product } from '@/types/models';
 import { useCart } from '@/hooks/useCart';
 import { WishlistItemSkeleton } from '@/components/ui/Skeleton';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
@@ -73,7 +73,7 @@ function WishlistItem({ product }: { product: Product }) {
         <TouchableOpacity
           onPress={() => {
             recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-            addItem({ id: '', cart_id: '', product_id: product.id, quantity: 1, product });
+            addItem({ id: '', cart_id: '', product_id: product.id, quantity: getMinOrderQuantity(product), selected_unit: null, product });
           }}
           disabled={product.stock_quantity === 0}
           style={{

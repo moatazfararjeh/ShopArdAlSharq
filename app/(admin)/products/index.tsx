@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,7 +61,7 @@ function ProductRow({
 }) {
   const thumbUrl = item.product_images?.[0]?.url ?? null;
   const inStock = item.is_available && item.stock_quantity > 0;
-  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'قطعة' : '';
+  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'حبة' : item.unit_type === 'tin' ? 'تنك' : '';
 
   return (
     <View style={{
@@ -92,7 +93,7 @@ function ProductRow({
           {inStock && (
             <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#eff6ff' }}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#2563eb' }}>
-                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} قطعة/كرتون)` : ''}`}
+                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} حبة/كرتون)` : ''}`}
               </Text>
             </View>
           )}
@@ -176,6 +177,7 @@ function BrandHeader({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AdminProductsScreen() {
+  const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
@@ -204,17 +206,15 @@ export default function AdminProductsScreen() {
     return brand?.name ?? brandId;
   }
 
-  function confirmDelete(id: string, name: string) {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) {
-        deleteMutation.mutate(id);
-      }
-      return;
-    }
-    Alert.alert(t('admin.confirmDelete'), name, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-    ]);
+  async function confirmDelete(id: string, name: string) {
+    const ok = await confirm({
+      title: t('admin.confirmDelete'),
+      message: name,
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(id);
   }
 
   return (
@@ -331,6 +331,7 @@ export default function AdminProductsScreen() {
           )}
         </ScrollView>
       )}
+      {dialog}
     </SafeAreaView>
   );
 }

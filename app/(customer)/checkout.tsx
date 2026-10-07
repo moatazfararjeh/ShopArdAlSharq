@@ -208,6 +208,7 @@ export default function CheckoutScreen() {
   const recordEvent = useRecordProductEvent();
   const scrollRef = useRef<any>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveThisAddress, setSaveThisAddress] = useState(true);
@@ -288,6 +289,7 @@ export default function CheckoutScreen() {
   }, [session?.user?.id]);
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (submitting) return; // guard against double-tap re-entrancy
     setSubmitError(null);
 
     // Block order if commercial register document is missing
@@ -299,6 +301,7 @@ export default function CheckoutScreen() {
       return;
     }
 
+    setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
@@ -360,25 +363,34 @@ export default function CheckoutScreen() {
         throw orderErr;
       }
 
-      if (tempAddressId) {
-        await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
-      }
-
-      // Track purchase event for each product
-      for (const item of cartItems) {
-        recordEvent.mutate({ productId: item.product_id, eventType: 'purchase', userId: session?.user?.id ?? undefined });
-      }
-
+      // The order is confirmed at this point. Clear the cart and navigate to
+      // the success screen right away, before any non-critical follow-up —
+      // that way a failure below can't make a real order look like it
+      // failed and invite the user to submit a duplicate.
       clearCart();
       router.replace({
         pathname: '/(customer)/order-success',
         params: { orderId: result.order_id, orderNumber: result.order_number },
       });
+
+      // Best-effort cleanup — must not affect the success flow above.
+      try {
+        if (tempAddressId) {
+          await (supabase as any).from('addresses').delete().eq('id', tempAddressId);
+        }
+        for (const item of cartItems) {
+          recordEvent.mutate({ productId: item.product_id, eventType: 'purchase', userId: session?.user?.id ?? undefined });
+        }
+      } catch {
+        // non-critical; the order already succeeded
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حدث خطأ، يرجى المحاولة مجددًا';
       setSubmitError(msg);
       showToast(msg, 'error');
       scrollRef.current?.scrollTo({ y: 0, animated: true });
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -626,7 +638,7 @@ export default function CheckoutScreen() {
           <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(summary.total)}</Text>
         </View>
         <Button
-          title={placeOrder.isPending ? '' : t('checkout.placeOrder')}
+          title={submitting ? '' : t('checkout.placeOrder')}
           onPress={hasCommercialRegister === false
             ? () => Alert.alert(
                 'تذكير: السجل التجاري',
@@ -645,7 +657,7 @@ export default function CheckoutScreen() {
             showToast(msg, 'error');
             scrollRef.current?.scrollTo({ y: 0, animated: true });
           })}
-          isLoading={placeOrder.isPending}
+          isLoading={submitting}
           fullWidth
           size="lg"
         />

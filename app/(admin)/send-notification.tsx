@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -14,6 +15,7 @@ const QUICK_TEMPLATES = [
 ];
 
 export default function SendNotificationScreen() {
+  const { confirm, dialog } = useConfirm();
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -37,21 +39,17 @@ export default function SendNotificationScreen() {
     }
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!title.trim()) { setErrorMsg('يرجى إدخال عنوان الإشعار'); return; }
     if (!body.trim())  { setErrorMsg('يرجى إدخال نص الإشعار');   return; }
     setErrorMsg('');
 
-    const confirmMsg = `سيتم إرسال الإشعار إلى جميع المستخدمين:\n\n"${title.trim()}"`;
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMsg)) doSend();
-    } else {
-      Alert.alert('تأكيد الإرسال', confirmMsg, [
-        { text: 'إلغاء', style: 'cancel' },
-        { text: 'إرسال', style: 'default', onPress: doSend },
-      ]);
-    }
+    const ok = await confirm({
+      title: 'تأكيد الإرسال',
+      message: `سيتم إرسال الإشعار إلى جميع المستخدمين:\n\n"${title.trim()}"`,
+      confirmText: 'إرسال',
+    });
+    if (ok) doSend();
   }
 
   return (
@@ -193,6 +191,7 @@ export default function SendNotificationScreen() {
         )}
 
       </ScrollView>
+      {dialog}
     </SafeAreaView>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform, TextInput, ActivityIndicator, FlatList } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -255,6 +256,7 @@ function BrandRow({ item, onEdit, onDelete, onToggle, isEditing, editState, onSa
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AdminBrandsScreen() {
+  const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
   const router = useRouter();
   const { data: brands, isLoading } = useBrands(false);
@@ -279,15 +281,15 @@ export default function AdminBrandsScreen() {
     updateMutation.mutate({ id, name, sort_order: sort, image_url: url }, { onSuccess: () => setEditingId(null) });
   }
 
-  function confirmDelete(brand: Brand) {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`حذف الماركة "${brand.name}"؟`)) deleteMutation.mutate(brand.id);
-      return;
-    }
-    Alert.alert('حذف الماركة', `حذف "${brand.name}"؟`, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(brand.id) },
-    ]);
+  async function confirmDelete(brand: Brand) {
+    const ok = await confirm({
+      title: 'حذف الماركة',
+      message: `حذف "${brand.name}"؟`,
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(brand.id);
   }
 
   return (
@@ -336,6 +338,7 @@ export default function AdminBrandsScreen() {
           />
         )}
       />
+      {dialog}
     </SafeAreaView>
   );
 }

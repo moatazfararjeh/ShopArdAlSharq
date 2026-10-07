@@ -71,6 +71,7 @@ export default function AddProductScreen() {
       price_per_carton: '',
       price_per_kg: '',
       pieces_per_carton: '',
+      min_order_quantity: '1',
     },
   });
 
@@ -99,6 +100,7 @@ export default function AddProductScreen() {
       price_per_carton: values.price_per_carton ? parseFloat(values.price_per_carton) : null,
       price_per_kg: values.price_per_kg ? parseFloat(values.price_per_kg) : null,
       pieces_per_carton: values.pieces_per_carton ? parseInt(values.pieces_per_carton) : null,
+      min_order_quantity: parseInt(values.min_order_quantity),
       slug: values.name_ar.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, ''),
     } as Parameters<typeof createMutation.mutateAsync>[0]);
     if (pendingImages.length > 0) {
@@ -320,6 +322,34 @@ export default function AddProductScreen() {
         {/* ── Unit pricing ── */}
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
           <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>وحدات البيع</Text>
+          <FieldLabel>نوع الوحدة الأساسية (للمخزون)</FieldLabel>
+          <Controller control={control} name="unit_type"
+            render={({ field: { onChange, value } }) => (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }, { key: 'tin', label: 'تنك' }] as const).map(({ key, label }) => {
+                  const selected = value === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => onChange(selected ? undefined : key)}
+                      style={{
+                        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                        backgroundColor: selected ? C.brand : '#f1f5f9',
+                        borderWidth: 1.5, borderColor: selected ? C.brand : C.hairline,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          />
+          <Controller control={control} name="min_order_quantity"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="أدنى كمية للبيع (بوحدة النوع أعلاه)" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" hint="الزبون ما يقدر يطلب أقل من هذا العدد" error={errors.min_order_quantity?.message} />
+            )}
+          />
           {([
             { key: 'price_per_piece' as const,  icon: '🔢', label: 'بالحبة',    priceLabel: 'سعر الحبة (د.أ)' },
             { key: 'price_per_kg' as const,     icon: '⚖️', label: 'بالكيلو',   priceLabel: 'سعر الكيلو (د.أ)' },

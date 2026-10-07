@@ -67,6 +67,8 @@ export default function ChangePasswordScreen() {
           <TextInput
             placeholder="أدخل كلمة المرور الجديدة"
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             value={newPassword}
             onChangeText={setNewPassword}
             style={{
@@ -82,6 +84,8 @@ export default function ChangePasswordScreen() {
           <TextInput
             placeholder="أعد إدخال كلمة المرور"
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             style={{

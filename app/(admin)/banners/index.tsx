@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Alert, FlatList, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -78,20 +79,20 @@ function BannerCard({ item, onEdit, onDelete }: { item: Banner; onEdit: () => vo
 }
 
 export default function AdminBannersScreen() {
+  const { confirm, dialog } = useConfirm();
   const router = useRouter();
   const locale = getCurrentLocale();
   const { data: banners, isLoading } = useBanners(false);
   const deleteMutation = useDeleteBanner();
 
-  function confirmDelete(id: string, title: string) {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`هل تريد حذف البانر؟\n${title}`)) deleteMutation.mutate(id);
-      return;
-    }
-    Alert.alert('حذف البانر', title, [
-      { text: 'إلغاء', style: 'cancel' },
-      { text: 'حذف', style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-    ]);
+  async function confirmDelete(id: string, title: string) {
+    const ok = await confirm({
+      title: 'حذف البانر',
+      message: title,
+      confirmText: 'حذف',
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(id);
   }
 
   return (
@@ -147,6 +148,7 @@ export default function AdminBannersScreen() {
           )}
         />
       )}
+      {dialog}
     </SafeAreaView>
   );
 }

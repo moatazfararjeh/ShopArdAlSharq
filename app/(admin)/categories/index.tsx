@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Alert, Platform, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,21 +13,22 @@ import { getCategoryName } from '@/types/models';
 const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
 export default function AdminCategoriesScreen() {
+  const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
   const { data: categories, isLoading } = useCategories(false);
   const deleteMutation = useDeleteCategory();
 
-  function confirmDelete(id: string, name: string) {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${t('admin.confirmDelete')}\n${name}`)) deleteMutation.mutate(id);
-      return;
-    }
-    Alert.alert(t('admin.confirmDelete'), name, [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-    ]);
+  async function confirmDelete(id: string, name: string) {
+    const ok = await confirm({
+      title: t('admin.confirmDelete'),
+      message: name,
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(id);
   }
 
   return (
@@ -133,6 +135,7 @@ export default function AdminCategoriesScreen() {
           </View>
         )}
       />
+      {dialog}
     </SafeAreaView>
   );
 }
