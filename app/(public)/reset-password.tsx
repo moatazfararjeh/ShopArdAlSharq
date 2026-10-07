@@ -119,6 +119,8 @@ export default function ResetPasswordScreen() {
                 onBlur={onBlur}
                 error={errors.password?.message}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 autoComplete="new-password"
               />
             )}
@@ -135,6 +137,8 @@ export default function ResetPasswordScreen() {
                 onBlur={onBlur}
                 error={errors.confirm?.message}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 autoComplete="new-password"
               />
             )}

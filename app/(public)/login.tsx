@@ -185,6 +185,8 @@ export default function LoginScreen() {
                 onBlur={onBlur}
                 error={errors.password?.message}
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 autoComplete="current-password"
               />
             )}
