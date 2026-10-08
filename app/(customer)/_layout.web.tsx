@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CustomerWebLayout } from '@/components/ui/CustomerWebLayout';
 
 // Pages accessible without login
-const PUBLIC_PAGES: string[] = [];
+const PUBLIC_PAGES: string[] = ['/delete-account'];
 // Pages rendered without the CustomerWebLayout chrome (header/footer/menu)
 const STANDALONE_PAGES: string[] = [];
 

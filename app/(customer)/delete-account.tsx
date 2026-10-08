@@ -5,19 +5,31 @@ import { APP_NAME } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function DeleteAccountScreen() {
   const { session, profile } = useAuthStore();
+  const sessionEmail = session?.user?.email ?? profile?.email ?? '';
+  const [email, setEmail] = useState(sessionEmail);
   const [reason, setReason] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   const handleSubmit = async () => {
+    if (!sessionEmail) {
+      if (!EMAIL_RE.test(email.trim())) {
+        setEmailError('يرجى إدخال بريد إلكتروني صحيح مرتبط بحسابك');
+        return;
+      }
+    }
+    setEmailError('');
     setLoading(true);
 
     try {
       const { error: insertError } = await supabase.from('deletion_requests').insert({
         user_id: session?.user?.id ?? null,
-        email: session?.user?.email ?? profile?.email ?? '',
+        email: sessionEmail || email.trim(),
         reason: reason.trim() || null,
       });
 
@@ -102,6 +114,35 @@ export default function DeleteAccountScreen() {
             >
               هذا الإجراء لا يمكن التراجع عنه. بمجرد حذف بياناتك، لا يمكن استعادتها.
             </Text>
+
+            {!sessionEmail && (
+              <>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 }}>
+                  البريد الإلكتروني المرتبط بحسابك
+                </Text>
+                <TextInput
+                  value={email}
+                  onChangeText={(v) => { setEmail(v); setEmailError(''); }}
+                  placeholder="example@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: emailError ? '#dc2626' : '#d1d5db',
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    marginBottom: emailError ? 6 : 16,
+                    backgroundColor: '#f9fafb',
+                    textAlign: 'right',
+                  }}
+                />
+                {!!emailError && (
+                  <Text style={{ fontSize: 13, color: '#dc2626', marginBottom: 16 }}>{emailError}</Text>
+                )}
+              </>
+            )}
 
             <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 }}>
               سبب المغادرة (اختياري)
