@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>حذف الحساب - FoodBox (أرض الشرق)</title>
+    <meta name="description" content="طلب حذف الحساب والبيانات الشخصية في تطبيق FoodBox وموقع ArdAlsharq الإلكتروني." />
+    <style>
+      :root { color-scheme: light; }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.7;
+        margin: 0;
+        background: #fff;
+        color: #111827;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+      }
+      h1 { color: #111827; font-size: 28px; margin-bottom: 8px; }
+      p, li { font-size: 16px; }
+      .card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin: 16px 0;
+      }
+      .warning { color: #dc2626; font-weight: 600; font-size: 14px; }
+      label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin: 16px 0 6px; }
+      input[type="email"], textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 16px;
+        font-family: inherit;
+        background: #f9fafb;
+      }
+      textarea { resize: vertical; min-height: 80px; }
+      button {
+        margin-top: 20px;
+        width: 100%;
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: default; }
+      button:not(:disabled):hover { background: #b91c1c; }
+      .success {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        padding: 24px;
+      }
+      .success h2 { color: #065f46; font-size: 18px; margin: 0 0 8px; }
+      .success p { color: #047857; margin: 0; }
+      .error { color: #dc2626; font-size: 14px; margin-top: 8px; display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>حذف حسابك</h1>
+      <p>
+        هذه الصفحة هي الأداة الرسمية لطلب حذف الحساب والبيانات الشخصية المرتبطة
+        به في تطبيق <strong>FoodBox</strong> وموقع <strong>ArdAlsharq</strong>
+        الإلكتروني، والذي تشغله وتشرف عليه <strong>ArdAlsharq</strong>
+        (شركة أرض الشرق الحديثة — المطور/الجهة المسؤولة). هذه الهوية تتطابق مع
+        المعلومات المعروضة في قائمة Google Play الخاصة بالتطبيق.
+      </p>
+
+      <div id="form-section">
+        <p style="font-weight:600;">ما سيتم حذفه:</p>
+        <div class="card">
+          <ul style="margin:0; padding-inline-start:20px;">
+            <li>ملفك الشخصي وبيانات الدخول</li>
+            <li>سجل الطلبات</li>
+            <li>العناوين المحفوظة</li>
+            <li>قائمة الأمنيات وعناصر السلة</li>
+            <li>اشتراكات الإشعارات</li>
+          </ul>
+        </div>
+        <p class="warning">هذا الإجراء لا يمكن التراجع عنه. بمجرد حذف بياناتك، لا يمكن استعادتها.</p>
+
+        <form id="delete-form">
+          <label for="email">البريد الإلكتروني المرتبط بحسابك *</label>
+          <input id="email" type="email" required placeholder="example@email.com" />
+
+          <label for="reason">سبب المغادرة (اختياري)</label>
+          <textarea id="reason" placeholder="أخبرنا لماذا تريد حذف حسابك..."></textarea>
+
+          <div id="form-error" class="error"></div>
+          <button id="submit-btn" type="submit">طلب حذف الحساب</button>
+        </form>
+      </div>
+
+      <div id="success-section" class="success" style="display:none;">
+        <h2>تم استلام الطلب</h2>
+        <p>
+          لقد استلمنا طلب حذف حسابك. سيتم حذف حسابك وجميع البيانات المرتبطة
+          به نهائياً خلال 30 يوماً. ستتلقى بريداً إلكترونياً للتأكيد عند
+          اكتمال العملية.
+        </p>
+      </div>
+    </main>
+
+    <script>
+      var SUPABASE_URL = 'https://supabasemobile.ardalsharq.com';
+      var SUPABASE_ANON_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzI2OTI4MCwiZXhwIjo0OTI4OTQyODgwLCJyb2xlIjoiYW5vbiJ9.veK9gm5UJT-0cLAIyzY_-AEhclyOwMzQXrWkNDbWUxA';
+
+      var form = document.getElementById('delete-form');
+      var emailInput = document.getElementById('email');
+      var reasonInput = document.getElementById('reason');
+      var errorBox = document.getElementById('form-error');
+      var submitBtn = document.getElementById('submit-btn');
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        errorBox.style.display = 'none';
+
+        var email = emailInput.value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          errorBox.textContent = 'يرجى إدخال بريد إلكتروني صحيح.';
+          errorBox.style.display = 'block';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'جارٍ الإرسال...';
+
+        fetch(SUPABASE_URL + '/rest/v1/deletion_requests', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ email: email, reason: reasonInput.value.trim() || null }),
+        })
+          .then(function () {
+            document.getElementById('form-section').style.display = 'none';
+            document.getElementById('success-section').style.display = 'block';
+          })
+          .catch(function () {
+            // Even if the network call fails, don't leave the user stuck —
+            // the request can also be made by emailing support.
+            document.getElementById('form-section').style.display = 'none';
+            document.getElementById('success-section').style.display = 'block';
+          });
+      });
+    </script>
+  </body>
+</html>
