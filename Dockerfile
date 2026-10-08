@@ -56,6 +56,7 @@ COPY services/   ./services/
 COPY stores/     ./stores/
 COPY types/      ./types/
 COPY utils/      ./utils/
+COPY public/     ./public/
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Free npm/package-manager memory before the export step
