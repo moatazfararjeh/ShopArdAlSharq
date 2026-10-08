@@ -128,7 +128,9 @@ export default function OrderSuccessScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { orderId, orderNumber } = useLocalSearchParams<{ orderId: string; orderNumber: string }>();
-  const displayNumber = orderNumber ?? orderId?.slice(0, 8).toUpperCase();
+  const displayNumber = (orderNumber && orderNumber !== 'undefined')
+    ? orderNumber
+    : orderId?.slice(0, 8).toUpperCase();
 
   // Animated values
   const iconScale   = useRef(new Animated.Value(0)).current;
