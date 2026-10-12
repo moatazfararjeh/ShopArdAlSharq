@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+import { File } from 'expo-file-system';
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
 import { MAX_IMAGE_SIZE_BYTES } from '@/lib/constants';
@@ -46,17 +48,24 @@ export async function uploadDocument(
   fileName: string,
   mimeType: string,
 ): Promise<string> {
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
+  // fetch(uri).blob() is unreliable on Android for local file URIs (silently
+  // truncated/empty blobs, or the upload failing deep inside supabase-js's
+  // XHR body handling) — read the file natively instead. Web keeps using
+  // fetch/blob since its URI is a browser-native blob: URL, not a local path.
+  const body: Blob | ArrayBuffer =
+    Platform.OS === 'web'
+      ? await (await fetch(fileUri)).blob()
+      : await new File(fileUri).arrayBuffer();
+  const size = body instanceof ArrayBuffer ? body.byteLength : body.size;
 
-  if (blob.size > MAX_DOCUMENT_SIZE_BYTES) {
+  if (size > MAX_DOCUMENT_SIZE_BYTES) {
     throw new Error('حجم الملف يتجاوز الحد المسموح به (5 ميجابايت)');
   }
 
   const ext = fileName.split('.').pop() ?? 'jpg';
   const path = `${userId}/commercial_register_${Date.now()}.${ext}`;
 
-  const { data, error } = await supabase.storage.from('documents').upload(path, blob, {
+  const { data, error } = await supabase.storage.from('documents').upload(path, body, {
     upsert: true,
     contentType: mimeType,
   });
