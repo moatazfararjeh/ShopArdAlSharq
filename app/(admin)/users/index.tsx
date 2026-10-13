@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
@@ -9,6 +9,33 @@ import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
 
 const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
+
+function csvField(value: string | null | undefined): string {
+  return `"${(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function exportUsersToCsv(users: UserWithStats[]) {
+  const headers = ['الاسم', 'اسم الشركة', 'رقم الجوال', 'البريد الإلكتروني'];
+  const rows = users.map((u) => [u.full_name, u.company_name, u.phone, u.email]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map(csvField).join(','))
+    .join('\r\n');
+
+  if (Platform.OS === 'web') {
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `accounts_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  Alert.alert('تصدير الحسابات', 'هذه الميزة متاحة عبر المتصفح فقط حالياً');
+}
 
 function Avatar({ name, email }: { name: string | null; email: string | null }) {
   const initial = (name ?? email ?? '?')[0].toUpperCase();
@@ -123,7 +150,12 @@ export default function AdminUsersScreen() {
             <Ionicons name="home-outline" size={18} color={C.muted} />
           </TouchableOpacity>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>إدارة الحسابات</Text>
-          <View style={{ width: 36 }} />
+          <TouchableOpacity
+            onPress={() => exportUsersToCsv(filtered)}
+            style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="download-outline" size={18} color={C.muted} />
+          </TouchableOpacity>
         </View>
 
         {/* Search */}
