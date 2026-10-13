@@ -28,11 +28,8 @@ export const registerSchema = z
       .or(z.literal('')),
     phone: z
       .string()
-      .optional()
-      .refine(
-        (val) => !val || val.trim() === '' || jordanianPhoneRegex.test(val),
-        'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)',
-      ),
+      .min(1, 'رقم الجوال مطلوب')
+      .regex(jordanianPhoneRegex, 'يرجى إدخال رقم جوال أردني صحيح (مثال: 0791234567)'),
     email: z
       .string()
       .min(1, 'البريد الإلكتروني مطلوب')

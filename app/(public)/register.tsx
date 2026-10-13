@@ -198,7 +198,7 @@ export default function RegisterScreen() {
             name="phone"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label={`${t('auth.phone')} (اختياري)`}
+                label={`${t('auth.phone')} *`}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
