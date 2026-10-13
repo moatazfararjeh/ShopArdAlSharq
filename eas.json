@@ -18,7 +18,8 @@
         "EXPO_PUBLIC_ENABLE_PAYMENTS": "false",
         "EXPO_PUBLIC_ENABLE_SOCIAL_LOGIN": "false",
         "EXPO_PUBLIC_ENABLE_REVIEWS": "false"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
@@ -38,7 +39,8 @@
         "EXPO_PUBLIC_ENABLE_PAYMENTS": "false",
         "EXPO_PUBLIC_ENABLE_SOCIAL_LOGIN": "false",
         "EXPO_PUBLIC_ENABLE_REVIEWS": "false"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

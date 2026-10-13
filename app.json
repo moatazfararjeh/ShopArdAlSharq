@@ -21,7 +21,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "ar",
         "UISemanticContentAttribute": "forceRightToLeft"
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "android": {
       "package": "com.ardalsharq.app",
@@ -39,7 +40,10 @@
       ],
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
-      ]
+      ],
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -82,6 +86,9 @@
         "projectId": "930260f4-2f52-4396-8533-c61ceb68bd72"
       }
     },
-    "owner": "malfararjeh"
+    "owner": "malfararjeh",
+    "updates": {
+      "url": "https://u.expo.dev/930260f4-2f52-4396-8533-c61ceb68bd72"
+    }
   }
 }
