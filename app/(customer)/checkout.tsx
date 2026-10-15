@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { formatPrice } from '@/utils/formatPrice';
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/errorLogger';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
@@ -291,16 +292,6 @@ export default function CheckoutScreen() {
   async function onSubmit(values: CheckoutFormValues) {
     if (submitting) return; // guard against double-tap re-entrancy
     setSubmitError(null);
-
-    // Block order if commercial register document is missing
-    if (hasCommercialRegister === false) {
-      const msg = 'يرجى رفع السجل التجاري في ملفك الشخصي قبل إتمام الطلب';
-      setSubmitError(msg);
-      showToast(msg, 'error');
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-      return;
-    }
-
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -386,6 +377,10 @@ export default function CheckoutScreen() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حدث خطأ، يرجى المحاولة مجددًا';
+      logError(err, 'checkout.placeOrder', {
+        userId: session?.user?.id,
+        metadata: { cartItemCount: cartItems.length, paymentMethod: values.payment_method },
+      });
       setSubmitError(msg);
       showToast(msg, 'error');
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -639,16 +634,7 @@ export default function CheckoutScreen() {
         </View>
         <Button
           title={submitting ? '' : t('checkout.placeOrder')}
-          onPress={hasCommercialRegister === false
-            ? () => Alert.alert(
-                'تذكير: السجل التجاري',
-                'لم يتم رفع السجل التجاري بعد. يُرجى رفعه من صفحة الملف الشخصي لاستكمال الطلبات المستقبلية.',
-                [
-                  { text: 'رفع الآن', onPress: () => router.push('/(customer)/profile' as any) },
-                  { text: 'تخطي', style: 'cancel' },
-                ],
-              )
-            : handleSubmit(onSubmit, (fieldErrors) => {
+          onPress={handleSubmit(onSubmit, (fieldErrors) => {
             const firstMsg = Object.values(fieldErrors)
               .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
               [0] as string | undefined;
