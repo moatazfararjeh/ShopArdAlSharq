@@ -3,6 +3,7 @@ import { parseSupabaseError } from '@/lib/errors';
 import { Profile } from '@/types/models';
 import { uploadDocument } from '@/services/storageService';
 import { APP_URL } from '@/lib/constants';
+import { logError } from '@/lib/errorLogger';
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -44,8 +45,10 @@ export async function signUp(
           commercialRegisterMime ?? 'image/jpeg',
         );
         profileUpdates.commercial_register_url = docUrl;
-      } catch {
-        // Non-blocking
+      } catch (e) {
+        // Non-blocking — but still worth knowing it failed, since checkout
+        // later hard-requires this document.
+        logError(e, 'authService.signUp.uploadDocument', { userId: data.user.id });
       }
     }
 

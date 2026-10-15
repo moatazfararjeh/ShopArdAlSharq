@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService';
+import { logError } from '@/lib/errorLogger';
 import { useToastStore } from '@/stores/toastStore';
 import { useBiometric } from '@/hooks/useBiometric';
 
@@ -266,6 +267,7 @@ export default function ProfileScreen() {
       if (data) setProfile(data as any);
       Alert.alert('✓ تم الرفع', 'تم رفع السجل التجاري بنجاح');
     } catch (e: any) {
+      logError(e, 'profile.saveDocument', { userId: session?.user?.id });
       Alert.alert('خطأ', e?.message ?? 'فشل رفع المستند');
     } finally {
       setUploadingDoc(false);

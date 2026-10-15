@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AppState, ErrorUtils, I18nManager, LogBox, Platform, Text, TextInput, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { logError } from '@/lib/errorLogger';
 
 // ── Global JS error handler ────────────────────────────────────────────────
 // In production, React Native's default handler calls RCTExceptionsManager
@@ -14,6 +15,7 @@ try {
   const _originalHandler = ErrorUtils.getGlobalHandler();
   ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
     console.error('[FoodBox] Unhandled JS error (isFatal=' + String(isFatal) + '):', error?.message, error?.stack);
+    logError(error, 'globalHandler', { metadata: { isFatal: !!isFatal } });
     if (!isFatal) {
       _originalHandler?.(error, isFatal);
     }
@@ -64,6 +66,15 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     if (SUPPRESSED.some((s) => args[0]?.toString?.().includes?.(s))) return;
     originalError(...args);
   };
+
+  // ErrorUtils (above) doesn't exist on web, so uncaught errors there were
+  // never logged anywhere — not even to the console suppression above.
+  window.addEventListener('error', (e: ErrorEvent) => {
+    logError(e.error ?? e.message, 'window.onerror');
+  });
+  window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
+    logError(e.reason, 'unhandledrejection');
+  });
 }
 
 // Force RTL at module level so React Native Web applies it before first render
@@ -101,6 +112,7 @@ class ErrorBoundary extends React.Component<
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[FoodBox] ErrorBoundary caught:', error?.message);
     console.error('[FoodBox] Component stack:', info?.componentStack);
+    logError(error, 'ErrorBoundary', { metadata: { componentStack: info?.componentStack?.slice(0, 2000) } });
   }
   render() {
     if (this.state.hasError) {

@@ -181,6 +181,18 @@ export interface NotificationRow {
   created_at: string;
 }
 
+export interface ErrorLogRow {
+  id: string;
+  user_id: string | null;
+  message: string;
+  stack: string | null;
+  context: string | null;
+  platform: string | null;
+  app_version: string | null;
+  metadata: Json;
+  created_at: string;
+}
+
 export interface AppVersionConfigRow {
   id: number;
   ios_min_version: string;
@@ -208,6 +220,7 @@ export interface Database {
       reviews:      { Row: ReviewRow;       Insert: Omit<ReviewRow, 'id' | 'created_at' | 'updated_at'>;     Update: Partial<Omit<ReviewRow, 'id' | 'user_id' | 'product_id' | 'created_at'>>; Relationships: [] };
       notifications: { Row: NotificationRow; Insert: Omit<NotificationRow, 'id' | 'created_at'>; Update: Partial<Pick<NotificationRow, 'is_read' | 'read_at'>>; Relationships: [] };
       app_version_config: { Row: AppVersionConfigRow; Insert: never; Update: Partial<Omit<AppVersionConfigRow, 'id'>>; Relationships: [] };
+      error_logs:   { Row: ErrorLogRow;     Insert: Omit<ErrorLogRow, 'id' | 'created_at'>;                  Update: Partial<Pick<ErrorLogRow, never>>; Relationships: [] };
     };
     Views: {};
     Functions: {
