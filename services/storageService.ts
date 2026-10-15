@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode as decodeBase64 } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
 import { MAX_IMAGE_SIZE_BYTES } from '@/lib/constants';
@@ -50,12 +51,15 @@ export async function uploadDocument(
 ): Promise<string> {
   // fetch(uri).blob() is unreliable on Android for local file URIs (silently
   // truncated/empty blobs, or the upload failing deep inside supabase-js's
-  // XHR body handling) — read the file natively instead. Web keeps using
-  // fetch/blob since its URI is a browser-native blob: URL, not a local path.
+  // XHR body handling). expo-file-system's base64 read + manual ArrayBuffer
+  // decode is the combination that reliably handles both file:// and
+  // content:// URIs on Android (the picker can return either depending on
+  // Android version/picker UI). Web keeps fetch/blob since its URI is a
+  // browser-native blob: URL, not a local path.
   const body: Blob | ArrayBuffer =
     Platform.OS === 'web'
       ? await (await fetch(fileUri)).blob()
-      : await new File(fileUri).arrayBuffer();
+      : decodeBase64(await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' }));
   const size = body instanceof ArrayBuffer ? body.byteLength : body.size;
 
   if (size > MAX_DOCUMENT_SIZE_BYTES) {

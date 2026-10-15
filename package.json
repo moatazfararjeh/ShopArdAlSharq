@@ -24,6 +24,7 @@
     "@tanstack/react-query": "^5.90.21",
     "autoprefixer": "^10.4.27",
     "babel-preset-expo": "^55.0.11",
+    "base64-arraybuffer": "^1.0.2",
     "expo": "~55.0.28",
     "expo-constants": "~55.0.7",
     "expo-device": "~55.0.19",
