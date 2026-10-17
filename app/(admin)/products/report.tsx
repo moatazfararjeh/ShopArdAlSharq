@@ -26,11 +26,27 @@ const UNIT_TYPE_OPTIONS = [
   { id: 'tin', name: 'تنك' },
 ];
 
+type MissingFilter = 'weight' | 'price' | 'erp_code';
+
+const MISSING_FILTER_OPTIONS: { id: MissingFilter; label: string }[] = [
+  { id: 'weight', label: 'بدون وزن' },
+  { id: 'price', label: 'بدون سعر' },
+  { id: 'erp_code', label: 'بدون كود ERP' },
+];
+
+function isMissingField(product: any, filter: MissingFilter): boolean {
+  switch (filter) {
+    case 'weight': return product.weight == null;
+    case 'price': return product.price == null;
+    case 'erp_code': return !product.erp_code;
+  }
+}
+
 function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -385,6 +401,12 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
         suffix=" حبة"
         numeric
       />
+      <EditableCell
+        value={product.weight}
+        onSave={(v) => save({ weight: v })}
+        suffix={` ${product.weight_unit ?? 'kg'}`}
+        numeric
+      />
     </View>
   );
 }
@@ -435,6 +457,15 @@ export default function ProductsReportScreen() {
   const locale = getCurrentLocale();
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [activeMissingFilters, setActiveMissingFilters] = useState<Set<MissingFilter>>(new Set());
+
+  function toggleMissingFilter(id: MissingFilter) {
+    setActiveMissingFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
   const { data: brands } = useBrands(false);
@@ -454,11 +485,26 @@ export default function ProductsReportScreen() {
     return categories?.find((c) => c.id === categoryId)?.name_ar ?? '—';
   }
 
-  const products = useMemo(() => {
+  const searched = useMemo(() => {
     const all = data?.data ?? [];
     const q = search.trim().toLowerCase();
     return q ? all.filter((p) => getProductName(p, locale).toLowerCase().includes(q)) : all;
   }, [data, search, locale]);
+
+  const missingCounts = useMemo(() => {
+    const counts: Record<MissingFilter, number> = { weight: 0, price: 0, erp_code: 0 };
+    for (const p of searched) {
+      for (const opt of MISSING_FILTER_OPTIONS) {
+        if (isMissingField(p, opt.id)) counts[opt.id]++;
+      }
+    }
+    return counts;
+  }, [searched]);
+
+  const products = useMemo(() => {
+    if (activeMissingFilters.size === 0) return searched;
+    return searched.filter((p) => Array.from(activeMissingFilters).some((f) => isMissingField(p, f)));
+  }, [searched, activeMissingFilters]);
 
   const grouped = useMemo(() => {
     return products.reduce<Record<string, any[]>>((acc, p) => {
@@ -491,6 +537,7 @@ export default function ProductsReportScreen() {
       'سعر الكيلو':          p.price_per_kg ?? '—',
       'السعر بالكرتونة':     p.price_per_carton ?? '—',
       'التعبئة في الكرتون':  p.pieces_per_carton ?? '—',
+      'الوزن':               p.weight != null ? `${p.weight} ${p.weight_unit ?? 'kg'}` : '—',
     })),
     [products, locale, brands, categories],
   );
@@ -533,6 +580,43 @@ export default function ProductsReportScreen() {
             style={{ flex: 1, paddingVertical: 10, fontSize: 14, color: C.text, textAlign: 'right' }}
           />
         </View>
+
+        {/* Missing-data filters */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }}>
+          {MISSING_FILTER_OPTIONS.map((opt) => {
+            const active = activeMissingFilters.has(opt.id);
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                onPress={() => toggleMissingFilter(opt.id)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
+                  backgroundColor: active ? C.brand : '#f1f5f9',
+                  borderWidth: 1, borderColor: active ? C.brand : '#e2e8f0',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#fff' : C.text }}>
+                  {opt.label}
+                </Text>
+                <View style={{
+                  backgroundColor: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                  borderRadius: 10, paddingHorizontal: 6, minWidth: 20, alignItems: 'center',
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: active ? '#fff' : C.muted }}>
+                    {missingCounts[opt.id]}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+          {activeMissingFilters.size > 0 && (
+            <TouchableOpacity onPress={() => setActiveMissingFilters(new Set())} style={{ paddingHorizontal: 6, paddingVertical: 6 }}>
+              <Text style={{ fontSize: 12, color: C.muted, textDecorationLine: 'underline' }}>مسح الفلتر</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity onPress={() => setCollapsed({})} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}>
@@ -577,6 +661,7 @@ export default function ProductsReportScreen() {
             <Text style={[styles.hCell, { flex: 2 }]}>سعر الكيلو</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>السعر بالكرتونة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>التعبئة/كرتون</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>الوزن</Text>
           </View>
 
           {Object.entries(grouped).map(([brandId, items]) => (
