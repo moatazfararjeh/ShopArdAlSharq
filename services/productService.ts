@@ -10,6 +10,7 @@ export interface GetProductsParams {
   search?: string;
   featured?: boolean;
   availableOnly?: boolean;
+  onDeal?: boolean;
   sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'name';
   groupByCategory?: boolean;
   page?: number;
@@ -43,6 +44,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
   if (params.brandId) query = query.eq('brand_id', params.brandId);
   if (params.noBrand) query = query.is('brand_id', null);
   if (featured !== undefined) query = query.eq('is_featured', featured);
+  if (params.onDeal) query = query.not('discount_price', 'is', null).gt('discount_price', 0);
   if (search) query = query.ilike('name_ar', `%${search}%`);
 
   // Primary sort by category when grouping requested

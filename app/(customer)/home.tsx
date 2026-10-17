@@ -382,9 +382,13 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
   const router = useRouter();
   const { data, isLoading } = useProductsPage({
     availableOnly: true,
-    sortBy: 'price_asc',
+    onDeal: true,
+    sortBy: 'newest',
     limit: 30,
   });
+  // discount_price < price is a data-integrity sanity check, not the primary
+  // filter — that's now onDeal at the query level, so real deals outside the
+  // cheapest-30-overall aren't silently dropped before this ever sees them.
   const products = (data?.data ?? [])
     .filter((p) => p.discount_price != null && p.discount_price > 0 && p.discount_price < p.price)
     .slice(0, 12);
