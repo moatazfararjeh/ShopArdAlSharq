@@ -38,7 +38,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
     .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)', { count: 'exact' })
     .range(page * limit, (page + 1) * limit - 1);
 
-  if (availableOnly) query = query.eq('is_available', true);
+  if (availableOnly) query = query.eq('is_available', true).gt('stock_quantity', 0);
   if (categoryId) query = query.eq('category_id', categoryId);
   if (params.brandId) query = query.eq('brand_id', params.brandId);
   if (params.noBrand) query = query.is('brand_id', null);
@@ -90,6 +90,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
     .from('products')
     .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)')
     .eq('is_available', true)
+    .gt('stock_quantity', 0)
     .eq('is_featured', true)
     .order('created_at', { ascending: false })
     .limit(limit);
