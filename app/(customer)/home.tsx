@@ -12,14 +12,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useProducts, useProductsPage } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
-import { useBrands } from '@/hooks/useBrands';
 import { useBanners } from '@/hooks/useBanners';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { ProductCard } from '@/components/product/ProductCard';
 import { GetProductsParams } from '@/services/productService';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getBannerButtonText } from '@/types/models';
-import { Product, Banner, Category, Brand } from '@/types/models';
+import { Product, Banner, Category } from '@/types/models';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useFavoriteIds, useFavoriteProducts } from '@/hooks/useFavorites';
@@ -228,17 +227,14 @@ function sortByFavorites(products: Product[], favIds: string[]): Product[] {
   });
 }
 
-/** Merge favorite products first, then remaining (deduped). Optionally filter by category or brand. */
-function mergeWithFavorites(products: Product[], favProducts: Product[], favIds: string[], categoryId?: string, brandId?: string): Product[] {
+/** Merge favorite products first, then remaining (deduped). Optionally filter by category. */
+function mergeWithFavorites(products: Product[], favProducts: Product[], favIds: string[], categoryId?: string): Product[] {
   if (!favIds.length) return products;
   const favSet = new Set(favIds);
-  // Filter favorites by category/brand if specified, and only available ones
+  // Filter favorites by category if specified, and only available ones
   let relevantFavs = favProducts.filter(p => p.is_available !== false);
   if (categoryId) {
     relevantFavs = relevantFavs.filter(p => p.category_id === categoryId);
-  }
-  if (brandId) {
-    relevantFavs = relevantFavs.filter(p => p.brand_id === brandId);
   }
   // IDs already in products list
   const existingIds = new Set(products.map(p => p.id));
@@ -299,112 +295,6 @@ function CategoryProductsSection({
           <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
           <Ionicons name="chevron-forward" size={12} color={BRAND} />
         </TouchableOpacity>
-      </View>
-
-      {isLoading ? (
-        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
-      ) : (
-        <View style={{ direction: 'rtl' as any }}>
-        <FlatList
-          data={products}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={{ width: cardWidth }}>
-              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
-            </View>
-          )}
-        />
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Per-brand horizontal product row ─────────────────────────────────────────
-function BrandProductsSection({
-  brand, locale, cardWidth, onSeeAll,
-}: { brand: Brand; locale: string; cardWidth: number; onSeeAll: () => void }) {
-  const router = useRouter();
-  const { data: favIds } = useFavoriteIds();
-  const { data: favProducts } = useFavoriteProducts();
-  const { data, isLoading } = useProductsPage({
-    brandId: brand.id,
-    limit: 30,
-    availableOnly: true,
-    sortBy: 'newest',
-  });
-  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], undefined, brand.id)).slice(0, 10);
-
-  if (!isLoading && products.length === 0) return null;
-
-  return (
-    <View style={{ marginBottom: 28 }}>
-      {/* Section header */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any,
-      }}>
-        <View>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>{brand.name}</Text>
-          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
-        </View>
-        {data && data.count > products.length && (
-          <TouchableOpacity onPress={onSeeAll} style={{
-            flexDirection: 'row', alignItems: 'center', gap: 4,
-            backgroundColor: '#fff7ed', borderRadius: 20,
-            paddingHorizontal: 12, paddingVertical: 5,
-          }}>
-            <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
-            <Ionicons name="chevron-forward" size={12} color={BRAND} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {isLoading ? (
-        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
-      ) : (
-        <View style={{ direction: 'rtl' as any }}>
-        <FlatList
-          data={products}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={{ width: cardWidth }}>
-              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
-            </View>
-          )}
-        />
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Products without brand (أخرى) ───────────────────────────────────────────
-function NoBrandProductsSection({ locale, cardWidth }: { locale: string; cardWidth: number }) {
-  const router = useRouter();
-  const { data: favIds } = useFavoriteIds();
-  const { data: favProducts } = useFavoriteProducts();
-  const { data, isLoading } = useProductsPage({
-    noBrand: true,
-    limit: 30,
-    availableOnly: true,
-    sortBy: 'newest',
-  });
-  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [])).slice(0, 10);
-
-  if (!isLoading && products.length === 0) return null;
-
-  return (
-    <View style={{ marginBottom: 32 }}>
-      <View style={{ paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any }}>
-        <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>منتجات أخرى</Text>
-        <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
       </View>
 
       {isLoading ? (
@@ -619,15 +509,14 @@ export default function HomeScreen() {
   }, []);
 
   const [search, setSearch]                     = useState('');
-  const [selectedBrand, setSelectedBrand]       = useState<string | undefined>();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [showAllProducts, setShowAllProducts]   = useState(false);
   const [page, setPage]                         = useState(0);
 
-  useEffect(() => { setPage(0); }, [search, selectedBrand, selectedCategory]);
+  useEffect(() => { setPage(0); }, [search, selectedCategory, showAllProducts]);
 
   const isDesktop  = windowWidth >= 768;
-  const isAllProducts = selectedBrand === '__all__';
-  const browseMode = !!selectedBrand || !!selectedCategory || search.length >= 2;
+  const browseMode = showAllProducts || !!selectedCategory || search.length >= 2;
 
   // Layout metrics
   const sidebarW      = isDesktop ? SIDEBAR_W : 0;
@@ -638,15 +527,12 @@ export default function HomeScreen() {
   const bannerW       = isWeb ? windowWidth - sidebarW : windowWidth;
 
   const { data: categories } = useCategories();
-  const { data: brands } = useBrands();
-  const selectedBrandObj = brands?.find((b) => b.id === selectedBrand);
   const selectedCategoryObj = categories?.find((c) => c.id === selectedCategory);
 
   // Browse-mode queries
   const browseParams: GetProductsParams = {
     search: search.length >= 2 ? search : undefined,
-    brandId: isAllProducts ? undefined : selectedBrand,
-    categoryId: selectedCategory,
+    categoryId: showAllProducts ? undefined : selectedCategory,
     availableOnly: true,
     sortBy: 'newest',
   };
@@ -695,13 +581,11 @@ export default function HomeScreen() {
 
   // ── Browse header ──────────────────────────────────────────────────────────
   function BrowseHeader() {
-    const label = isAllProducts
+    const label = showAllProducts
       ? 'جميع المنتجات'
       : selectedCategoryObj
         ? getCategoryName(selectedCategoryObj, locale as any)
-        : selectedBrandObj
-          ? selectedBrandObj.name
-          : search.length >= 2 ? `"${search}"` : '';
+        : search.length >= 2 ? `"${search}"` : '';
     return (
       <View style={{
         flexDirection: 'row', alignItems: 'center',
@@ -712,7 +596,7 @@ export default function HomeScreen() {
           {label}
         </Text>
         <TouchableOpacity
-          onPress={() => { setSelectedBrand(undefined); setSelectedCategory(undefined); setSearch(''); }}
+          onPress={() => { setShowAllProducts(false); setSelectedCategory(undefined); setSearch(''); }}
           style={{ padding: 6, borderRadius: 10, backgroundColor: '#f5f0eb' }}
         >
           <Ionicons name="arrow-forward" size={20} color="#5c4a35" />
@@ -801,81 +685,12 @@ export default function HomeScreen() {
         <HeroBannerCarousel
           locale={locale}
           bannerWidth={bannerW}
-          onCategorySelect={setSelectedBrand}
+          onCategorySelect={setSelectedCategory}
         />
 
 
         {/* ── Today's Deals ── */}
         <DealsSection locale={locale} cardWidth={discoverCardW} />
-
-        {/* الأقسام — brand circles */}
-        {brands && brands.length > 0 && (
-          <>
-            <View style={{ paddingHorizontal: 16, marginTop: 24, marginBottom: 16, direction: 'rtl' as any }}>
-              <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>الأقسام</Text>
-              <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 6 }} />
-            </View>
-
-            <View style={{ direction: 'rtl' as any }}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 4 }}
-            >
-              {/* All products icon */}
-              <TouchableOpacity onPress={() => { setSelectedBrand('__all__'); }} activeOpacity={0.8} style={{ alignItems: 'center', gap: 8, width: 76 }}>
-                <View style={{
-                  width: 72, height: 72, borderRadius: 36,
-                  backgroundColor: '#fff7ed',
-                  overflow: 'hidden',
-                  borderWidth: 2, borderColor: BRAND,
-                  alignItems: 'center', justifyContent: 'center',
-                  shadowColor: BRAND, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
-                }}>
-                  <Ionicons name="grid" size={30} color={BRAND} />
-                </View>
-                <Text numberOfLines={2} style={{
-                  fontSize: 11, fontWeight: '700', color: '#1c1917',
-                  textAlign: 'center', lineHeight: 15,
-                }}>
-                  الكل
-                </Text>
-              </TouchableOpacity>
-              {brands.map((brand) => (
-                <TouchableOpacity
-                  key={brand.id}
-                  onPress={() => setSelectedBrand(brand.id)}
-                  activeOpacity={0.8}
-                  style={{ alignItems: 'center', gap: 8, width: 76 }}
-                >
-                  <View style={{
-                    width: 72, height: 72, borderRadius: 36,
-                    backgroundColor: '#f0ece5',
-                    overflow: 'hidden',
-                    borderWidth: 2, borderColor: '#e6e0d6',
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
-                  }}>
-                    {brand.image_url ? (
-                      <Image source={{ uri: brand.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                    ) : (
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#1c1917', textAlign: 'center', paddingHorizontal: 4 }} numberOfLines={2}>
-                        {brand.name}
-                      </Text>
-                    )}
-                  </View>
-                  <Text numberOfLines={2} style={{
-                    fontSize: 11, fontWeight: '700', color: '#2d2320',
-                    textAlign: 'center', lineHeight: 15,
-                  }}>
-                    {brand.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            </View>
-          </>
-        )}
 
         {/* الفئات — category circles */}
         {categories && categories.length > 0 && (
@@ -904,22 +719,19 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* Product section per brand */}
-        {brands?.map((brand) => (
-          <BrandProductsSection
-            key={brand.id}
-            brand={brand}
+        {/* Product section per category */}
+        {categories?.map((category) => (
+          <CategoryProductsSection
+            key={category.id}
+            category={category}
             locale={locale}
             cardWidth={discoverCardW}
-            onSeeAll={() => setSelectedBrand(brand.id)}
+            onSeeAll={() => setSelectedCategory(category.id)}
           />
         ))}
 
-        {/* Products without brand — أخرى */}
-        <NoBrandProductsSection locale={locale} cardWidth={discoverCardW} />
-
         {/* All products section (no category filter) */}
-        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setSelectedBrand('__all__')} />
+        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
       </ScrollView>
     );
   }
