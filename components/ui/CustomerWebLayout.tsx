@@ -97,6 +97,10 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
         );
       })}
       <View style={[styles.divider, { marginTop: 12 }]} />
+      <TouchableOpacity onPress={() => router.push('/(customer)/brands' as any)} activeOpacity={0.75} style={[styles.navItem, pathname === '/brands' && styles.navItemActive]}>
+        <Ionicons name={pathname === '/brands' ? 'pricetags' : 'pricetags-outline'} size={20} color={pathname === '/brands' ? '#e36523' : '#857d78'} />
+        <Text style={[styles.navLabel, { color: pathname === '/brands' ? '#e36523' : '#5c4a35', fontWeight: pathname === '/brands' ? '700' : '500' }]}>العلامات التجارية</Text>
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/(customer)/contact' as any)} activeOpacity={0.75} style={[styles.navItem, pathname === '/contact' && styles.navItemActive]}>
         <Ionicons name="chatbubble-ellipses-outline" size={20} color={pathname === '/contact' ? '#e36523' : '#857d78'} />
         <Text style={[styles.navLabel, { color: pathname === '/contact' ? '#e36523' : '#5c4a35', fontWeight: pathname === '/contact' ? '700' : '500' }]}>تواصل معنا</Text>
@@ -303,6 +307,12 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
               })}
 
               <View style={[styles.divider, { marginVertical: 8 }]} />
+
+              <TouchableOpacity onPress={() => { closeDrawer(); setTimeout(() => router.push('/(customer)/brands' as any), 60); }} activeOpacity={0.75}
+                style={[styles.navItem, pathname === '/brands' && styles.navItemActive]}>
+                <Ionicons name={pathname === '/brands' ? 'pricetags' : 'pricetags-outline'} size={22} color={pathname === '/brands' ? '#e36523' : '#857d78'} />
+                <Text style={[styles.navLabel, { color: pathname === '/brands' ? '#e36523' : '#5c4a35', fontWeight: pathname === '/brands' ? '700' : '500', fontSize: 15 }]}>العلامات التجارية</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity onPress={() => { closeDrawer(); setTimeout(() => router.push('/(customer)/contact' as any), 60); }} activeOpacity={0.75}
                 style={[styles.navItem, pathname === '/contact' && styles.navItemActive]}>

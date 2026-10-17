@@ -498,6 +498,11 @@ export default function ProfileScreen() {
             label={t('profile.savedAddresses')}
             onPress={() => router.push('/(customer)/addresses' as any)}
           />
+          <NavRow
+            ionicon="pricetags-outline"
+            label="العلامات التجارية"
+            onPress={() => router.push('/(customer)/brands' as any)}
+          />
         </Card>
 
         {/* ── Section: مستنداتي ── */}
