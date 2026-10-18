@@ -191,7 +191,7 @@
     "emailAddress": "Email Address",
     "emailValue": "info@ardalsharg.com",
     "workingHours": "Working Hours",
-    "workingHoursValue": "Sun - Thu: 9 AM - 6 PM"
+    "workingHoursValue": "Sat - Thu: 9 AM - 6 PM"
   },
   "errors": {
     "networkError": "Network error, please check your connection",

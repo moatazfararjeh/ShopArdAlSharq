@@ -194,7 +194,7 @@
     "emailAddress": "البريد الإلكتروني",
     "emailValue": "info@ardalsharg.com",
     "workingHours": "ساعات العمل",
-    "workingHoursValue": "الأحد - الخميس: 9 ص - 6 م"
+    "workingHoursValue": "السبت - الخميس: 9 ص - 6 م"
   },
   "errors": {
     "networkError": "خطأ في الاتصال، يرجى التحقق من الإنترنت",
