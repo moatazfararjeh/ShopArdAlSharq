@@ -1,4 +1,6 @@
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '@/lib/theme';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,7 +13,6 @@ import { usePlaceOrder } from '@/hooks/useOrders';
 import { useCart } from '@/hooks/useCart';
 import { useCartStore, getCartItemPrice } from '@/stores/cartStore';
 import { upsertCartItem } from '@/services/cartService';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { formatPrice } from '@/utils/formatPrice';
 import { supabase } from '@/lib/supabase';
@@ -22,22 +23,66 @@ import { useRecordProductEvent } from '@/hooks/useAnalytics';
 import { getProductName } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 
-const BRAND = '#e36523';
+const BRAND = COLORS.brandFill;
 
 // ─── Bottom sticky button wrapper ─────────────────────────────────────────────
 function BottomButton({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0,
+      // Web: pin to the viewport above CustomerWebLayout's fixed 64px bottom bar.
+      // Native: sits above the (absolute) tab bar.
+      position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any, left: 0, right: 0, zIndex: 50,
+      bottom: Platform.OS === 'web' ? 64 : 0,
       backgroundColor: '#ffffff',
-      paddingHorizontal: 16, paddingVertical: 14,
-      paddingBottom: Math.max(insets.bottom, 14) + 80,
-      borderTopWidth: 1, borderTopColor: '#e6e0d8',
-      shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 10,
+      paddingHorizontal: 16, paddingTop: 12,
+      paddingBottom: Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 12) + (Platform.OS === 'ios' ? 84 : 64),
+      borderTopWidth: 1, borderTopColor: COLORS.line,
     }}>
       {children}
     </View>
+  );
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────────
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12, direction: 'rtl' as any }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink }}>{title}</Text>
+        {action}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ─── Selectable row (radio) ───────────────────────────────────────────────────
+function RadioRow({ selected, onPress, children }: { selected: boolean; onPress?: () => void; children: React.ReactNode }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      activeOpacity={0.8}
+      style={{
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        borderRadius: 14, padding: selected ? 12 : 13, marginBottom: 8,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? COLORS.brandFill : COLORS.line,
+        backgroundColor: selected ? '#FFF6F1' : '#fff',
+      }}
+    >
+      <View style={{
+        width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+        borderColor: selected ? COLORS.brandFill : '#C9C1B9',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        {selected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.brandFill }} />}
+      </View>
+      <View style={{ flex: 1 }}>{children}</View>
+    </TouchableOpacity>
   );
 }
 
@@ -52,148 +97,72 @@ interface SavedAddress {
   is_default?: boolean;
 }
 
-// ─── Step progress indicator ──────────────────────────────────────────────────
-function StepBar({ step }: { step: 1 | 2 | 3 }) {
-  const steps = ['العنوان', 'الطلب', 'تأكيد'];
-  return (
-    <View style={{ backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f0ece6' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {steps.map((label, i) => {
-          const num = i + 1;
-          const done = num < step;
-          const active = num === step;
-          const isLast = i === steps.length - 1;
-          return (
-            <View key={label} style={{ flex: isLast ? 0 : 1, flexDirection: 'row', alignItems: 'center' }}>
-              {/* Circle */}
-              <View style={{ alignItems: 'center' }}>
-                <View style={{
-                  width: 28, height: 28, borderRadius: 14,
-                  backgroundColor: done || active ? BRAND : '#f3f4f6',
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {done
-                    ? <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>
-                    : <Text style={{ color: active ? '#fff' : '#9ca3af', fontSize: 12, fontWeight: '800' }}>{num}</Text>
-                  }
-                </View>
-                <Text style={{
-                  fontSize: 10, fontWeight: '600', marginTop: 4,
-                  color: done || active ? BRAND : '#9ca3af',
-                }}>
-                  {label}
-                </Text>
-              </View>
-              {/* Connector line */}
-              {!isLast && (
-                <View style={{
-                  flex: 1, height: 2, marginBottom: 16, marginHorizontal: 6,
-                  backgroundColor: done ? BRAND : '#e6e0d8',
-                }} />
-              )}
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 // ─── Order items summary ───────────────────────────────────────────────────────
 function OrderSummarySection({ subtotal, discount, total }: { subtotal: number; discount: number; total: number }) {
   const cartItems = useCartStore((s) => s.items);
   const locale = getCurrentLocale();
   const [expanded, setExpanded] = useState(false);
 
-  return (
-    <View style={{ borderRadius: 16, backgroundColor: '#fff', padding: 16, borderWidth: 1, borderColor: '#e6e0d8', marginBottom: 16 }}>
-      {/* Header row */}
-      <TouchableOpacity
-        onPress={() => setExpanded((e) => !e)}
-        activeOpacity={0.8}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: expanded ? 12 : 0 }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917' }}>🛒 ملخص الطلب</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={{ fontSize: 13, color: BRAND, fontWeight: '700' }}>{formatPrice(total)}</Text>
-          <Text style={{ fontSize: 14, color: '#9ca3af' }}>{expanded ? '▲' : '▼'}</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Collapsed: just item count */}
-      {!expanded && (
-        <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-          {cartItems.length} {cartItems.length === 1 ? 'منتج' : 'منتجات'} — اضغط للتفاصيل
-        </Text>
-      )}
-
-      {/* Expanded: full item list */}
-      {expanded && (
-        <>
-          {cartItems.map((item, idx) => {
-            const price = getCartItemPrice(item);
-            const imgUrl = (item.product.images?.[0] ?? item.product.product_images?.[0])?.url;
-            const unitLabel = item.selected_unit
-              ? ({ piece: 'حبة', carton: 'كرتون', kg: 'كيلو' } as Record<string, string>)[item.selected_unit]
-              : null;
-            return (
-              <View
-                key={`${item.product_id}-${item.selected_unit}`}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 10,
-                  paddingVertical: 8,
-                  borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: '#f5f0eb',
-                }}
-              >
-                <Image
-                  source={{ uri: imgUrl }}
-                  style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#ede8e1' }}
-                  contentFit="cover"
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1c1917' }} numberOfLines={1}>
-                    {getProductName(item.product, locale)}
-                  </Text>
-                  {unitLabel && (
-                    <Text style={{ fontSize: 11, color: '#857d78', marginTop: 1 }}>
-                      {unitLabel} × {item.quantity}
-                    </Text>
-                  )}
-                  {!unitLabel && (
-                    <Text style={{ fontSize: 11, color: '#857d78', marginTop: 1 }}>× {item.quantity}</Text>
-                  )}
-                </View>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: BRAND }}>
-                  {formatPrice(price * item.quantity)}
-                </Text>
-              </View>
-            );
-          })}
-
-          {/* Totals */}
-          <View style={{ borderTopWidth: 1, borderTopColor: '#e6e0d8', marginTop: 8, paddingTop: 10, gap: 6 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: '#857d78', fontSize: 13 }}>المجموع</Text>
-              <Text style={{ fontWeight: '600', color: '#1c1917', fontSize: 13 }}>{formatPrice(subtotal)}</Text>
-            </View>
-            {discount > 0 && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: '#16a34a', fontSize: 13 }}>خصم</Text>
-                <Text style={{ fontWeight: '600', color: '#16a34a', fontSize: 13 }}>-{formatPrice(discount)}</Text>
-              </View>
-            )}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: '#857d78', fontSize: 13 }}>التوصيل</Text>
-              <Text style={{ fontWeight: '600', color: '#16a34a', fontSize: 13 }}>مجاني</Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f0ece6' }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: '#1c1917' }}>الإجمالي</Text>
-              <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(total)}</Text>
-            </View>
-          </View>
-        </>
-      )}
+  const row = (label: string, value: string, green?: boolean) => (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Text style={{ color: COLORS.muted, fontSize: 14 }}>{label}</Text>
+      <Text style={{ fontWeight: green ? '600' : '500', color: green ? COLORS.green : COLORS.ink, fontSize: 14 }}>{value}</Text>
     </View>
+  );
+
+  return (
+    <Section
+      title="ملخص الطلب"
+      action={
+        <TouchableOpacity onPress={() => setExpanded((e) => !e)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.brandText }}>
+            {expanded ? 'إخفاء المنتجات' : `${cartItems.length} ${cartItems.length === 1 ? 'منتج' : 'منتجات'}`}
+          </Text>
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={15} color={COLORS.brandText} />
+        </TouchableOpacity>
+      }
+    >
+      {expanded && cartItems.map((item) => {
+        const price = getCartItemPrice(item);
+        const imgUrl = (item.product.images?.[0] ?? item.product.product_images?.[0])?.url;
+        const unitLabel = item.selected_unit
+          ? ({ piece: 'حبة', carton: 'كرتون', kg: 'كيلو' } as Record<string, string>)[item.selected_unit]
+          : null;
+        return (
+          <View
+            key={`${item.product_id}-${item.selected_unit}`}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.line }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: COLORS.surface, padding: 4 }}>
+              <Image source={{ uri: imgUrl }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink }} numberOfLines={1}>
+                {getProductName(item.product, locale)}
+              </Text>
+              <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 1 }}>
+                {unitLabel ? `${unitLabel} × ${item.quantity}` : `× ${item.quantity}`}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.ink }}>
+              {formatPrice(price * item.quantity)}
+            </Text>
+          </View>
+        );
+      })}
+
+      <View style={{ gap: 10, marginTop: expanded ? 10 : 0 }}>
+        {row('المجموع', formatPrice(subtotal))}
+        {discount > 0 && row('الخصم', `−${formatPrice(discount)}`, true)}
+        {row('التوصيل', 'مجاني', true)}
+        <View style={{ height: 1, backgroundColor: COLORS.line }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>الإجمالي</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{formatPrice(total)}</Text>
+        </View>
+      </View>
+    </Section>
   );
 }
 
@@ -215,9 +184,6 @@ export default function CheckoutScreen() {
   const [saveThisAddress, setSaveThisAddress] = useState(true);
   // Commercial register validation: derived directly from store so it updates immediately after upload
   const hasCommercialRegister = profile ? !!(profile as any).commercial_register_url : null;
-
-  // Derive current step for progress bar
-  const step: 1 | 2 | 3 = selectedAddressId !== null || savedAddresses.length === 0 ? 2 : 1;
 
   const {
     control,
@@ -389,19 +355,34 @@ export default function CheckoutScreen() {
     }
   }
 
+  const submit = handleSubmit(onSubmit, (fieldErrors) => {
+    const firstMsg = Object.values(fieldErrors)
+      .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
+      [0] as string | undefined;
+    const msg = firstMsg ?? 'يرجى ملء جميع الحقول المطلوبة';
+    setSubmitError(msg);
+    showToast(msg, 'error');
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  });
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9f7f5' }} edges={['top']}>
-      {/* Header + Step bar */}
-      <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0ece6' }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1c1917' }}>{t('checkout.title')}</Text>
-        </View>
-        <StepBar step={step} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }} edges={['top']}>
+      {/* Header */}
+      <View style={{ backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(customer)/cart'))}
+          accessibilityLabel="رجوع"
+          style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="arrow-forward" size={22} color={COLORS.ink} />
+        </TouchableOpacity>
+        <Text style={{ flex: 1, textAlign: 'center', fontSize: 19, fontWeight: '700', color: COLORS.ink }}>{t('checkout.title')}</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 200 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 220 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Commercial register missing — soft reminder only */}
@@ -410,203 +391,153 @@ export default function CheckoutScreen() {
             onPress={() => router.push('/(customer)/profile' as any)}
             activeOpacity={0.85}
             style={{
-              marginBottom: 14, borderRadius: 14,
-              backgroundColor: '#fffbeb',
-              borderWidth: 1.5, borderColor: '#fbbf24',
+              marginBottom: 12, borderRadius: 14, backgroundColor: '#FFF8E6',
               padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
             }}
           >
-            <Text style={{ fontSize: 26 }}>📄</Text>
+            <Ionicons name="document-text-outline" size={24} color="#8A5A00" />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#92400e', marginBottom: 3 }}>
-                تذكير: السجل التجاري غير مرفق
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#6B4500', marginBottom: 2 }}>
+                السجل التجاري غير مرفق
               </Text>
-              <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>
-                يُنصح برفع السجل التجاري في ملفك الشخصي لتسريع معالجة طلبك.{'\n'}
-                <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>
-                  اضغط هنا للذهاب إلى الملف الشخصي ←
-                </Text>
+              <Text style={{ fontSize: 12, color: '#6B4500', lineHeight: 18 }}>
+                ارفعه من ملفك الشخصي لتسريع معالجة طلبك.
               </Text>
             </View>
+            <Ionicons name="chevron-back" size={18} color="#6B4500" />
           </TouchableOpacity>
         )}
 
         {/* Error banner */}
         {(submitError || placeOrder.error) && (
-          <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: '#fef2f2', padding: 12 }}>
-            <Text style={{ color: '#dc2626', fontSize: 13 }}>
+          <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: '#FDECEC', padding: 12 }}>
+            <Text style={{ color: COLORS.danger, fontSize: 13 }}>
               {submitError ?? (placeOrder.error as Error).message}
             </Text>
           </View>
         )}
 
-        {/* ── SAVED ADDRESSES ── */}
-        {savedAddresses.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917', marginBottom: 10 }}>
-              📍 عناوين محفوظة
-            </Text>
-            {savedAddresses.map((addr) => (
+        {/* ── DELIVERY ADDRESS ── */}
+        <Section title="عنوان التوصيل">
+          {savedAddresses.map((addr) => (
+            <RadioRow key={addr.id} selected={selectedAddressId === addr.id} onPress={() => selectAddress(addr.id)}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink }}>
+                {addr.label} — {addr.recipient_name}
+              </Text>
+              <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>
+                {addr.city}{addr.district ? ` · ${addr.district}` : ''}{addr.street ? ` · ${addr.street}` : ''}
+              </Text>
+              <Text style={{ fontSize: 12, color: COLORS.muted, textAlign: 'right' }}>{addr.phone}</Text>
+            </RadioRow>
+          ))}
+
+          {savedAddresses.length > 0 && (
+            <RadioRow selected={selectedAddressId === null} onPress={() => selectAddress(null)}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.brandText }}>إضافة عنوان جديد</Text>
+            </RadioRow>
+          )}
+
+          {/* New address form */}
+          {selectedAddressId === null && (
+            <View style={{ marginTop: savedAddresses.length > 0 ? 6 : 0 }}>
+              <Controller control={control} name="new_address.recipient_name"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="اسم المستلم *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                    placeholder="الاسم الكامل" error={errors.new_address?.recipient_name?.message} />
+                )} />
+
+              <Controller control={control} name="new_address.phone"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="رقم الجوال *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                    placeholder="07xxxxxxxx" keyboardType="phone-pad" maxLength={10}
+                    error={errors.new_address?.phone?.message} />
+                )} />
+
+              <Controller control={control} name="new_address.city"
+                render={({ field: { onChange, value } }) => (
+                  <View style={{ marginBottom: 14 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink, marginBottom: 8, textAlign: 'right' }}>المدينة *</Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      {(['عمان', 'الزرقاء'] as const).map((city) => {
+                        const isSelected = value === city;
+                        return (
+                          <TouchableOpacity
+                            key={city}
+                            onPress={() => onChange(city)}
+                            accessibilityState={{ selected: isSelected }}
+                            style={{
+                              flex: 1, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                              backgroundColor: isSelected ? COLORS.ink : '#fff',
+                              borderWidth: 1, borderColor: isSelected ? COLORS.ink : COLORS.line,
+                            }}
+                          >
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: isSelected ? '#fff' : COLORS.ink }}>{city}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {errors.new_address?.city && (
+                      <Text style={{ fontSize: 12, color: COLORS.danger, marginTop: 4, textAlign: 'right' }}>
+                        {errors.new_address.city.message}
+                      </Text>
+                    )}
+                  </View>
+                )} />
+
+              <Controller control={control} name="new_address.district"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="الحي *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                    placeholder="اسم الحي" error={errors.new_address?.district?.message} />
+                )} />
+
+              <Controller control={control} name="new_address.street"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <Input label="الشارع *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
+                    placeholder="اسم الشارع" error={errors.new_address?.street?.message} />
+                )} />
+
               <TouchableOpacity
-                key={addr.id}
-                onPress={() => selectAddress(addr.id)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  backgroundColor: selectedAddressId === addr.id ? '#fff7ed' : '#ffffff',
-                  borderRadius: 14, padding: 14, marginBottom: 8,
-                  borderWidth: 1.5,
-                  borderColor: selectedAddressId === addr.id ? BRAND : '#e6e0d8',
-                }}
-                activeOpacity={0.8}
+                onPress={() => setSaveThisAddress(!saveThisAddress)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: saveThisAddress }}
+                style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 10, minHeight: 44 }}
+                activeOpacity={0.7}
               >
                 <View style={{
-                  width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-                  borderColor: selectedAddressId === addr.id ? BRAND : '#d1d5db',
-                  backgroundColor: selectedAddressId === addr.id ? BRAND : '#fff',
+                  width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+                  borderColor: saveThisAddress ? COLORS.brandFill : '#C9C1B9',
+                  backgroundColor: saveThisAddress ? COLORS.brandFill : '#fff',
                   alignItems: 'center', justifyContent: 'center',
-                  marginLeft: 12,
                 }}>
-                  {selectedAddressId === addr.id && (
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
-                  )}
+                  {saveThisAddress && <Ionicons name="checkmark" size={15} color="#fff" />}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#1c1917', marginBottom: 2 }}>
-                    {addr.label} — {addr.recipient_name}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#857d78' }}>
-                    {addr.city}{addr.district ? ` · ${addr.district}` : ''}{addr.street ? ` · ${addr.street}` : ''}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#857d78' }}>{addr.phone}</Text>
-                </View>
+                <Text style={{ fontSize: 14, color: COLORS.ink }}>حفظ هذا العنوان للمرة القادمة</Text>
               </TouchableOpacity>
-            ))}
+            </View>
+          )}
+        </Section>
 
-            {/* Add new address option */}
-            <TouchableOpacity
-              onPress={() => selectAddress(null)}
-              style={{
-                flexDirection: 'row', alignItems: 'center',
-                backgroundColor: selectedAddressId === null ? '#fff7ed' : '#ffffff',
-                borderRadius: 14, padding: 14,
-                borderWidth: 1.5,
-                borderColor: selectedAddressId === null ? BRAND : '#e6e0d8',
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={{
-                width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-                borderColor: selectedAddressId === null ? BRAND : '#d1d5db',
-                backgroundColor: selectedAddressId === null ? BRAND : '#fff',
-                alignItems: 'center', justifyContent: 'center',
-                marginLeft: 12,
-              }}>
-                {selectedAddressId === null && (
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
-                )}
+        {/* ── PAYMENT ── */}
+        <Section title="طريقة الدفع">
+          <RadioRow selected>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="cash-outline" size={22} color={COLORS.ink} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink }}>{t('checkout.cashOnDelivery')}</Text>
+                <Text style={{ fontSize: 12, color: COLORS.muted }}>نقداً للسائق عند وصول الطلب</Text>
               </View>
-              <Text style={{ fontWeight: '600', color: BRAND }}>＋ إضافة عنوان جديد</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+            </View>
+          </RadioRow>
+        </Section>
 
-        {/* ── NEW ADDRESS FORM ── */}
-        {selectedAddressId === null && (
-          <View style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e6e0d8' }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917', marginBottom: 12 }}>
-              {savedAddresses.length > 0 ? 'عنوان جديد' : '📍 عنوان التوصيل'}
-            </Text>
-
-            <Controller control={control} name="new_address.recipient_name"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="اسم المستلم *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="الاسم الكامل" error={errors.new_address?.recipient_name?.message} />
-              )} />
-
-            <Controller control={control} name="new_address.phone"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="رقم الجوال *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="07xxxxxxxx" keyboardType="phone-pad" maxLength={10}
-                  error={errors.new_address?.phone?.message} />
-              )} />
-
-            {/* ── City selector — now uses brand orange ── */}
-            <Controller control={control} name="new_address.city"
-              render={({ field: { onChange, value } }) => (
-                <View style={{ marginBottom: 14 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, textAlign: 'right' }}>المدينة *</Text>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {(['الزرقاء', 'عمان'] as const).map((city) => {
-                      const isSelected = value === city;
-                      return (
-                        <TouchableOpacity
-                          key={city}
-                          onPress={() => onChange(city)}
-                          style={{
-                            flex: 1, paddingVertical: 13, borderRadius: 14,
-                            alignItems: 'center',
-                            backgroundColor: isSelected ? BRAND : '#f3f4f6',
-                            borderWidth: 1.5,
-                            borderColor: isSelected ? BRAND : '#e5e7eb',
-                          }}
-                        >
-                          <Text style={{ fontSize: 14, fontWeight: '700', color: isSelected ? '#fff' : '#374151' }}>
-                            {city}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                  {errors.new_address?.city && (
-                    <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, textAlign: 'right' }}>
-                      {errors.new_address.city.message}
-                    </Text>
-                  )}
-                </View>
-              )} />
-
-            <Controller control={control} name="new_address.district"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الحي *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="اسم الحي" error={errors.new_address?.district?.message} />
-              )} />
-
-            <Controller control={control} name="new_address.street"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="الشارع *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
-                  placeholder="اسم الشارع" error={errors.new_address?.street?.message} />
-              )} />
-
-            {/* Save address toggle */}
-            <TouchableOpacity
-              onPress={() => setSaveThisAddress(!saveThisAddress)}
-              style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 10 }}
-              activeOpacity={0.7}
-            >
-              <View style={{
-                width: 22, height: 22, borderRadius: 6, borderWidth: 2,
-                borderColor: saveThisAddress ? BRAND : '#d1d5db',
-                backgroundColor: saveThisAddress ? BRAND : '#fff',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                {saveThisAddress && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>}
-              </View>
-              <Text style={{ fontSize: 14, color: '#1c1917', fontWeight: '500' }}>
-                حفظ هذا العنوان للمرة القادمة
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Order notes */}
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1c1917', marginBottom: 8 }}>{t('checkout.orderNotes')}</Text>
+        {/* ── NOTES ── */}
+        <Section title={t('checkout.orderNotes')}>
           <Controller control={control} name="notes"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
                 placeholder={t('checkout.orderNotesPlaceholder')} multiline numberOfLines={3} />
             )} />
-        </View>
+        </Section>
 
         {/* ── ORDER SUMMARY ── */}
         <OrderSummarySection
@@ -614,39 +545,30 @@ export default function CheckoutScreen() {
           discount={summary.discount}
           total={summary.total}
         />
-
-        {/* Payment method note */}
-        <View style={{ borderRadius: 12, backgroundColor: '#fff7ed', padding: 12, borderWidth: 1, borderColor: '#fed7aa', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Text style={{ fontSize: 20 }}>💵</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1c1917' }}>{t('checkout.cashOnDelivery')}</Text>
-            <Text style={{ fontSize: 11, color: '#857d78', marginTop: 2 }}>الدفع عند الاستلام — طريقة الدفع الوحيدة المتاحة</Text>
-          </View>
-        </View>
       </ScrollView>
 
       {/* Sticky place-order button */}
       <BottomButton>
-        {/* Total row above the button */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-          <Text style={{ fontSize: 14, color: '#857d78' }}>الإجمالي</Text>
-          <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND }}>{formatPrice(summary.total)}</Text>
-        </View>
-        <Button
-          title={submitting ? '' : t('checkout.placeOrder')}
-          onPress={handleSubmit(onSubmit, (fieldErrors) => {
-            const firstMsg = Object.values(fieldErrors)
-              .flatMap((e: any) => (typeof e?.message === 'string' ? [e.message] : Object.values(e ?? {}).map((x: any) => x?.message).filter(Boolean)))
-              [0] as string | undefined;
-            const msg = firstMsg ?? 'يرجى ملء جميع الحقول المطلوبة';
-            setSubmitError(msg);
-            showToast(msg, 'error');
-            scrollRef.current?.scrollTo({ y: 0, animated: true });
-          })}
-          isLoading={submitting}
-          fullWidth
-          size="lg"
-        />
+        <TouchableOpacity
+          onPress={submit}
+          disabled={submitting}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: COLORS.brandFill, borderRadius: 14, height: 54, paddingHorizontal: 18,
+            flexDirection: 'row', alignItems: 'center',
+            justifyContent: submitting ? 'center' : 'space-between',
+            opacity: submitting ? 0.8 : 1, direction: 'rtl' as any,
+          }}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{t('checkout.placeOrder')}</Text>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{formatPrice(summary.total)}</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </BottomButton>
     </SafeAreaView>
   );

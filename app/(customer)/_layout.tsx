@@ -1,42 +1,15 @@
-import { ActivityIndicator, View, Platform, Animated, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/stores/cartStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useRef } from 'react';
+import { COLORS } from '@/lib/theme';
 
-const BRAND    = '#e36523';
-const INACTIVE = '#b0a89e';
+const BRAND    = COLORS.brandText;
+const INACTIVE = COLORS.muted;
 
-// ── Animated press wrapper ────────────────────────────────────────────────────
-function AnimatedTabButton({ children, onPress, onLongPress, style, accessibilityState, ...rest }: any) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.spring(scale, { toValue: 1.22, useNativeDriver: true, speed: 60, bounciness: 16 }),
-      Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 20, bounciness: 6  }),
-    ]).start();
-    onPress?.();
-  };
-
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      onLongPress={onLongPress}
-      style={[style, { flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: Platform.OS === 'ios' ? 20 : 8, overflow: 'visible' }]}
-      activeOpacity={1}
-      {...rest}
-    >
-      <Animated.View style={{ transform: [{ scale }], overflow: 'visible' }}>
-        {children}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
-
-// ── Tab icon: floating bubble when active ─────────────────────────────────────
+// ── Tab icon: outline when idle, filled when active ──────────────────────────
 function TabIcon({
   name,
   focusedName,
@@ -46,30 +19,12 @@ function TabIcon({
   focusedName: string;
   focused: boolean;
 }) {
-  if (focused) {
-    return (
-      <View style={{
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 28,          // lifts the bubble above the tab bar top border
-        shadowColor: BRAND,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.22,
-        shadowRadius: 10,
-        elevation: 10,
-      }}>
-        <Ionicons name={focusedName as any} size={26} color={BRAND} />
-      </View>
-    );
-  }
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center', width: 46, height: 30 }}>
-      <Ionicons name={name as any} size={22} color={INACTIVE} />
-    </View>
+    <Ionicons
+      name={(focused ? focusedName : name) as any}
+      size={23}
+      color={focused ? BRAND : INACTIVE}
+    />
   );
 }
 
@@ -90,40 +45,27 @@ export default function CustomerLayout() {
     return <Redirect href="/(public)/login" />;
   }
 
-  const tabButton = (props: any) => <AnimatedTabButton {...props} />;
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: BRAND,
         tabBarInactiveTintColor: INACTIVE,
-        tabBarButton: tabButton,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopWidth: 3,
-          borderTopColor: BRAND,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          height: Platform.OS === 'ios' ? 90 : 74,
-          paddingTop: 0,
-          paddingBottom: 0,
+          backgroundColor: COLORS.canvas,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.line,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 26 : 8,
           position: 'absolute',
-          overflow: 'visible',
-          elevation: 20,
-          shadowColor: '#1c1917',
-          shadowOffset: { width: 0, height: -6 },
-          shadowOpacity: 0.10,
-          shadowRadius: 20,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '700',
+          fontSize: 11,
+          fontWeight: '600',
           marginTop: 2,
-        },
-        tabBarItemStyle: {
-          overflow: 'visible',
-          paddingTop: 0,
         },
       }}
     >
@@ -133,6 +75,15 @@ export default function CustomerLayout() {
           title: 'الرئيسية',
           tabBarIcon: ({ focused }) => (
             <TabIcon name="home-outline" focusedName="home" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="brands"
+        options={{
+          title: 'الماركات',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="pricetags-outline" focusedName="pricetags" focused={focused} />
           ),
         }}
       />
@@ -151,7 +102,7 @@ export default function CustomerLayout() {
           title: 'السلة',
           tabBarBadge: itemCount > 0 ? itemCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: BRAND,
+            backgroundColor: COLORS.brandFill,
             color: '#fff',
             fontSize: 10,
             fontWeight: '700',

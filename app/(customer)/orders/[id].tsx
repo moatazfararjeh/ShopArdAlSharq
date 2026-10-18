@@ -9,6 +9,8 @@ import { formatDateTime } from '@/utils/formatDate';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, Order } from '@/types/models';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '@/lib/theme';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
@@ -193,108 +195,87 @@ function printOrderWindow(order: Order, locale: string) {
   }
 }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  pending:    { bg: '#fff7ed', text: '#ea580c', label: '⏳' },
-  confirmed:  { bg: '#eff6ff', text: '#2563eb', label: '✅' },
-  preparing:  { bg: '#fefce8', text: '#ca8a04', label: '👨‍🍳' },
-  shipped:    { bg: '#f5f3ff', text: '#7c3aed', label: '🚚' },
-  delivered:  { bg: '#f0fdf4', text: '#15803d', label: '📦' },
-  cancelled:  { bg: '#fef2f2', text: '#dc2626', label: '❌' },
-};
-
 // Ordered flow — cancelled is handled separately
 const STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered'] as const;
 
-const STATUS_META: Record<string, { icon: string; labelAr: string }> = {
-  pending:   { icon: '⏳', labelAr: 'قيد الانتظار' },
-  confirmed: { icon: '✅', labelAr: 'تم التأكيد' },
-  preparing: { icon: '👨‍🍳', labelAr: 'جارٍ التحضير' },
-  shipped:   { icon: '🚚', labelAr: 'طلبك في الطريق' },
-  delivered: { icon: '📦', labelAr: 'تم التسليم' },
-  cancelled: { icon: '❌', labelAr: 'ملغى' },
+const STATUS_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; labelAr: string; hint: string }> = {
+  pending:   { icon: 'time-outline',             labelAr: 'قيد الانتظار',    hint: 'استلمنا طلبك وسنؤكده قريباً' },
+  confirmed: { icon: 'checkmark-circle-outline', labelAr: 'تم التأكيد',      hint: 'تم تأكيد طلبك وسيبدأ تجهيزه' },
+  preparing: { icon: 'cube-outline',             labelAr: 'جارٍ التحضير',    hint: 'نقوم بتجهيز منتجاتك الآن' },
+  shipped:   { icon: 'car-outline',              labelAr: 'طلبك في الطريق',  hint: 'سيصلك السائق قريباً' },
+  delivered: { icon: 'home-outline',             labelAr: 'تم التسليم',      hint: 'شكراً لطلبك من فود بوكس' },
+  cancelled: { icon: 'close-circle-outline',     labelAr: 'ملغى',            hint: 'تم إلغاء هذا الطلب' },
 };
 
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+const PAYMENT_METHOD_AR: Record<string, string> = {
+  cash_on_delivery: 'الدفع عند الاستلام', bank_transfer: 'تحويل بنكي', credit_card: 'بطاقة ائتمان',
+};
+const PAYMENT_STATUS_AR: Record<string, string> = {
+  paid: 'مدفوع', pending: 'قيد الانتظار', failed: 'فشل الدفع', refunded: 'مسترد',
+};
+
+function Card({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-      <Text style={{ fontSize: 14, width: 22 }}>{icon}</Text>
-      <Text style={{ fontSize: 12, color: '#9ca3af', width: 90, paddingTop: 1 }}>{label}</Text>
-      <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600', flex: 1 }}>{value}</Text>
+    <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 }}>
+      {!!title && <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink, marginBottom: 12 }}>{title}</Text>}
+      {children}
+    </View>
+  );
+}
+
+function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 8 }}>
+      <Ionicons name={icon} size={16} color={COLORS.muted} style={{ marginTop: 1 }} />
+      <Text style={{ fontSize: 13, color: COLORS.muted, width: 92 }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: COLORS.ink, fontWeight: '600', flex: 1 }}>{value}</Text>
     </View>
   );
 }
 
 function OrderTimeline({ status }: { status: string }) {
-  if (status === 'cancelled') {
-    return (
-      <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 12 }}>سير الطلب</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 18 }}>❌</Text>
-          </View>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#dc2626' }}>تم إلغاء الطلب</Text>
-        </View>
-      </View>
-    );
-  }
+  if (status === 'cancelled') return null; // the status card already says it
 
   const currentIndex = STATUS_FLOW.indexOf(status as typeof STATUS_FLOW[number]);
 
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }}>
-      <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 14 }}>سير الطلب</Text>
+    <Card title="حالة الطلب">
       {STATUS_FLOW.map((step, index) => {
-        const isDone    = index < currentIndex;
-        const isCurrent = index === currentIndex;
-        const isFuture  = index > currentIndex;
+        const isDone    = index < currentIndex || (index === currentIndex && step === 'delivered');
+        const isCurrent = index === currentIndex && !isDone;
         const isLast    = index === STATUS_FLOW.length - 1;
-        const meta      = STATUS_META[step];
-
-        const dotColor  = isDone ? '#e36523' : isCurrent ? '#e36523' : '#e5e7eb';
-        const lineColor = index < currentIndex ? '#e36523' : '#e5e7eb';
 
         return (
-          <View key={step} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            {/* Dot + vertical line — first child → RIGHT in RTL */}
-            <View style={{ alignItems: 'center', width: 38 }}>
-              <View style={{
-                width: isCurrent ? 38 : 32,
-                height: isCurrent ? 38 : 32,
-                borderRadius: isCurrent ? 19 : 16,
-                backgroundColor: isCurrent ? '#fff0eb' : isDone ? '#fff0eb' : '#f3f4f6',
-                borderWidth: isCurrent ? 2.5 : isDone ? 2 : 1.5,
-                borderColor: dotColor,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {isDone
-                  ? <Text style={{ fontSize: 14 }}>✓</Text>
-                  : <Text style={{ fontSize: isCurrent ? 18 : 14, opacity: isFuture ? 0.4 : 1 }}>{meta.icon}</Text>
-                }
-              </View>
+          <View key={step} style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ alignItems: 'center', width: 24 }}>
+              {isDone ? (
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.green, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="checkmark" size={15} color="#fff" />
+                </View>
+              ) : isCurrent ? (
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.brandFill }} />
+                </View>
+              ) : (
+                <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#D9D2CA' }} />
+              )}
               {!isLast && (
-                <View style={{ width: 2.5, flex: 1, minHeight: 22, backgroundColor: lineColor, marginVertical: 3, borderRadius: 2 }} />
+                <View style={{ width: 2, flex: 1, minHeight: 22, backgroundColor: index < currentIndex ? COLORS.green : '#E2DCD5' }} />
               )}
             </View>
-
-            {/* Label — last child → LEFT in RTL */}
-            <View style={{ flex: 1, paddingStart: 12, paddingBottom: isLast ? 0 : 18, justifyContent: 'center', paddingTop: isCurrent ? 6 : 4 }}>
+            <View style={{ flex: 1, paddingBottom: isLast ? 0 : 14, paddingTop: 2 }}>
               <Text style={{
-                fontSize: isCurrent ? 14 : 13,
-                fontWeight: isCurrent ? '800' : isDone ? '600' : '500',
-                color: isCurrent ? '#e36523' : isDone ? '#111827' : '#9ca3af',
+                fontSize: 14,
+                fontWeight: isCurrent ? '700' : '500',
+                color: index > currentIndex ? COLORS.faint : COLORS.ink,
               }}>
-                {meta.labelAr}
+                {STATUS_META[step].labelAr}
               </Text>
-              {isCurrent && (
-                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>الحالة الحالية</Text>
-              )}
             </View>
           </View>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
@@ -313,296 +294,200 @@ export default function OrderDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#f8f7f5', padding: 16, paddingTop: insets.top + 60 }}>
-        <Skeleton width="60%" height={22} borderRadius={8} style={{ marginBottom: 8 }} />
-        <Skeleton width="40%" height={14} borderRadius={6} style={{ marginBottom: 24 }} />
-        <Skeleton height={180} borderRadius={20} style={{ marginBottom: 16 }} />
-        <Skeleton height={120} borderRadius={20} style={{ marginBottom: 16 }} />
-        <Skeleton height={80} borderRadius={20} style={{ marginBottom: 16 }} />
-        <Skeleton height={100} borderRadius={20} />
+      <View style={{ flex: 1, backgroundColor: COLORS.surface, padding: 16, paddingTop: insets.top + 60 }}>
+        <Skeleton height={88} borderRadius={20} style={{ marginBottom: 12 }} />
+        <Skeleton height={200} borderRadius={18} style={{ marginBottom: 12 }} />
+        <Skeleton height={120} borderRadius={18} style={{ marginBottom: 12 }} />
+        <Skeleton height={100} borderRadius={18} />
       </View>
     );
   }
 
   if (!order) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f7f5' }}>
-        <Text style={{ fontSize: 48, marginBottom: 12 }}>😕</Text>
-        <Text style={{ fontSize: 16, color: '#6b7280' }}>{t('errors.notFound')}</Text>
-        <TouchableOpacity onPress={() => goBack()} style={{ marginTop: 20, backgroundColor: '#e36523', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, padding: 32 }}>
+        <Ionicons name="receipt-outline" size={48} color={COLORS.faint} />
+        <Text style={{ fontSize: 16, color: COLORS.muted, marginTop: 12 }}>{t('errors.notFound')}</Text>
+        <TouchableOpacity onPress={() => goBack()} style={{ marginTop: 20, backgroundColor: COLORS.brandFill, paddingHorizontal: 28, height: 48, justifyContent: 'center', borderRadius: 14 }}>
           <Text style={{ color: '#fff', fontWeight: '700' }}>{t('common.back', { defaultValue: 'رجوع' })}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const statusConfig = STATUS_COLORS[order.status] ?? { bg: '#f3f4f6', text: '#6b7280', label: '•' };
+  const meta = STATUS_META[order.status] ?? { icon: 'ellipse-outline' as const, labelAr: order.status, hint: '' };
+  const cancelled = order.status === 'cancelled';
+  const addr = (order.delivery_address ?? {}) as Record<string, string | null>;
+  const hasAddr = Object.keys(addr).length > 0;
+  const itemsCount = order.items?.length ?? 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8f7f5' }}>
-      {/* Header — RTL: back button RIGHT (first child), order info middle, status LEFT (last child) */}
+    <View style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+      {/* Header */}
       <View style={{
-        backgroundColor: '#ffffff',
-        paddingTop: insets.top + 8,
-        paddingBottom: 16,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        shadowColor: '#1c1917',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 3,
+        backgroundColor: '#fff', paddingTop: insets.top + 8, paddingBottom: 12, paddingHorizontal: 16,
+        flexDirection: 'row', alignItems: 'center', gap: 8,
       }}>
-        {/* Back button — first child → RIGHT in RTL */}
         <TouchableOpacity
           onPress={() => goBack()}
-          style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}
+          accessibilityLabel="رجوع"
+          style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ fontSize: 18, color: '#374151' }}>›</Text>
+          <Ionicons name="arrow-forward" size={22} color={COLORS.ink} />
         </TouchableOpacity>
-
-        {/* Order number + date — fills middle */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 17, fontWeight: '800', color: '#1c1917' }}>
-            {t('orders.orderNumber')} #{order.order_number}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>
-            🗓 {formatDateTime(order.created_at)}
-          </Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: COLORS.ink }}>تفاصيل الطلب</Text>
+          <Text numberOfLines={1} style={{ fontSize: 12, color: COLORS.muted, marginTop: 1 }}>{order.order_number}</Text>
         </View>
-
-        {/* Status badge + print — last child → LEFT in RTL */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ backgroundColor: statusConfig.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 12 }}>{statusConfig.label}</Text>
-            <Text style={{ color: statusConfig.text, fontSize: 12, fontWeight: '700' }}>
-              {t(`orders.status.${order.status}`, { defaultValue: order.status })}
-            </Text>
-          </View>
-          {Platform.OS === 'web' && (
-            <Pressable
-              onPress={(e) => {
-                e.preventDefault?.();
-                e.stopPropagation?.();
-                try { printOrderWindow(order, locale); } catch (err) { console.error('[PRINT]', err); }
-              }}
-              style={{ backgroundColor: '#f3f4f6', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 5, zIndex: 10, position: 'relative' }}
-            >
-              <Text style={{ fontSize: 14, pointerEvents: 'none' }}>🖨️</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', pointerEvents: 'none' }}>طباعة</Text>
-            </Pressable>
-          )}
-        </View>
+        {Platform.OS === 'web' ? (
+          <Pressable
+            onPress={(e) => {
+              e.preventDefault?.();
+              e.stopPropagation?.();
+              try { printOrderWindow(order, locale); } catch (err) { console.error('[PRINT]', err); }
+            }}
+            accessibilityLabel="طباعة"
+            style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="print-outline" size={20} color={COLORS.ink} />
+          </Pressable>
+        ) : (
+          <View style={{ width: 44 }} />
+        )}
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      >
-        {/* Timeline */}
-        <OrderTimeline status={order.status} />
-
-        {/* Items section */}
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1c1917', marginBottom: 12, marginTop: 4 }}>
-          {t('orders.orderItems')}
-        </Text>
-
-        {order.items?.map((item) => {
-          const prod = item.product;
-          const imgUrl = (prod?.images?.[0] ?? prod?.product_images?.[0])?.url;
-          const name = prod
-            ? getProductName(prod, locale)
-            : (locale === 'ar' ? item.product_name_ar : (item.product_name_en ?? item.product_name_ar)) || '—';
-          const unitLabel =
-            prod?.unit_type === 'carton' && prod.pieces_per_carton
-              ? `كرتون (${prod.pieces_per_carton} حبة)`
-              : prod?.unit_type === 'kg' ? 'كغ' : prod?.unit_type === 'tin' ? 'تنك' : 'حبة';
-
-          return (
-            <View
-              key={item.id}
-              style={{
-                backgroundColor: '#ffffff',
-                borderRadius: 18,
-                padding: 14,
-                marginBottom: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 5,
-                elevation: 2,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                {/* Image — first child → RIGHT in RTL */}
-                {imgUrl ? (
-                  <Image
-                    source={{ uri: imgUrl }}
-                    style={{ width: 72, height: 72, borderRadius: 14 }}
-                    contentFit="cover"
-                    placeholder={{ blurhash: PLACEHOLDER_HASH }}
-                    transition={250}
-                  />
-                ) : (
-                  <View style={{ width: 72, height: 72, borderRadius: 14, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 28 }}>📦</Text>
-                  </View>
-                )}
-                {/* Info — middle */}
-                <View style={{ flex: 1, marginHorizontal: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 20 }} numberOfLines={2}>
-                    {name}
-                  </Text>
-                  {prod?.weight ? (
-                    <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                      ⚖️ {prod.weight} {prod.weight_unit ?? 'كغ'}
-                    </Text>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                    <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 11, color: '#ea580c', fontWeight: '700' }}>{unitLabel}</Text>
-                    </View>
-                    <Text style={{ fontSize: 12, color: '#6b7280' }}>
-                      {item.quantity} × {formatPrice(item.unit_price)}
-                    </Text>
-                  </View>
-                </View>
-                {/* Price — last child → LEFT in RTL */}
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523' }}>
-                  {formatPrice(item.total_price)}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-
-        {/* Total card */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+        {/* Status hero */}
         <View style={{
-          backgroundColor: '#ffffff',
-          borderRadius: 20,
-          padding: 16,
-          marginTop: 8,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.07,
-          shadowRadius: 8,
-          elevation: 3,
+          backgroundColor: cancelled ? '#FDECEC' : COLORS.ink, borderRadius: 20, padding: 18,
+          flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12,
         }}>
-          {order.delivery_fee > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, color: '#6b7280' }}>رسوم التوصيل</Text>
-              <Text style={{ fontSize: 13, color: '#374151', fontWeight: '600' }}>{formatPrice(order.delivery_fee)}</Text>
-            </View>
-          )}
-          {order.discount_amount > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, color: '#6b7280' }}>الخصم</Text>
-              <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>- {formatPrice(order.discount_amount)}</Text>
-            </View>
-          )}
-          <View style={{ height: 1, backgroundColor: '#f3f4f6', marginBottom: 10 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 15, color: '#6b7280', fontWeight: '600' }}>{t('cart.total')}</Text>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: '#e36523' }}>
-              {formatPrice(order.total_amount)}
-            </Text>
+          <View style={{
+            width: 52, height: 52, borderRadius: 16,
+            backgroundColor: cancelled ? '#fff' : COLORS.brand,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Ionicons name={meta.icon} size={28} color={cancelled ? COLORS.danger : COLORS.ink} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 19, fontWeight: '700', color: cancelled ? COLORS.danger : '#fff' }}>{meta.labelAr}</Text>
+            <Text style={{ fontSize: 13, color: cancelled ? COLORS.danger : '#D9D2CA' }}>{meta.hint}</Text>
+            <Text style={{ fontSize: 12, color: cancelled ? COLORS.muted : '#B5ACA4', marginTop: 2, textAlign: 'right', writingDirection: 'rtl' }}>{formatDateTime(order.created_at)}</Text>
           </View>
         </View>
 
-        {/* Delivery address */}
-        {order.delivery_address && Object.keys(order.delivery_address).length > 0 && (() => {
-          const addr = order.delivery_address as Record<string, string | null>;
-          return (
-            <View style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              elevation: 3,
-            }}>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 12 }}>📍 عنوان التوصيل</Text>
-              {addr.label ? (
-                <View style={{ backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10 }}>
-                  <Text style={{ fontSize: 11, color: '#ea580c', fontWeight: '700' }}>{addr.label}</Text>
+        <OrderTimeline status={order.status} />
+
+        {/* Items */}
+        <Card title={`${t('orders.orderItems')} (${itemsCount})`}>
+          {order.items?.map((item, idx) => {
+            const prod = item.product;
+            const imgUrl = (prod?.images?.[0] ?? prod?.product_images?.[0])?.url;
+            const name = prod
+              ? getProductName(prod, locale)
+              : (locale === 'ar' ? item.product_name_ar : (item.product_name_en ?? item.product_name_ar)) || '—';
+            const unitLabel =
+              prod?.unit_type === 'carton' && prod.pieces_per_carton
+                ? `كرتونة · ${prod.pieces_per_carton} حبة`
+                : prod?.unit_type === 'kg' ? 'كغ' : prod?.unit_type === 'tin' ? 'تنكة' : 'حبة';
+
+            return (
+              <View key={item.id} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10,
+                borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: COLORS.line,
+              }}>
+                <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.surface, padding: 6, alignItems: 'center', justifyContent: 'center' }}>
+                  {imgUrl ? (
+                    <Image source={{ uri: imgUrl }} style={{ width: '100%', height: '100%' }} contentFit="contain"
+                      placeholder={{ blurhash: PLACEHOLDER_HASH }} transition={250} />
+                  ) : (
+                    <Ionicons name="cube-outline" size={24} color={COLORS.faint} />
+                  )}
                 </View>
-              ) : null}
-              {addr.recipient_name ? <InfoRow icon="👤" label="المستلم" value={addr.recipient_name} /> : null}
-              {addr.phone ? <InfoRow icon="📞" label="الهاتف" value={addr.phone} /> : null}
-              {addr.city ? <InfoRow icon="🏙️" label="المدينة" value={[addr.city, addr.district].filter(Boolean).join(' — ')} /> : null}
-              {addr.street ? <InfoRow icon="🛣️" label="الشارع" value={addr.street} /> : null}
-              {(addr.building_number || addr.floor_number || addr.apartment_number) ? (
-                <InfoRow icon="🏢" label="التفاصيل" value={[
-                  addr.building_number ? `مبنى ${addr.building_number}` : null,
-                  addr.floor_number ? `طابق ${addr.floor_number}` : null,
-                  addr.apartment_number ? `شقة ${addr.apartment_number}` : null,
-                ].filter(Boolean).join(' — ')} />
-              ) : null}
-              {addr.notes ? <InfoRow icon="📝" label="ملاحظات العنوان" value={addr.notes} /> : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink, lineHeight: 19 }} numberOfLines={2}>{name}</Text>
+                  <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>
+                    {unitLabel} · {item.quantity} × {formatPrice(item.unit_price)}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.ink }}>{formatPrice(item.total_price)}</Text>
+              </View>
+            );
+          })}
+
+          {/* Totals */}
+          <View style={{ borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 4, paddingTop: 12, gap: 8 }}>
+            {order.delivery_fee > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 14, color: COLORS.muted }}>رسوم التوصيل</Text>
+                <Text style={{ fontSize: 14, color: COLORS.ink }}>{formatPrice(order.delivery_fee)}</Text>
+              </View>
+            )}
+            {order.discount_amount > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 14, color: COLORS.muted }}>الخصم</Text>
+                <Text style={{ fontSize: 14, color: COLORS.green, fontWeight: '600' }}>−{formatPrice(order.discount_amount)}</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{t('cart.total')}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{formatPrice(order.total_amount)}</Text>
             </View>
-          );
-        })()}
+          </View>
+        </Card>
+
+        {/* Delivery address */}
+        {hasAddr && (
+          <Card title="عنوان التوصيل">
+            {addr.label ? <InfoRow icon="bookmark-outline" label="التسمية" value={addr.label} /> : null}
+            {addr.recipient_name ? <InfoRow icon="person-outline" label="المستلم" value={addr.recipient_name} /> : null}
+            {addr.phone ? <InfoRow icon="call-outline" label="الهاتف" value={addr.phone} /> : null}
+            {addr.city ? <InfoRow icon="location-outline" label="المدينة" value={[addr.city, addr.district].filter(Boolean).join(' — ')} /> : null}
+            {addr.street ? <InfoRow icon="navigate-outline" label="الشارع" value={addr.street} /> : null}
+            {(addr.building_number || addr.floor_number || addr.apartment_number) ? (
+              <InfoRow icon="business-outline" label="التفاصيل" value={[
+                addr.building_number ? `مبنى ${addr.building_number}` : null,
+                addr.floor_number ? `طابق ${addr.floor_number}` : null,
+                addr.apartment_number ? `شقة ${addr.apartment_number}` : null,
+              ].filter(Boolean).join(' — ')} />
+            ) : null}
+            {addr.notes ? <InfoRow icon="document-text-outline" label="ملاحظات" value={addr.notes} /> : null}
+          </Card>
+        )}
 
         {/* Account info */}
         {order.profile && (
-          <View style={{
-            backgroundColor: '#ffffff',
-            borderRadius: 20,
-            padding: 16,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-            elevation: 3,
-          }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 12 }}>👤 معلومات الحساب</Text>
-            {order.profile.full_name ? <InfoRow icon="🙍" label="الاسم" value={order.profile.full_name} /> : null}
-            {order.profile.company_name ? <InfoRow icon="🏢" label="الشركة" value={order.profile.company_name} /> : null}
-            {order.profile.email ? <InfoRow icon="📧" label="البريد" value={order.profile.email} /> : null}
+          <Card title="معلومات الحساب">
+            {order.profile.full_name ? <InfoRow icon="person-outline" label="الاسم" value={order.profile.full_name} /> : null}
+            {order.profile.company_name ? <InfoRow icon="business-outline" label="الشركة" value={order.profile.company_name} /> : null}
+            {order.profile.email ? <InfoRow icon="mail-outline" label="البريد" value={order.profile.email} /> : null}
             {(() => {
-              const phone = order.profile?.phone ?? (order.delivery_address as Record<string, string | null>)?.phone;
-              return phone ? <InfoRow icon="📞" label="هاتف الشركة" value={phone} /> : null;
+              const phone = order.profile?.phone ?? addr.phone;
+              return phone ? <InfoRow icon="call-outline" label="هاتف الشركة" value={phone} /> : null;
             })()}
-          </View>
+          </Card>
         )}
 
-        {/* Payment & order info */}
-        <View style={{
-          backgroundColor: '#ffffff',
-          borderRadius: 20,
-          padding: 16,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 3,
-        }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 12 }}>💳 معلومات الطلب</Text>
-          <InfoRow icon="💰" label="طريقة الدفع" value={
-            order.payment_method === 'cash_on_delivery' ? 'الدفع عند الاستلام' :
-            order.payment_method === 'bank_transfer' ? 'تحويل بنكي' :
-            order.payment_method === 'credit_card' ? 'بطاقة ائتمان' :
-            order.payment_method
-          } />
-          <InfoRow icon="✅" label="حالة الدفع" value={
-            order.payment_status === 'paid' ? 'مدفوع' :
-            order.payment_status === 'pending' ? 'قيد الانتظار' :
-            order.payment_status === 'failed' ? 'فشل الدفع' :
-            order.payment_status === 'refunded' ? 'مسترد' :
-            order.payment_status
-          } />
-          {order.notes ? <InfoRow icon="📋" label="ملاحظات الطلب" value={order.notes} /> : null}
-        </View>
+        {/* Payment */}
+        <Card title="الدفع">
+          <InfoRow icon="cash-outline" label="طريقة الدفع" value={PAYMENT_METHOD_AR[order.payment_method] ?? order.payment_method} />
+          <InfoRow icon="checkmark-circle-outline" label="حالة الدفع" value={PAYMENT_STATUS_AR[order.payment_status] ?? order.payment_status} />
+          {order.notes ? <InfoRow icon="chatbox-ellipses-outline" label="ملاحظات الطلب" value={order.notes} /> : null}
+        </Card>
+
+        {/* Help */}
+        <TouchableOpacity
+          onPress={() => router.push('/(customer)/contact' as any)}
+          activeOpacity={0.8}
+          style={{
+            height: 48, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.line,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          <Ionicons name="call-outline" size={18} color={COLORS.ink} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink }}>تواصل معنا بخصوص الطلب</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
-

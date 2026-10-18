@@ -13,9 +13,8 @@ import { getCurrentLocale } from '@/i18n';
 import { getProductName, getMinOrderQuantity, hasDiscount } from '@/types/models';
 import { getDiscountPercent } from '@/utils/formatPrice';
 import { CURRENCY_SYMBOL } from '@/lib/constants';
+import { COLORS } from '@/lib/theme';
 
-const BRAND   = '#e36523';
-const BG_POOL = ['#f5f0ea', '#eef0f5', '#f0f5ee', '#f5eef0', '#f5f3ee'];
 
 // Warm neutral placeholder blurhash (beige/cream tone)
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
@@ -50,7 +49,6 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const mainImage    = (product.images?.[0] ?? product.product_images?.[0])?.url ?? product.categories?.image_url ?? undefined;
   const discounted   = hasDiscount(product);
   const outOfStock   = product.stock_quantity === 0;
-  const bgColor      = BG_POOL[(product.id.charCodeAt(0) ?? 0) % BG_POOL.length];
 
   // Flash sale wins over regular discount
   const flashActive  = !!product.flash_sale_price && !!product.flash_sale_ends_at &&
@@ -72,6 +70,19 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
+  // "كرتونة · 24 حبة" / "كغ" / "350 غم" — tells the buyer exactly what one tap adds.
+  const unitLine = (() => {
+    if (product.unit_type === 'carton') {
+      return product.pieces_per_carton ? `كرتونة · ${product.pieces_per_carton} حبة` : 'كرتونة';
+    }
+    if (product.unit_type === 'kg')  return 'بالكيلو';
+    if (product.unit_type === 'tin') return 'تنكة';
+    if (product.weight != null)      return `${product.weight} ${product.weight_unit ?? 'غم'}`;
+    return product.unit_type === 'piece' ? 'حبة' : null;
+  })();
+
+  const minQty = getMinOrderQuantity(product);
+
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }], direction: 'rtl' as any }}>
       <TouchableOpacity
@@ -79,186 +90,129 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
-        style={{
-          flex: 1,
-          borderRadius: 20,
-          backgroundColor: '#fff',
-          shadowColor: '#1c1917',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.09,
-          shadowRadius: 10,
-          elevation: 4,
-          overflow: 'hidden',
-        }}
+        style={{ flex: 1, gap: 6 }}
       >
-        {/* ── Image block ── */}
-        <View style={{ aspectRatio: 3 / 4, backgroundColor: bgColor }}>
+        {/* ── Image tile ── */}
+        <View style={{
+          aspectRatio: 1.15, borderRadius: 16, overflow: 'hidden',
+          backgroundColor: COLORS.surface, padding: 12,
+        }}>
           <Image
             source={{ uri: mainImage }}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
+            style={{ width: '100%', height: '100%', opacity: outOfStock ? 0.45 : 1 }}
+            contentFit="contain"
             placeholder={{ blurhash: PLACEHOLDER_HASH }}
             transition={250}
           />
 
-          {/* Out-of-stock overlay */}
-          {outOfStock && (
+          {/* Discount / flash badge — top right */}
+          {!outOfStock && salePercent > 0 && (
             <View style={{
-              position: 'absolute', inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.42)',
-              alignItems: 'center', justifyContent: 'center',
+              position: 'absolute', top: 8, right: 8,
+              backgroundColor: flashActive ? COLORS.brandFill : COLORS.green,
+              borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
             }}>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 }}>
-                <Text style={{ color: '#1c1917', fontWeight: '800', fontSize: 12 }}>نفد المخزون</Text>
-              </View>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                {flashActive ? '⚡ ' : ''}−{salePercent}%
+              </Text>
             </View>
           )}
 
-          {/* Flash sale badge — top right */}
-          {flashActive && !outOfStock && (
-            <View style={{
-              position: 'absolute', top: 10, right: 10,
-              backgroundColor: '#f97316',
-              borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4,
-              flexDirection: 'row', alignItems: 'center', gap: 3,
-            }}>
-              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>⚡ -{salePercent}%</Text>
-            </View>
-          )}
-
-          {/* Regular sale badge — top right */}
-          {!flashActive && discounted && !outOfStock && salePercent > 0 && (
-            <View style={{
-              position: 'absolute', top: 10, right: 10,
-              backgroundColor: '#ef4444',
-              borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4,
-            }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>-{salePercent}%</Text>
-            </View>
-          )}
-
-          {/* Heart button — top left */}
+          {/* Heart — top left */}
           <TouchableOpacity
             onPress={(e) => { e.stopPropagation(); toggleFavorite.mutate({ productId: product.id, isFavorited: liked }); }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={liked ? 'إزالة من المفضلة' : 'أضف للمفضلة'}
             style={{
-              position: 'absolute', top: 10, left: 10,
-              width: 34, height: 34, borderRadius: 17,
-              backgroundColor: liked ? '#fef2f2' : 'rgba(255,255,255,0.88)',
+              position: 'absolute', top: 6, left: 6,
+              width: 32, height: 32, borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.9)',
               alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
             }}
             activeOpacity={0.75}
           >
-            <Ionicons
-              name={liked ? 'heart' : 'heart-outline'}
-              size={17}
-              color={liked ? '#ef4444' : '#6b7280'}
-            />
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={17} color={liked ? COLORS.danger : COLORS.muted} />
           </TouchableOpacity>
 
-          {/* Unit count badge — bottom left */}
-          {unitCount > 1 && (
+          {/* Out of stock strip */}
+          {outOfStock && (
             <View style={{
-              position: 'absolute', bottom: 10, left: 10,
-              backgroundColor: 'rgba(255,255,255,0.92)',
-              borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3,
+              position: 'absolute', bottom: 8, left: 8, right: 8,
+              backgroundColor: '#fff', borderRadius: 8, paddingVertical: 4, alignItems: 'center',
             }}>
-              <Text style={{ fontSize: 9, fontWeight: '800', color: BRAND }}>{unitCount} أسعار</Text>
+              <Text style={{ color: COLORS.ink, fontWeight: '600', fontSize: 12 }}>نفد مؤقتاً</Text>
             </View>
           )}
         </View>
 
-        {/* ── Info block ── */}
-        <View style={{ padding: 11, gap: 4, direction: 'rtl' as any, alignItems: 'flex-end' }}>
+        {/* ── Name ── */}
+        <Text numberOfLines={2} style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink, lineHeight: 19, minHeight: 38 }}>
+          {name}
+        </Text>
 
-          {/* Brand */}
-          {!!product.brands?.name && (
-            <Text style={{ fontSize: 10, color: '#a39890', fontWeight: '700', width: '100%' }}>
-              {product.brands.name}
-            </Text>
-          )}
-
-          {/* Product name */}
-          <Text
-            numberOfLines={2}
-            style={{ fontSize: 13, fontWeight: '800', color: '#1c1917', lineHeight: 18, width: '100%' }}
-          >
-            {name}
+        {/* ── Unit / pack size ── */}
+        {(unitLine || unitCount > 1) && (
+          <Text numberOfLines={1} style={{ fontSize: 12, color: COLORS.muted }}>
+            {unitLine}{unitLine && unitCount > 1 ? ' · ' : ''}{unitCount > 1 ? `${unitCount} خيارات` : ''}
           </Text>
+        )}
 
-          {/* Weight */}
-          {product.weight != null && (
-            <Text style={{ fontSize: 10, color: '#b0a89e', width: '100%' }}>
-              {product.weight} {product.weight_unit ?? 'غم'}
-            </Text>
-          )}
-
-          {/* Price row + add-to-cart */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, direction: 'rtl' as any }}>
-
-            {/* Price — large number, small currency unit */}
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, direction: 'ltr' as any }}>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: BRAND, lineHeight: 20 }}>
-                  {priceNum}
-                </Text>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: BRAND, opacity: 0.75 }}>
-                  {CURRENCY_SYMBOL}
-                </Text>
-              </View>
-              {discounted && (
-                <Text style={{ fontSize: 10, color: '#c9bfb6', textDecorationLine: 'line-through', marginTop: -1 }}>
-                  {Number(product.price).toFixed(3)}
-                </Text>
-              )}
+        {/* ── Price + add / stepper ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 40, direction: 'rtl' as any }}>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{priceNum}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: COLORS.ink }}>{CURRENCY_SYMBOL}</Text>
             </View>
-
-            {/* Add / stepper */}
-            {!outOfStock && (
-              cartQty > 0 ? (
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  borderRadius: 10, borderWidth: 1.5, borderColor: BRAND,
-                  overflow: 'hidden',
-                  direction: 'ltr' as any,
-                }}>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(product.id, cartQty - 1)}
-                    disabled={cartQty <= getMinOrderQuantity(product)}
-                    activeOpacity={0.7}
-                    style={{ paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#fff0eb', opacity: cartQty <= getMinOrderQuantity(product) ? 0.4 : 1 }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: BRAND, lineHeight: 16 }}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#1c1917', minWidth: 22, textAlign: 'center' }}>
-                    {cartQty}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(product.id, cartQty + 1)}
-                    activeOpacity={0.7}
-                    style={{ paddingHorizontal: 8, paddingVertical: 5, backgroundColor: BRAND }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#fff', lineHeight: 16 }}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={handleAddToCart}
-                  activeOpacity={0.82}
-                  style={{
-                    width: 34, height: 34, borderRadius: 12,
-                    backgroundColor: BRAND,
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
-                  }}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                </TouchableOpacity>
-              )
+            {(discounted || flashActive) && (
+              <Text style={{ fontSize: 11, color: COLORS.faint, textDecorationLine: 'line-through' }}>
+                {Number(product.price).toFixed(3)}
+              </Text>
             )}
           </View>
+
+          {!outOfStock && (
+            cartQty > 0 ? (
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', height: 40,
+                borderRadius: 12, backgroundColor: COLORS.brandTint, paddingHorizontal: 2,
+              }}>
+                <TouchableOpacity
+                  onPress={() => updateQuantity(product.id, cartQty + 1)}
+                  accessibilityLabel="زيادة الكمية"
+                  activeOpacity={0.7}
+                  style={{ width: 34, height: 36, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="add" size={20} color={COLORS.brandText} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink, minWidth: 18, textAlign: 'center' }}>
+                  {cartQty}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => updateQuantity(product.id, cartQty - 1)}
+                  disabled={cartQty <= minQty}
+                  accessibilityLabel="إنقاص الكمية"
+                  activeOpacity={0.7}
+                  style={{ width: 34, height: 36, alignItems: 'center', justifyContent: 'center', opacity: cartQty <= minQty ? 0.35 : 1 }}
+                >
+                  <Ionicons name="remove" size={20} color={COLORS.brandText} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleAddToCart}
+                accessibilityLabel="أضف إلى السلة"
+                activeOpacity={0.82}
+                style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  backgroundColor: COLORS.brandFill,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </TouchableOpacity>
+            )
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>

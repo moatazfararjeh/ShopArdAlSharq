@@ -8,6 +8,7 @@ import { useSignOut } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { PRIVACY_POLICY_URL, APP_STORE_URL, PLAY_STORE_URL } from '@/lib/constants';
+import { COLORS } from '@/lib/theme';
 
 const NAV_ITEMS = [
   { label: 'الرئيسية', icon: 'home-outline'    as const, activeIcon: 'home'    as const, path: '/home' },
@@ -15,6 +16,13 @@ const NAV_ITEMS = [
   { label: 'السلة',    icon: 'bag-outline'     as const, activeIcon: 'bag'     as const, path: '/cart' },
   { label: 'طلباتي',  icon: 'receipt-outline' as const, activeIcon: 'receipt' as const, path: '/orders' },
   { label: 'حسابي',   icon: 'person-outline'  as const, activeIcon: 'person'  as const, path: '/profile' },
+];
+
+// Mobile bottom bar: same as the drawer list plus Brands (the drawer lists Brands separately)
+const BOTTOM_ITEMS = [
+  NAV_ITEMS[0],
+  { label: 'الماركات', icon: 'pricetags-outline' as const, activeIcon: 'pricetags' as const, path: '/brands' },
+  ...NAV_ITEMS.slice(1),
 ];
 
 const ACTIVE_COLOR       = '#e36523';
@@ -228,27 +236,28 @@ export function CustomerWebLayout({ children }: { children: React.ReactNode }) {
       {!isDesktop && (
         <View style={{
           position: 'fixed' as any, bottom: 0, left: 0, right: 0,
-          minHeight: BOTTOM_BAR_HEIGHT + 6, paddingBottom: SAI_BOTTOM as any,
-          backgroundColor: '#FFFFFF', borderTopWidth: 3, borderTopColor: ACTIVE_COLOR,
-          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          minHeight: BOTTOM_BAR_HEIGHT, paddingBottom: SAI_BOTTOM as any,
+          backgroundColor: COLORS.canvas, borderTopWidth: 1, borderTopColor: COLORS.line,
           flexDirection: 'row', direction: 'rtl' as any, zIndex: 100,
-          shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 8,
         }}>
-          {NAV_ITEMS.map((item) => {
+          {BOTTOM_ITEMS.map((item) => {
             const isActive = pathname === item.path || (item.path === '/orders' && pathname.startsWith('/orders'));
+            const color    = isActive ? COLORS.brandText : COLORS.muted;
             return (
               <TouchableOpacity key={item.path} onPress={() => router.push(`/(customer)${item.path}` as any)} activeOpacity={0.75}
-                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingTop: 6, cursor: 'pointer' as any }}>
-                <View style={{ position: 'relative', ...(isActive ? {
-                  backgroundColor: '#FFFFFF', borderRadius: 30, width: 50, height: 50,
-                  justifyContent: 'center' as const, alignItems: 'center' as const, marginTop: -30,
-                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                } as any : { justifyContent: 'center' as const, alignItems: 'center' as const }) }}>
-                  <Ionicons name={isActive ? item.activeIcon : item.icon} size={isActive ? 26 : 22} color={isActive ? ACTIVE_COLOR : INACTIVE_COLOR} />
-                  {item.path === '/cart' && itemCount > 0 && (<View style={styles.dot}><Text style={styles.dotText}>{itemCount > 9 ? '9+' : itemCount}</Text></View>)}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 8, cursor: 'pointer' as any }}>
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name={isActive ? item.activeIcon : item.icon} size={23} color={color} />
+                  {item.path === '/cart' && itemCount > 0 && (
+                    <View style={{
+                      position: 'absolute', top: -5, right: -10, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+                      backgroundColor: COLORS.brandFill, alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{itemCount > 9 ? '9+' : itemCount}</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR, marginTop: isActive ? 2 : 0 }}>
+                <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color }}>
                   {item.label}
                 </Text>
               </TouchableOpacity>

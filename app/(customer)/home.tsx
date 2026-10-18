@@ -24,9 +24,11 @@ import { useAuthStore } from '@/stores/authStore';
 import { useFavoriteIds, useFavoriteProducts } from '@/hooks/useFavorites';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
+import { COLORS } from '@/lib/theme';
+import { SideMenu } from '@/components/ui/SideMenu';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const BRAND     = '#e36523';
+const BRAND     = COLORS.brandText;
 const CARD_GAP  = 12;
 const PAGE_SIZE = 24;
 const SIDEBAR_W = 220;
@@ -66,55 +68,38 @@ function HeroBannerCard({
       activeOpacity={hasLink ? 0.88 : 1}
       onPress={hasLink ? onPress : undefined}
       style={{
-        width, overflow: 'hidden',
-        backgroundColor: banner.bg_color ?? '#1e1a17',
-        height: 320,
-        marginHorizontal: 0,
+        width, height: 150, borderRadius: 20, overflow: 'hidden',
+        backgroundColor: banner.bg_color ?? COLORS.ink,
       }}
     >
-      {/* Background image */}
       {!!banner.image_url && (
-        <Image
-          source={{ uri: banner.image_url }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-        />
+        <>
+          <Image
+            source={{ uri: banner.image_url }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+          {/* Keeps white text readable on any photo */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(28,25,23,0.38)' }} />
+        </>
       )}
 
-      {/* Content overlay */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 22 }}>
-        {/* Label chip */}
+      <View style={{ flex: 1, justifyContent: 'center', padding: 18, gap: 6, alignItems: 'flex-start' }}>
         {!!labelText && (
-          <View style={{
-            alignSelf: 'flex-end', backgroundColor: '#e36523',
-            borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
-            marginBottom: 10,
-          }}>
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>{labelText}</Text>
+          <View style={{ backgroundColor: COLORS.brand, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+            <Text style={{ color: COLORS.ink, fontSize: 11, fontWeight: '700' }}>{labelText}</Text>
           </View>
         )}
-
-        {/* Title */}
         {!!titleText && (
-          <Text style={{
-            color: '#fff', fontSize: 22, fontWeight: '900',
-            lineHeight: 30, marginBottom: 14,
-            textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-          }}>{titleText}</Text>
+          <Text numberOfLines={2} style={{ color: '#fff', fontSize: 19, fontWeight: '700', lineHeight: 27 }}>
+            {titleText}
+          </Text>
         )}
-
-        {/* CTA button */}
         {!!buttonText && hasLink && (
-          <View style={{ alignSelf: 'flex-end' }}>
-            <View style={{
-              backgroundColor: '#fff', borderRadius: 24,
-              paddingHorizontal: 22, paddingVertical: 10,
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-            }}>
-              <Text style={{ color: '#1c1917', fontSize: 13, fontWeight: '800' }}>{buttonText}</Text>
-              <Text style={{ color: '#e36523', fontSize: 13 }}>←</Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={{ color: '#F3D9CB', fontSize: 13, fontWeight: '600' }}>{buttonText}</Text>
+            <Ionicons name="chevron-back" size={14} color="#F3D9CB" />
           </View>
         )}
       </View>
@@ -140,14 +125,14 @@ function HeroBannerCarousel({
 
   if (list.length === 1) {
     return (
-      <View style={{ marginTop: 8, marginBottom: 4 }}>
-        <HeroBannerCard banner={list[0]} locale={locale} onPress={() => handlePress(list[0])} width={bannerWidth} />
+      <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+        <HeroBannerCard banner={list[0]} locale={locale} onPress={() => handlePress(list[0])} width={bannerWidth - 32} />
       </View>
     );
   }
 
   return (
-    <View style={{ marginTop: 8, marginBottom: 4 }}>
+    <View style={{ marginTop: 16 }}>
       <FlatList
         ref={flatRef}
         data={list}
@@ -158,22 +143,24 @@ function HeroBannerCarousel({
         decelerationRate="fast"
         keyExtractor={(b) => b.id}
         renderItem={({ item }) => (
-          <HeroBannerCard banner={item} locale={locale} onPress={() => handlePress(item)} width={bannerWidth} />
+          <View style={{ width: bannerWidth, paddingHorizontal: 16 }}>
+            <HeroBannerCard banner={item} locale={locale} onPress={() => handlePress(item)} width={bannerWidth - 32} />
+          </View>
         )}
         onMomentumScrollEnd={(e) => {
           setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / bannerWidth));
         }}
       />
       {/* Dots — overlaid at bottom of banner */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 10 }}>
         {list.map((_, i) => (
           <TouchableOpacity
             key={i}
             onPress={() => { flatRef.current?.scrollToIndex({ index: i, animated: true }); setActiveIndex(i); }}
             style={{
-              width: i === activeIndex ? 24 : 7,
-              height: 7, borderRadius: 4,
-              backgroundColor: i === activeIndex ? BRAND : '#d1c9bf',
+              width: i === activeIndex ? 18 : 6,
+              height: 6, borderRadius: 3,
+              backgroundColor: i === activeIndex ? COLORS.ink : '#D9D2CA',
             }}
           />
         ))}
@@ -182,37 +169,44 @@ function HeroBannerCarousel({
   );
 }
 
-// ─── Category pill card ───────────────────────────────────────────────────────
+// ─── Category tile (4-column grid) ────────────────────────────────────────────
 function CategoryCard({
-  category, locale, onPress,
-}: { category: Category; locale: string; onPress: () => void }) {
+  category, locale, onPress, size,
+}: { category: Category; locale: string; onPress: () => void; size: number }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={{ alignItems: 'center', gap: 8, width: 76 }}
-    >
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6, width: size }}>
       <View style={{
-        width: 72, height: 72, borderRadius: 36,
-        backgroundColor: '#f0ece5',
-        overflow: 'hidden',
-        borderWidth: 2, borderColor: '#e6e0d6',
+        width: size, height: size, borderRadius: 18,
+        backgroundColor: COLORS.surface, overflow: 'hidden',
         alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
       }}>
         {category.image_url ? (
           <Image source={{ uri: category.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
         ) : (
-          <Text style={{ fontSize: 30 }}>🛒</Text>
+          <Ionicons name="basket-outline" size={28} color={COLORS.muted} />
         )}
       </View>
-      <Text numberOfLines={2} style={{
-        fontSize: 11, fontWeight: '700', color: '#2d2320',
-        textAlign: 'center', lineHeight: 15,
-      }}>
+      <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: '500', color: COLORS.ink, textAlign: 'center', lineHeight: 16 }}>
         {getCategoryName(category, locale as any)}
       </Text>
     </TouchableOpacity>
+  );
+}
+
+// ─── Section header: title + "عرض الكل" ───────────────────────────────────────
+function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, marginBottom: 12, direction: 'rtl' as any,
+    }}>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: COLORS.ink }}>{title}</Text>
+      {onSeeAll && (
+        <TouchableOpacity onPress={onSeeAll} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.brandText }}>عرض الكل</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -275,27 +269,8 @@ function CategoryProductsSection({
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 32 }}>
-      {/* Section header */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 14, direction: 'rtl' as any,
-      }}>
-        <View>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>
-            {getCategoryName(category, locale as any)}
-          </Text>
-          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
-        </View>
-        <TouchableOpacity onPress={onSeeAll} style={{
-          flexDirection: 'row', alignItems: 'center', gap: 4,
-          backgroundColor: '#fff7ed', borderRadius: 20,
-          paddingHorizontal: 12, paddingVertical: 5,
-        }}>
-          <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
-          <Ionicons name="chevron-forward" size={12} color={BRAND} />
-        </TouchableOpacity>
-      </View>
+    <View style={{ marginTop: 28 }}>
+      <SectionHeader title={getCategoryName(category, locale as any)} onSeeAll={onSeeAll} />
 
       {isLoading ? (
         <ProductRowSkeleton cardWidth={cardWidth} count={3} />
@@ -305,7 +280,7 @@ function CategoryProductsSection({
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -335,25 +310,8 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 24, marginBottom: 32 }}>
-      <View style={{
-        flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 14,
-        direction: 'rtl' as any,
-      }}>
-        <View>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>جميع المنتجات</Text>
-          <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 5 }} />
-        </View>
-        <TouchableOpacity onPress={onSeeAll} style={{
-          flexDirection: 'row', alignItems: 'center', gap: 4,
-          backgroundColor: '#fff7ed', borderRadius: 20,
-          paddingHorizontal: 12, paddingVertical: 5,
-        }}>
-          <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700' }}>رؤية الكل</Text>
-          <Ionicons name="chevron-forward" size={12} color={BRAND} />
-        </TouchableOpacity>
-      </View>
+    <View style={{ marginTop: 28, marginBottom: 16 }}>
+      <SectionHeader title="جميع المنتجات" onSeeAll={onSeeAll} />
 
       {isLoading ? (
         <ProductRowSkeleton cardWidth={cardWidth} count={3} />
@@ -363,7 +321,7 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14, paddingBottom: 4 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 4 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -378,7 +336,7 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
 }
 
 // ─── Today's Deals — discounted products horizontal strip ────────────────────
-function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number }) {
+function DealsSection({ locale, cardWidth, onSeeAll }: { locale: string; cardWidth: number; onSeeAll?: () => void }) {
   const router = useRouter();
   const { data, isLoading } = useProductsPage({
     availableOnly: true,
@@ -396,29 +354,8 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 8 }}>
-      {/* Section header with flame */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, marginBottom: 12, direction: 'rtl' as any,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>عروض اليوم</Text>
-          <Text style={{ fontSize: 18 }}>🔥</Text>
-        </View>
-        <View style={{
-          backgroundColor: '#fef2f2', borderRadius: 10,
-          paddingHorizontal: 10, paddingVertical: 4,
-        }}>
-          <Text style={{ fontSize: 11, fontWeight: '800', color: '#ef4444' }}>خصومات حصرية</Text>
-        </View>
-      </View>
-
-      {/* Orange accent bar */}
-      <View style={{
-        marginHorizontal: 16, marginBottom: 14, height: 3, borderRadius: 2,
-        backgroundColor: BRAND, width: 50,
-      }} />
+    <View style={{ marginTop: 28 }}>
+      <SectionHeader title="عروض اليوم" onSeeAll={onSeeAll} />
 
       {isLoading ? (
         <ProductRowSkeleton cardWidth={cardWidth} count={3} />
@@ -427,7 +364,7 @@ function DealsSection({ locale, cardWidth }: { locale: string; cardWidth: number
           data={products}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth }}>
@@ -454,42 +391,24 @@ function MiniCartBar() {
       onPress={() => router.push('/(customer)/cart')}
       activeOpacity={0.9}
       style={{
-        position: 'absolute',
-        bottom: 100,
-        left: 16,
-        right: 16,
-        backgroundColor: '#1c1917',
-        borderRadius: 20,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.28,
-        shadowRadius: 16,
-        elevation: 12,
+        position: 'absolute', bottom: Platform.OS === 'ios' ? 96 : 76, left: 16, right: 16,
+        height: 56, backgroundColor: COLORS.ink, borderRadius: 16, paddingHorizontal: 16,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        shadowColor: COLORS.ink, shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25, shadowRadius: 16, elevation: 10,
+        direction: 'rtl' as any,
       }}
     >
-      {/* Left: count badge */}
-      <View style={{
-        backgroundColor: '#e36523',
-        borderRadius: 14,
-        minWidth: 28,
-        height: 28,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 8,
-      }}>
-        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{itemCount}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{
+          backgroundColor: COLORS.brand, borderRadius: 9, minWidth: 28, height: 28,
+          alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+        }}>
+          <Text style={{ color: COLORS.ink, fontSize: 14, fontWeight: '700' }}>{itemCount}</Text>
+        </View>
+        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>عرض السلة</Text>
       </View>
-
-      {/* Center: label */}
-      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>عرض السلة</Text>
-
-      {/* Right: total */}
-      <Text style={{ color: '#e36523', fontSize: 15, fontWeight: '800' }}>{formatPrice(total)}</Text>
+      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{formatPrice(total)}</Text>
     </TouchableOpacity>
   );
 }
@@ -560,25 +479,24 @@ export default function HomeScreen() {
   function SearchBar({ maxWidth }: { maxWidth?: number }) {
     return (
       <View style={{
-        flex: maxWidth ? undefined : 1, maxWidth,
+        maxWidth,
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#f3f4f6', borderRadius: 14,
-        paddingHorizontal: 14, paddingVertical: 11, gap: 8,
-        borderWidth: 1, borderColor: '#e6e0d8',
+        backgroundColor: COLORS.surface, borderRadius: 14,
+        paddingHorizontal: 14, height: 48, gap: 10,
       }}>
+        <Ionicons name="search-outline" size={20} color={COLORS.muted} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('products.search')}
+          style={{ flex: 1, fontSize: 15, color: COLORS.ink, textAlign: 'right' } as any}
+          placeholderTextColor={COLORS.muted}
+        />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch('')}>
             <Ionicons name="close-circle" size={17} color="#9ca3af" />
           </TouchableOpacity>
         )}
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('products.search')}
-          style={{ flex: 1, fontSize: 14, color: '#111827' } as any}
-          placeholderTextColor="#9ca3af"
-        />
-        <Ionicons name="search-outline" size={17} color="#9ca3af" />
       </View>
     );
   }
@@ -627,64 +545,21 @@ export default function HomeScreen() {
       });
   }, [session?.user?.id]));
 
+  const [showAllCats, setShowAllCats] = useState(false);
+  const [menuOpen, setMenuOpen]       = useState(false);
+
   function DiscoverContent() {
-    // Derive a friendly greeting from the session
-    const userName = session?.user?.user_metadata?.full_name
-      ?? session?.user?.user_metadata?.name
-      ?? session?.user?.email?.split('@')[0]
-      ?? null;
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'صباح الخير' : hour < 17 ? 'مرحباً' : 'مساء الخير';
+    // 4-column category grid: 7 categories + "more" tile, expandable to all
+    const catTile  = (Math.min(windowWidth, 600) - 32 - 3 * 10) / 4;
+    const allCats  = categories ?? [];
+    const visCats  = showAllCats ? allCats : allCats.slice(0, 7);
+    const hasMore  = allCats.length > 7;
 
     return (
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}
+        contentContainerStyle={{ paddingBottom: 170, backgroundColor: COLORS.canvas, direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Greeting header (mobile only) ── */}
-        {!isWeb && userName && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
-            direction: 'rtl' as any,
-          }}>
-            <View>
-              <Text style={{ fontSize: 13, color: '#a09284', fontWeight: '600', letterSpacing: 0.3 }}>
-                {greeting} 👋
-              </Text>
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#1c1917', marginTop: 2, letterSpacing: -0.3 }}>
-                {userName}
-              </Text>
-            </View>
-            {defaultAddress ? (
-              <TouchableOpacity
-                onPress={() => router.push('/(customer)/profile' as any)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
-                  backgroundColor: '#fff7ed', borderRadius: 20,
-                  paddingHorizontal: 12, paddingVertical: 7,
-                  borderWidth: 1, borderColor: '#fed7aa',
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="location-outline" size={13} color={BRAND} />
-                <Text style={{ fontSize: 12, color: '#1c1917', fontWeight: '700' }} numberOfLines={1}>
-                  {defaultAddress.city}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={{
-                width: 44, height: 44, borderRadius: 22,
-                backgroundColor: '#fff7ed',
-                alignItems: 'center', justifyContent: 'center',
-                borderWidth: 1, borderColor: '#fed7aa',
-              }}>
-                <Text style={{ fontSize: 20 }}>🛍️</Text>
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Banners */}
         <HeroBannerCarousel
           locale={locale}
@@ -692,38 +567,45 @@ export default function HomeScreen() {
           onCategorySelect={setSelectedCategory}
         />
 
-
-        {/* ── Today's Deals ── */}
-        <DealsSection locale={locale} cardWidth={discoverCardW} />
-
-        {/* الفئات — category circles */}
-        {categories && categories.length > 0 && (
-          <>
-            <View style={{ paddingHorizontal: 16, marginTop: 24, marginBottom: 16, direction: 'rtl' as any }}>
-              <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917' }}>الفئات</Text>
-              <View style={{ width: 36, height: 3, backgroundColor: BRAND, borderRadius: 2, marginTop: 6 }} />
-            </View>
-
-            <View style={{ direction: 'rtl' as any }}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingBottom: 4 }}
-            >
-              {categories.map((category) => (
+        {/* الأقسام — category grid */}
+        {allCats.length > 0 && (
+          <View style={{ marginTop: 22 }}>
+            <SectionHeader title="الأقسام" onSeeAll={() => setShowAllProducts(true)} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 14, paddingHorizontal: 16, direction: 'rtl' as any }}>
+              {visCats.map((category) => (
                 <CategoryCard
                   key={category.id}
                   category={category}
                   locale={locale}
+                  size={catTile}
                   onPress={() => setSelectedCategory(category.id)}
                 />
               ))}
-            </ScrollView>
+              {hasMore && (
+                <TouchableOpacity
+                  onPress={() => setShowAllCats((v) => !v)}
+                  activeOpacity={0.8}
+                  style={{ alignItems: 'center', gap: 6, width: catTile }}
+                >
+                  <View style={{
+                    width: catTile, height: catTile, borderRadius: 18,
+                    backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Ionicons name={showAllCats ? 'chevron-up' : 'grid-outline'} size={26} color={COLORS.brandText} />
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.ink, textAlign: 'center' }}>
+                    {showAllCats ? 'عرض أقل' : 'كل الأقسام'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </>
+          </View>
         )}
 
-        {/* Product section per category */}
+        {/* ── Today's Deals ── */}
+        <DealsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
+
+        {/* Product rail per category */}
         {categories?.map((category) => (
           <CategoryProductsSection
             key={category.id}
@@ -734,7 +616,7 @@ export default function HomeScreen() {
           />
         ))}
 
-        {/* All products section (no category filter) */}
+        {/* All products */}
         <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
       </ScrollView>
     );
@@ -761,7 +643,7 @@ export default function HomeScreen() {
           )}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.5}
-          contentContainerStyle={{ paddingBottom: 24, backgroundColor: '#f8f7f5', gap: 16, paddingTop: 10 }}
+          contentContainerStyle={{ paddingBottom: 24, backgroundColor: COLORS.canvas, gap: 16, paddingTop: 10 }}
           ListFooterComponent={isFetchingNextPage ? (
             <View style={{ paddingVertical: 16, alignItems: 'center' }}><ActivityIndicator color={BRAND} /></View>
           ) : hasNextPage ? (
@@ -789,7 +671,7 @@ export default function HomeScreen() {
   // ── Web browse ─────────────────────────────────────────────────────────────
   function WebBrowseContent() {
     return (
-      <ScrollView contentContainerStyle={{ paddingBottom: 40, backgroundColor: '#f8f7f5' }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40, backgroundColor: COLORS.canvas }}>
         {webFetching && webProducts.length === 0 ? (
           <View style={{ paddingTop: 60, alignItems: 'center' }}>
             <ActivityIndicator size="large" color={BRAND} />
@@ -862,43 +744,72 @@ export default function HomeScreen() {
 
   // ── Root ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f7f5', direction: 'rtl' as any }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.canvas, direction: 'rtl' as any }}>
 
-      {/* Mobile header */}
+      {/* Mobile header: delivery address + notifications, then search */}
       {!isWeb && (
-        <View style={{
-          backgroundColor: '#fff',
-          paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12,
-          direction: 'rtl' as any,
-          borderBottomWidth: 1, borderBottomColor: '#f0ece6',
-          shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 3,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {SearchBar({})}
+        <View style={{ backgroundColor: COLORS.canvas, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 14, direction: 'rtl' as any }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <TouchableOpacity
-              onPress={() => router.push('/(customer)/notifications' as any)}
-              style={{
-                width: 46, height: 46, borderRadius: 23,
-                backgroundColor: '#f5f0ea',
-                alignItems: 'center', justifyContent: 'center',
-                borderWidth: 1, borderColor: '#e6e0d8',
-              }}
+              onPress={() => router.push('/(customer)/addresses' as any)}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
             >
-              <View style={{ position: 'relative' }}>
-                <Ionicons name="notifications-outline" size={22} color="#1c1917" />
-                {unreadCount > 0 && (
-                  <View style={{
-                    position: 'absolute', top: -4, right: -5,
-                    minWidth: 17, height: 17, borderRadius: 9,
-                    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
-                    borderWidth: 1.5, borderColor: '#fff',
-                  }}>
-                    <Text style={{ fontSize: 9, fontWeight: '900', color: '#fff' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                  </View>
-                )}
+              <View style={{
+                width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.brandTint,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="location-outline" size={21} color={COLORS.brandText} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: COLORS.muted }}>التوصيل إلى</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink, flexShrink: 1 }}>
+                    {defaultAddress
+                      ? [defaultAddress.label, defaultAddress.city].filter(Boolean).join(' — ')
+                      : 'أضف عنوان التوصيل'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={15} color={COLORS.ink} />
+                </View>
               </View>
             </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => router.push('/(customer)/notifications' as any)}
+                accessibilityLabel="الإشعارات"
+                style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.canvas,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="notifications-outline" size={22} color={COLORS.ink} />
+                {unreadCount > 0 && (
+                  <View style={{
+                    position: 'absolute', top: 6, left: 6,
+                    minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 3,
+                    backgroundColor: COLORS.brandFill, alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1.5, borderColor: '#fff',
+                  }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setMenuOpen(true)}
+                accessibilityLabel="القائمة"
+                style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.canvas,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="menu" size={24} color={COLORS.ink} />
+              </TouchableOpacity>
+            </View>
           </View>
+          {SearchBar({})}
         </View>
       )}
 
@@ -913,6 +824,9 @@ export default function HomeScreen() {
 
       {/* ── Floating mini-cart bar ── */}
       <MiniCartBar />
+
+      {/* Burger menu (native only — web has its own drawer in CustomerWebLayout) */}
+      {!isWeb && <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />}
     </SafeAreaView>
   );
 }
