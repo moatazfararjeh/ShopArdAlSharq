@@ -33,7 +33,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>41</string>
+	<string>42</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>
@@ -76,6 +76,8 @@
 	<string>$(PRODUCT_NAME) uses the camera to let you take a photo of your commercial registration document when creating a vendor account.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>السماح لتطبيق أرض الشرق باستخدام موقعك لتحديد عنوان التوصيل على الخريطة</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
 	<key>NSPhotoLibraryUsageDescription</key>

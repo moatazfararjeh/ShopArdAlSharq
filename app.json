@@ -15,14 +15,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ardalsharq.foodbox",
-      "buildNumber": "41",
+      "buildNumber": "42",
       "infoPlist": {
         "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "ar",
         "UISemanticContentAttribute": "forceRightToLeft"
       },
-      "runtimeVersion": "1.0.0"
+      "runtimeVersion": "1.1.0"
     },
     "android": {
       "package": "com.ardalsharq.app",
@@ -40,9 +40,7 @@
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
       ],
-      "runtimeVersion": {
-        "policy": "appVersion"
-      }
+      "runtimeVersion": "1.1.0"
     },
     "web": {
       "bundler": "metro",
@@ -74,7 +72,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "السماح لتطبيق أرض الشرق باستخدام موقعك لتحديد عنوان التوصيل على الخريطة"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

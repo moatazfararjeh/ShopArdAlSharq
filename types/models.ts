@@ -188,6 +188,8 @@ export interface Address {
   apartment_number: string | null;
   notes: string | null;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
 }

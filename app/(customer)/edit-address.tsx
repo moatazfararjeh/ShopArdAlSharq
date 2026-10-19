@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { LocationPicker } from '@/components/address/LocationPicker';
 
 export default function EditAddressScreen() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function EditAddressScreen() {
   const { session } = useAuthStore();
   const { show: showToast } = useToastStore();
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<AddressFormValues>({
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
       label: '',
@@ -32,8 +33,13 @@ export default function EditAddressScreen() {
       apartment_number: undefined,
       notes: undefined,
       is_default: true,
+      latitude: undefined as unknown as number,   // required — set on the map
+      longitude: undefined as unknown as number,
     },
   });
+  const city = watch('city');
+  const lat  = watch('latitude');
+  const lng  = watch('longitude');
 
   useEffect(() => {
     if (!id) return;
@@ -51,6 +57,8 @@ export default function EditAddressScreen() {
         apartment_number: data.apartment_number ?? undefined,
         notes: data.notes ?? undefined,
         is_default: data.is_default ?? false,
+        latitude: (data as any).latitude ?? (undefined as unknown as number),
+        longitude: (data as any).longitude ?? (undefined as unknown as number),
       });
     });
   }, [id]);
@@ -77,6 +85,8 @@ export default function EditAddressScreen() {
       apartment_number: values.apartment_number || null,
       notes: values.notes || null,
       is_default: values.is_default,
+      latitude: values.latitude,
+      longitude: values.longitude,
     };
 
     let error: any;
@@ -173,8 +183,15 @@ export default function EditAddressScreen() {
               placeholder="اسم الشارع" error={errors.street?.message} />
           )}
         />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-        </View>
+        <LocationPicker
+          value={lat != null && lng != null ? { latitude: lat, longitude: lng } : null}
+          onChange={(p) => {
+            setValue('latitude', p.latitude, { shouldValidate: true, shouldDirty: true });
+            setValue('longitude', p.longitude, { shouldValidate: true, shouldDirty: true });
+          }}
+          city={city}
+          error={errors.latitude?.message ?? errors.longitude?.message}
+        />
         <Controller control={control} name="notes"
           render={({ field: { onChange, value, onBlur } }) => (
             <Input label="ملاحظات" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}

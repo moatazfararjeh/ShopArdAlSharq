@@ -11,6 +11,8 @@ import { getProductName, Order } from '@/types/models';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/lib/theme';
+import { mapsUrl } from '@/components/address/LocationPicker';
+import { Linking } from 'react-native';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
@@ -70,6 +72,7 @@ function printOrderWindow(order: Order, locale: string) {
         ${addr.street ? `<tr><td class="info-lbl">الشارع</td><td>${addr.street}</td></tr>` : ''}
         ${(addr.building_number || addr.floor_number || addr.apartment_number) ? `<tr><td class="info-lbl">التفاصيل</td><td>${[addr.building_number ? `مبنى ${addr.building_number}` : null, addr.floor_number ? `طابق ${addr.floor_number}` : null, addr.apartment_number ? `شقة ${addr.apartment_number}` : null].filter(Boolean).join(' — ')}</td></tr>` : ''}
         ${addr.notes ? `<tr><td class="info-lbl">ملاحظات</td><td>${addr.notes}</td></tr>` : ''}
+        ${addr.latitude != null && addr.longitude != null ? `<tr><td class="info-lbl">الموقع</td><td><a href="${mapsUrl(Number(addr.latitude), Number(addr.longitude))}">${Number(addr.latitude).toFixed(5)}, ${Number(addr.longitude).toFixed(5)}</a></td></tr>` : ''}
       </table>
     </div>` : '';
 
@@ -452,6 +455,19 @@ export default function OrderDetailScreen() {
               ].filter(Boolean).join(' — ')} />
             ) : null}
             {addr.notes ? <InfoRow icon="document-text-outline" label="ملاحظات" value={addr.notes} /> : null}
+            {addr.latitude != null && addr.longitude != null && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(mapsUrl(Number(addr.latitude), Number(addr.longitude)))}
+                activeOpacity={0.8}
+                style={{
+                  marginTop: 4, height: 44, borderRadius: 12, backgroundColor: COLORS.brandTint,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <Ionicons name="map-outline" size={18} color={COLORS.brandText} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.brandText }}>فتح الموقع على الخريطة</Text>
+              </TouchableOpacity>
+            )}
           </Card>
         )}
 

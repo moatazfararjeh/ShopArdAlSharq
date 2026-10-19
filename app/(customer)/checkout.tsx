@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/lib/theme';
+import { LocationPicker, LatLng } from '@/components/address/LocationPicker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -95,6 +96,8 @@ interface SavedAddress {
   district?: string | null;
   street?: string | null;
   is_default?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // ─── Order items summary ───────────────────────────────────────────────────────
@@ -182,6 +185,9 @@ export default function CheckoutScreen() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveThisAddress, setSaveThisAddress] = useState(true);
+  // Map pins for saved addresses created before locations were required
+  const [savedPins, setSavedPins] = useState<Record<string, LatLng>>({});
+  const [pinError, setPinError] = useState<string | null>(null);
   // Commercial register validation: derived directly from store so it updates immediately after upload
   const hasCommercialRegister = profile ? !!(profile as any).commercial_register_url : null;
 
@@ -189,6 +195,7 @@ export default function CheckoutScreen() {
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -208,9 +215,14 @@ export default function CheckoutScreen() {
         apartment_number: undefined,
         notes: undefined,
         is_default: false,
+        latitude: undefined as unknown as number,   // required — set on the map
+        longitude: undefined as unknown as number,
       },
     },
   });
+  const newCity = watch('new_address.city');
+  const newLat  = watch('new_address.latitude');
+  const newLng  = watch('new_address.longitude');
 
   function selectAddress(id: string | null) {
     setSelectedAddressId(id);
@@ -230,6 +242,8 @@ export default function CheckoutScreen() {
         apartment_number: undefined,
         notes: undefined,
         is_default: false,
+        latitude: undefined as unknown as number,
+        longitude: undefined as unknown as number,
       });
     }
   }
@@ -241,7 +255,7 @@ export default function CheckoutScreen() {
     // Load saved addresses
     supabase
       .from('addresses')
-      .select('id, label, recipient_name, phone, city, district, street, is_default')
+      .select('id, label, recipient_name, phone, city, district, street, is_default, latitude, longitude')
       .eq('user_id', userId)
       .order('is_default', { ascending: false })
       .then(({ data }) => {
@@ -279,6 +293,24 @@ export default function CheckoutScreen() {
       let tempAddressId: string | null = null;
 
       if (selectedAddressId) {
+        // Older saved addresses have no map location: it must be pinned once here
+        const saved = savedAddresses.find((a) => a.id === selectedAddressId);
+        if (saved && (saved.latitude == null || saved.longitude == null)) {
+          const pin = savedPins[selectedAddressId];
+          if (!pin) {
+            const msg = 'يرجى تحديد موقع العنوان على الخريطة';
+            setPinError(msg);
+            setSubmitError(msg);
+            showToast(msg, 'error');
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+            return;
+          }
+          const { error: pinSaveError } = await (supabase.from('addresses') as any)
+            .update({ latitude: pin.latitude, longitude: pin.longitude })
+            .eq('id', selectedAddressId);
+          if (pinSaveError) { setSubmitError(pinSaveError.message); return; }
+          setSavedAddresses((list) => list.map((a) => a.id === selectedAddressId ? { ...a, ...pin } : a));
+        }
         finalAddressId = selectedAddressId;
       } else {
         const addr = values.new_address!;
@@ -297,6 +329,8 @@ export default function CheckoutScreen() {
             apartment_number: addr.apartment_number || null,
             notes: addr.notes || null,
             is_default: addr.is_default,
+            latitude: addr.latitude,
+            longitude: addr.longitude,
           })
           .select('id')
           .single();
@@ -428,8 +462,34 @@ export default function CheckoutScreen() {
                 {addr.city}{addr.district ? ` · ${addr.district}` : ''}{addr.street ? ` · ${addr.street}` : ''}
               </Text>
               <Text style={{ fontSize: 12, color: COLORS.muted, textAlign: 'right' }}>{addr.phone}</Text>
+              {(addr.latitude == null || addr.longitude == null) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <Ionicons name="location-outline" size={13} color={COLORS.brandText} />
+                  <Text style={{ fontSize: 12, color: COLORS.brandText, fontWeight: '600' }}>بحاجة لتحديد الموقع على الخريطة</Text>
+                </View>
+              )}
             </RadioRow>
           ))}
+
+          {/* Selected saved address has no location yet → pin it once before ordering */}
+          {(() => {
+            const sel = savedAddresses.find((a) => a.id === selectedAddressId);
+            if (!sel || (sel.latitude != null && sel.longitude != null)) return null;
+            return (
+              <View style={{ marginTop: 4, marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, color: COLORS.muted, marginBottom: 8, lineHeight: 19 }}>
+                  حدّد موقع "{sel.label}" على الخريطة مرة واحدة، وسنحفظه لطلباتك القادمة.
+                </Text>
+                <LocationPicker
+                  key={sel.id}
+                  value={savedPins[sel.id] ?? null}
+                  onChange={(p) => { setSavedPins((m) => ({ ...m, [sel.id]: p })); setPinError(null); }}
+                  city={sel.city}
+                  error={pinError ?? undefined}
+                />
+              </View>
+            );
+          })()}
 
           {savedAddresses.length > 0 && (
             <RadioRow selected={selectedAddressId === null} onPress={() => selectAddress(null)}>
@@ -495,6 +555,16 @@ export default function CheckoutScreen() {
                   <Input label="الشارع *" value={value ?? ''} onChangeText={onChange} onBlur={onBlur}
                     placeholder="اسم الشارع" error={errors.new_address?.street?.message} />
                 )} />
+
+              <LocationPicker
+                value={newLat != null && newLng != null ? { latitude: newLat, longitude: newLng } : null}
+                onChange={(p) => {
+                  setValue('new_address.latitude', p.latitude, { shouldValidate: true });
+                  setValue('new_address.longitude', p.longitude, { shouldValidate: true });
+                }}
+                city={newCity}
+                error={errors.new_address?.latitude?.message ?? errors.new_address?.longitude?.message}
+              />
 
               <TouchableOpacity
                 onPress={() => setSaveThisAddress(!saveThisAddress)}

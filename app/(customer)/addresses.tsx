@@ -21,6 +21,8 @@ interface Address {
   floor_number: string | null;
   apartment_number: string | null;
   is_default: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function AddressesScreen() {
@@ -135,6 +137,16 @@ export default function AddressesScreen() {
                 {addr.floor_number ? ` · ط${addr.floor_number}` : ''}
                 {addr.apartment_number ? ` · شقة ${addr.apartment_number}` : ''}
               </Text>
+
+              {(addr.latitude == null || addr.longitude == null) && (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(customer)/edit-address?id=${addr.id}` as any)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}
+                >
+                  <Ionicons name="location-outline" size={14} color="#B9460F" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#B9460F' }}>حدّد الموقع على الخريطة</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Actions */}
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>

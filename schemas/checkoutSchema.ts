@@ -30,6 +30,9 @@ export const addressSchema = z.object({
   apartment_number: z.string().max(10).optional(),
   notes: z.string().max(200, 'الملاحظات يجب ألا تتجاوز 200 حرف').optional(),
   is_default: z.boolean(),
+  // Picked on the map (components/address/LocationPicker) — required for new/edited addresses
+  latitude:  z.number({ error: 'يرجى تحديد الموقع على الخريطة' }).min(-90).max(90),
+  longitude: z.number({ error: 'يرجى تحديد الموقع على الخريطة' }).min(-180).max(180),
 });
 
 export const checkoutSchema = z.object({
