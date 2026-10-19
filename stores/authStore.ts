@@ -61,14 +61,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ session, isAuthenticated: !!session, isInitialized: true, isLoading: false });
       };
 
-      const fetchProfile = async (userId: string) => {
+      const fetchProfile = async (userId: string, authEmail?: string | null) => {
         try {
           const { data } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
-          if (data) get().setProfile(data as Profile);
+          if (!data) return;
+          let profile = data as Profile;
+          // profiles.email is only copied at sign-up. After the user confirms an
+          // email change (Profile → تعديل المعلومات), the login email differs —
+          // bring the profile copy up to date so the app and admin see the new one.
+          if (authEmail && profile.email !== authEmail) {
+            const { error } = await (supabase.from('profiles') as any)
+              .update({ email: authEmail })
+              .eq('id', userId);
+            if (!error) profile = { ...profile, email: authEmail };
+          }
+          get().setProfile(profile);
         } catch {
           // non-blocking
         }
@@ -101,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Deferring escapes the callback's execution context.
         setTimeout(() => {
           if (session?.user) {
-            fetchProfile(session.user.id);
+            fetchProfile(session.user.id, session.user.email);
           } else if (settled) {
             get().setProfile(null);
           }

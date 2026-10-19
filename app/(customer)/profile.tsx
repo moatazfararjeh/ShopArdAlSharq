@@ -114,6 +114,56 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 }
 
 // ─── Profile screen ───────────────────────────────────────────────────────────
+// ─── Input field (module level: defined inside the screen it would be
+// re-created on every render, remounting the TextInput on each keystroke) ────
+function Field({
+  label, value, onChangeText, editable = true,
+  placeholder, keyboard, hint,
+}: {
+  label: string; value: string;
+  onChangeText?: (v: string) => void;
+  editable?: boolean; placeholder?: string;
+  keyboard?: 'phone-pad' | 'email-address';
+  hint?: string;
+}) {
+  const locked = !editable;
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: '#a09284', marginBottom: 5 }}>
+        {label}
+      </Text>
+      <View style={{
+        borderWidth: 1.5,
+        borderColor: locked ? '#f0ece6' : '#e6ddd4',
+        borderRadius: 14,
+        paddingHorizontal: 14, paddingVertical: 11,
+        backgroundColor: locked ? '#faf8f6' : '#fff',
+        flexDirection: 'row-reverse', alignItems: 'center',
+      }}>
+        {locked && (
+          <Ionicons name="lock-closed-outline" size={13} color="#c0b8b0" style={{ marginLeft: 6 }} />
+        )}
+        <TextInput
+          value={value}
+          onChangeText={locked ? undefined : onChangeText}
+          editable={!locked}
+          placeholder={placeholder}
+          keyboardType={keyboard}
+          autoCapitalize={keyboard === 'email-address' ? 'none' : 'sentences'}
+          autoCorrect={keyboard ? false : undefined}
+          style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917' } as any}
+          placeholderTextColor="#c0b8b0"
+        />
+      </View>
+      {!!hint && (
+        <Text style={{ fontSize: 11, color: '#857d78', marginTop: 4, lineHeight: 16 }}>{hint}</Text>
+      )}
+    </View>
+  );
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function ProfileScreen() {
   const { confirm, dialog } = useConfirm();
   const { t } = useTranslation();
@@ -128,6 +178,7 @@ export default function ProfileScreen() {
   const [editName,     setEditName]     = useState('');
   const [editCompany,  setEditCompany]  = useState('');
   const [editPhone,    setEditPhone]    = useState('');
+  const [editEmail,    setEditEmail]    = useState('');
 
   const { isAvailable, isEnabled, clearCredentials, getBiometricLabel, getBiometricIcon } = useBiometric();
 
@@ -136,6 +187,7 @@ export default function ProfileScreen() {
     setEditName(profile?.full_name ?? '');
     setEditCompany((profile as any)?.company_name ?? '');
     setEditPhone(profile?.phone ?? '');
+    setEditEmail(session?.user?.email ?? profile?.email ?? '');
     setEditMode(true);
   }
 
@@ -156,6 +208,14 @@ export default function ProfileScreen() {
       else Alert.alert('خطأ', 'رقم الهاتف مطلوب');
       return;
     }
+    const newEmail     = editEmail.trim().toLowerCase();
+    const currentEmail = (session.user.email ?? profile?.email ?? '').toLowerCase();
+    const emailChanged = !!newEmail && newEmail !== currentEmail;
+    if (!newEmail || !EMAIL_RE.test(newEmail)) {
+      if (Platform.OS === 'web') window.alert('البريد الإلكتروني غير صحيح');
+      else Alert.alert('خطأ', 'البريد الإلكتروني غير صحيح');
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await (supabase.from('profiles') as any)
@@ -168,6 +228,26 @@ export default function ProfileScreen() {
       if (error) throw error;
       const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (data) setProfile(data as any);
+
+      // The email is the login address: Supabase Auth only switches it after
+      // the user opens the confirmation link (profiles.email is synced then,
+      // in authStore.fetchProfile).
+      if (emailChanged) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: newEmail });
+        if (emailError) {
+          setEditMode(false);
+          const msg = `تم حفظ باقي المعلومات، لكن تعذّر تغيير البريد الإلكتروني: ${emailError.message}`;
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('تنبيه', msg);
+          return;
+        }
+        setEditMode(false);
+        const msg = `أرسلنا رابط تأكيد إلى ${newEmail}. افتح الرابط لإتمام تغيير البريد الإلكتروني — قد يصلك رابط على بريدك الحالي أيضاً. حتى ذلك الحين تبقى تسجّل الدخول ببريدك الحالي.`;
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('تأكيد البريد الإلكتروني', msg);
+        return;
+      }
+
       setEditMode(false);
       useToastStore.getState().show('تم حفظ التغييرات بنجاح', 'success');
     } catch (e: any) {
@@ -311,47 +391,6 @@ export default function ProfileScreen() {
   const roleBg    = isAdmin ? '#fff7ed' : '#f0f9ff';
   const roleColor = isAdmin ? BRAND : '#0ea5e9';
 
-  // ── Input field helper ─────────────────────────────────────────────────────
-  function Field({
-    label, value, onChangeText, editable = true,
-    placeholder, keyboard,
-  }: {
-    label: string; value: string;
-    onChangeText?: (v: string) => void;
-    editable?: boolean; placeholder?: string;
-    keyboard?: 'phone-pad' | 'email-address';
-  }) {
-    const locked = !editable;
-    return (
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: '#a09284', marginBottom: 5 }}>
-          {label}
-        </Text>
-        <View style={{
-          borderWidth: 1.5,
-          borderColor: locked ? '#f0ece6' : '#e6ddd4',
-          borderRadius: 14,
-          paddingHorizontal: 14, paddingVertical: 11,
-          backgroundColor: locked ? '#faf8f6' : '#fff',
-          flexDirection: 'row-reverse', alignItems: 'center',
-        }}>
-          {locked && (
-            <Ionicons name="lock-closed-outline" size={13} color="#c0b8b0" style={{ marginLeft: 6 }} />
-          )}
-          <TextInput
-            value={value}
-            onChangeText={locked ? undefined : onChangeText}
-            editable={!locked}
-            placeholder={placeholder}
-            keyboardType={keyboard}
-            style={{ flex: 1, fontSize: 14, color: locked ? '#a09284' : '#1c1917' } as any}
-            placeholderTextColor="#c0b8b0"
-          />
-        </View>
-      </View>
-    );
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG, direction: 'rtl' as any }}>
@@ -406,29 +445,29 @@ export default function ProfileScreen() {
               <Field
                 label="الاسم الكامل *"
                 value={editName}
-                onChangeText={profile?.full_name ? undefined : setEditName}
-                editable={!profile?.full_name}
+                onChangeText={setEditName}
                 placeholder="الاسم الكامل"
               />
               <Field
                 label="اسم الشركة *"
                 value={editCompany}
-                onChangeText={(profile as any)?.company_name ? undefined : setEditCompany}
-                editable={!(profile as any)?.company_name}
+                onChangeText={setEditCompany}
                 placeholder="اسم الشركة"
               />
               <Field
                 label="رقم الهاتف *"
                 value={editPhone}
-                onChangeText={profile?.phone ? undefined : setEditPhone}
-                editable={!profile?.phone}
+                onChangeText={setEditPhone}
                 placeholder="رقم الهاتف"
                 keyboard="phone-pad"
               />
               <Field
                 label="البريد الإلكتروني"
-                value={profile?.email ?? ''}
-                editable={false}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="example@email.com"
+                keyboard="email-address"
+                hint="عند تغيير البريد سيصلك رابط تأكيد، ويتغيّر بريد تسجيل الدخول بعد فتحه."
               />
               <View style={{ flexDirection: 'row-reverse', gap: 10, marginTop: 4 }}>
                 {/* Save FIRST → RIGHT in RTL (primary action) */}
