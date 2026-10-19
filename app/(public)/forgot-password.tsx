@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { forgotPasswordSchema, ForgotPasswordFormValues } from '@/schemas/authSchema';
 import { useForgotPassword } from '@/hooks/useAuth';
+import { setResetEmailDraft } from '@/lib/passwordResetDraft';
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
@@ -21,10 +22,16 @@ export default function ForgotPasswordScreen() {
   const mutation = useForgotPassword();
   const [sent, setSent] = useState(false);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormValues>({
+  const { control, handleSubmit, getValues, formState: { errors } } = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: '' },
   });
+
+  // Open the code form (email + 6-digit code from the reset email + new password)
+  function enterCode() {
+    setResetEmailDraft(getValues('email') ?? '');
+    router.push({ pathname: '/(public)/reset-password', params: { mode: 'code' } } as any);
+  }
 
   async function onSubmit(values: ForgotPasswordFormValues) {
     await mutation.mutateAsync(values.email);
@@ -37,7 +44,15 @@ export default function ForgotPasswordScreen() {
         <Text className="mb-4 text-5xl">📧</Text>
         <Text className="mb-2 text-xl font-bold text-gray-900">{t('auth.sendResetLink')}</Text>
         <Text className="mb-8 text-center text-gray-500">{t('auth.resetEmailSent')}</Text>
-        <Button title={t('auth.login')} onPress={() => router.replace('/(public)/login')} fullWidth />
+        <Button title="لديك رمز؟ أدخله هنا" onPress={enterCode} fullWidth size="lg" />
+        <Button
+          title={t('auth.login')}
+          variant="outline"
+          onPress={() => router.replace('/(public)/login')}
+          fullWidth
+          size="md"
+          style={{ marginTop: 12 }}
+        />
       </SafeAreaView>
     );
   }
@@ -93,6 +108,10 @@ export default function ForgotPasswordScreen() {
             size="md"
             style={{ marginTop: 12 }}
           />
+
+          <TouchableOpacity onPress={enterCode} style={{ marginTop: 18, alignItems: 'center', paddingVertical: 8 }}>
+            <Text style={{ color: '#B9460F', fontWeight: '600', fontSize: 14 }}>لديك رمز؟ أدخله هنا</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

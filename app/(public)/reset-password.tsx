@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
+import { takeResetEmailDraft } from '@/lib/passwordResetDraft';
 
 // Two ways to reset:
 //  - 'link': the email link worked → Supabase opened a recovery session, just set the password.
@@ -39,7 +40,10 @@ function linkErrorFromUrl(): string | null {
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>(() => (linkErrorFromUrl() ? 'code' : 'checking'));
+  // Opened from "لديك رمز؟ أدخله هنا" on the forgot-password screen
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [draftEmail] = useState(takeResetEmailDraft);
+  const [mode, setMode] = useState<Mode>(() => (params.mode === 'code' || linkErrorFromUrl() ? 'code' : 'checking'));
   const [linkFailed] = useState(() => !!linkErrorFromUrl());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -54,7 +58,7 @@ export default function ResetPasswordScreen() {
   } = useForm<FormValues>({
     resolver: (values, ctx, opts) =>
       zodResolver((modeRef.current === 'code' ? codeSchema : linkSchema) as any)(values, ctx, opts as any),
-    defaultValues: { email: '', code: '', password: '', confirm: '' },
+    defaultValues: { email: draftEmail, code: '', password: '', confirm: '' },
   });
 
   // Valid link → Supabase reads #access_token=…&type=recovery and fires
