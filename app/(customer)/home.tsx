@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, TextInput, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, Dimensions, FlatList, Platform, I18nManager,
 } from 'react-native';
 import { ProductRowSkeleton, SectionHeaderSkeleton, BannerSkeleton } from '@/components/ui/Skeleton';
@@ -26,6 +26,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { COLORS } from '@/lib/theme';
 import { SideMenu } from '@/components/ui/SideMenu';
+import { useBrands, useCategoryBrands } from '@/hooks/useBrands';
+import { Brand } from '@/types/models';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND     = COLORS.brandText;
@@ -210,6 +212,47 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
   );
 }
 
+// ─── Brand logo tile (home "الماركات" row) ────────────────────────────────────
+function BrandTile({ brand, onPress }: { brand: Brand; onPress: () => void }) {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6, width: 76 }}>
+      <View style={{
+        width: 68, height: 68, borderRadius: 34, backgroundColor: '#fff',
+        borderWidth: 1, borderColor: COLORS.line, overflow: 'hidden',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        {brand.image_url
+          ? <Image source={{ uri: brand.image_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" accessibilityLabel={brand.name} />
+          : <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.brandText }}>{brand.name.charAt(0)}</Text>}
+      </View>
+      <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: COLORS.ink, textAlign: 'center' }}>{brand.name}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Filter chip (category / brand rows in the product list) ──────────────────
+function FilterChip({ label, active, onPress, image }: { label: string; active: boolean; onPress: () => void; image?: string | null }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={{
+        height: 38, borderRadius: 19, flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingStart: image ? 4 : 14, paddingEnd: 14,
+        backgroundColor: active ? COLORS.ink : '#fff',
+        borderWidth: 1, borderColor: active ? COLORS.ink : COLORS.line,
+      }}
+    >
+      {!!image && (
+        <Image source={{ uri: image }} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#fff' }} contentFit="cover" />
+      )}
+      <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#fff' : COLORS.ink }}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Sort products: favorites first ───────────────────────────────────────────
 function sortByFavorites(products: Product[], favIds: string[]): Product[] {
   if (!favIds.length) return products;
@@ -248,52 +291,6 @@ function sortAvailableFirst(products: Product[]): Product[] {
   return [...inStock, ...outOfStock];
 }
 
-// ─── Per-category horizontal product row ──────────────────────────────────────
-function CategoryProductsSection({
-  category, locale, cardWidth, onSeeAll,
-}: { category: Category; locale: string; cardWidth: number; onSeeAll: () => void }) {
-  const router = useRouter();
-  const { data: favIds } = useFavoriteIds();
-  const { data: favProducts } = useFavoriteProducts();
-  // Over-fetch beyond the 10 actually shown: the newest 10 alone can be mostly
-  // out-of-stock, and reordering client-side can't pull in more in-stock
-  // items than were fetched — so fetch a bigger pool, then slice after sorting.
-  const { data, isLoading } = useProductsPage({
-    categoryId: category.id,
-    limit: 30,
-    availableOnly: true,
-    sortBy: 'newest',
-  });
-  const products = sortAvailableFirst(mergeWithFavorites(data?.data ?? [], favProducts ?? [], favIds ?? [], category.id)).slice(0, 10);
-
-  if (!isLoading && products.length === 0) return null;
-
-  return (
-    <View style={{ marginTop: 28 }}>
-      <SectionHeader title={getCategoryName(category, locale as any)} onSeeAll={onSeeAll} />
-
-      {isLoading ? (
-        <ProductRowSkeleton cardWidth={cardWidth} count={3} />
-      ) : (
-        <View style={{ direction: 'rtl' as any }}>
-        <FlatList
-          data={products}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 4 }}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={{ width: cardWidth }}>
-              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
-            </View>
-          )}
-        />
-        </View>
-      )}
-    </View>
-  );
-}
-
 // ─── All products grid (no category filter) ──────────────────────────────────
 function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; cardWidth: number; onSeeAll: () => void }) {
   const router = useRouter();
@@ -311,7 +308,7 @@ function AllProductsSection({ locale, cardWidth, onSeeAll }: { locale: string; c
 
   return (
     <View style={{ marginTop: 28, marginBottom: 16 }}>
-      <SectionHeader title="جميع المنتجات" onSeeAll={onSeeAll} />
+      <SectionHeader title="وصل حديثاً" onSeeAll={onSeeAll} />
 
       {isLoading ? (
         <ProductRowSkeleton cardWidth={cardWidth} count={3} />
@@ -355,7 +352,7 @@ function DealsSection({ locale, cardWidth, onSeeAll }: { locale: string; cardWid
 
   return (
     <View style={{ marginTop: 28 }}>
-      <SectionHeader title="عروض اليوم" onSeeAll={onSeeAll} />
+      <SectionHeader title="العروض" onSeeAll={onSeeAll} />
 
       {isLoading ? (
         <ProductRowSkeleton cardWidth={cardWidth} count={3} />
@@ -433,13 +430,14 @@ export default function HomeScreen() {
 
   const [search, setSearch]                     = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [selectedBrand, setSelectedBrand]       = useState<string | undefined>();
   const [showAllProducts, setShowAllProducts]   = useState(false);
   const [page, setPage]                         = useState(0);
 
-  useEffect(() => { setPage(0); }, [search, selectedCategory, showAllProducts]);
+  useEffect(() => { setPage(0); }, [search, selectedCategory, selectedBrand, showAllProducts]);
 
   const isDesktop  = windowWidth >= 768;
-  const browseMode = showAllProducts || !!selectedCategory || search.length >= 2;
+  const browseMode = showAllProducts || !!selectedCategory || !!selectedBrand || search.length >= 2;
 
   // Layout metrics
   const sidebarW      = isDesktop ? SIDEBAR_W : 0;
@@ -451,11 +449,29 @@ export default function HomeScreen() {
 
   const { data: categories } = useCategories();
   const selectedCategoryObj = categories?.find((c) => c.id === selectedCategory);
+  // Brand filter: brands that sell in the selected category, or all brands
+  const { data: allBrands }      = useBrands();
+  const { data: categoryBrands } = useCategoryBrands(selectedCategory);
+  const filterBrands: Brand[]    = (selectedCategory ? categoryBrands : allBrands) ?? [];
+
+  function openCategory(id?: string) {
+    setSelectedCategory(id);
+    setSelectedBrand(undefined);   // a brand may not exist in the new category
+    setShowAllProducts(true);      // stay in the list even for "الكل"
+  }
+  function openBrand(id?: string) {
+    setSelectedBrand(id);
+    setShowAllProducts(true);
+  }
+  function closeBrowse() {
+    setShowAllProducts(false); setSelectedCategory(undefined); setSelectedBrand(undefined); setSearch('');
+  }
 
   // Browse-mode queries
   const browseParams: GetProductsParams = {
     search: search.length >= 2 ? search : undefined,
-    categoryId: showAllProducts ? undefined : selectedCategory,
+    categoryId: selectedCategory,
+    brandId: selectedBrand,
     availableOnly: true,
     sortBy: 'newest',
   };
@@ -475,54 +491,54 @@ export default function HomeScreen() {
   const totalProducts              = webPageData?.count ?? 0;
   const totalPages                 = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
 
-  // ── Search bar ─────────────────────────────────────────────────────────────
-  function SearchBar({ maxWidth }: { maxWidth?: number }) {
-    return (
-      <View style={{
-        maxWidth,
-        flexDirection: 'row', alignItems: 'center',
-        backgroundColor: COLORS.surface, borderRadius: 14,
-        paddingHorizontal: 14, height: 48, gap: 10,
-      }}>
-        <Ionicons name="search-outline" size={20} color={COLORS.muted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('products.search')}
-          style={{ flex: 1, fontSize: 15, color: COLORS.ink, textAlign: 'right' } as any}
-          placeholderTextColor={COLORS.muted}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={17} color="#9ca3af" />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
-  // ── Browse header ──────────────────────────────────────────────────────────
+  // ── Browse header: title + category chips + brands of that category ────────
   function BrowseHeader() {
-    const label = showAllProducts
-      ? 'جميع المنتجات'
+    const brandName = filterBrands.find((b) => b.id === selectedBrand)?.name;
+    const label = search.length >= 2
+      ? `"${search}"`
       : selectedCategoryObj
         ? getCategoryName(selectedCategoryObj, locale as any)
-        : search.length >= 2 ? `"${search}"` : '';
+        : brandName ?? 'جميع المنتجات';
     return (
       <View style={{
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingVertical: 10,
-        backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e6e0d8', gap: 10,
+        backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingBottom: 10, direction: 'rtl' as any,
+        // Web: the whole page scrolls inside CustomerWebLayout — keep the filters pinned
+        ...(isWeb ? { position: 'sticky' as any, top: 0, zIndex: 10 } : {}),
       }}>
-        <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: '#1c1917' }}>
-          {label}
-        </Text>
-        <TouchableOpacity
-          onPress={() => { setShowAllProducts(false); setSelectedCategory(undefined); setSearch(''); }}
-          style={{ padding: 6, borderRadius: 10, backgroundColor: '#f5f0eb' }}
-        >
-          <Ionicons name="arrow-forward" size={20} color="#5c4a35" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, gap: 10 }}>
+          <TouchableOpacity
+            onPress={closeBrowse}
+            accessibilityLabel="رجوع"
+            style={{ width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="arrow-forward" size={20} color={COLORS.ink} />
+          </TouchableOpacity>
+          <Text numberOfLines={1} style={{ flex: 1, fontSize: 17, fontWeight: '700', color: COLORS.ink }}>{label}</Text>
+        </View>
+
+        {search.length < 2 && (
+          <>
+            {/* Category chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, flexDirection: 'row' }}>
+              <FilterChip label="الكل" active={!selectedCategory} onPress={() => openCategory(undefined)} />
+              {(categories ?? []).map((c) => (
+                <FilterChip key={c.id} label={getCategoryName(c, locale as any)} active={selectedCategory === c.id} onPress={() => openCategory(c.id)} />
+              ))}
+            </ScrollView>
+
+            {/* Brands available in this category */}
+            {filterBrands.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingTop: 8, flexDirection: 'row' }}>
+                <FilterChip label="كل الماركات" active={!selectedBrand} onPress={() => openBrand(undefined)} />
+                {filterBrands.map((b) => (
+                  <FilterChip key={b.id} label={b.name} image={b.image_url} active={selectedBrand === b.id} onPress={() => openBrand(b.id)} />
+                ))}
+              </ScrollView>
+            )}
+          </>
+        )}
       </View>
     );
   }
@@ -560,17 +576,52 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 170, backgroundColor: COLORS.canvas, direction: 'rtl' as any }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Banners */}
+        {/* 1. Banners */}
         <HeroBannerCarousel
           locale={locale}
           bannerWidth={bannerW}
-          onCategorySelect={setSelectedCategory}
+          onCategorySelect={(id) => openCategory(id)}
         />
 
-        {/* الأقسام — category grid */}
+        {/* 2. Search — opens the full search screen */}
+        <TouchableOpacity
+          onPress={() => router.push('/(customer)/search' as any)}
+          activeOpacity={0.8}
+          accessibilityRole="search"
+          style={{
+            marginTop: 16, marginHorizontal: 16, height: 48, borderRadius: 14,
+            backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14,
+          }}
+        >
+          <Ionicons name="search-outline" size={20} color={COLORS.muted} />
+          <Text style={{ flex: 1, fontSize: 15, color: COLORS.muted }}>{t('products.search')}</Text>
+        </TouchableOpacity>
+
+        {/* 3. Offers */}
+        <DealsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
+
+        {/* 4. Brands */}
+        {(allBrands?.length ?? 0) > 0 && (
+          <View style={{ marginTop: 28 }}>
+            <SectionHeader title="الماركات" onSeeAll={() => router.push('/(customer)/brands' as any)} />
+            {/* Two rows that scroll sideways together: each column holds 2 brands */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, flexDirection: 'row' }}>
+              {Array.from({ length: Math.ceil(allBrands!.length / 2) }, (_, col) => allBrands!.slice(col * 2, col * 2 + 2)).map((pair) => (
+                <View key={pair[0].id} style={{ gap: 14 }}>
+                  {pair.map((b) => (
+                    <BrandTile key={b.id} brand={b} onPress={() => openBrand(b.id)} />
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 5. By category */}
         {allCats.length > 0 && (
-          <View style={{ marginTop: 22 }}>
-            <SectionHeader title="الأقسام" onSeeAll={() => setShowAllProducts(true)} />
+          <View style={{ marginTop: 28 }}>
+            <SectionHeader title="تسوّق حسب القسم" onSeeAll={() => openCategory(undefined)} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 14, paddingHorizontal: 16, direction: 'rtl' as any }}>
               {visCats.map((category) => (
                 <CategoryCard
@@ -578,7 +629,7 @@ export default function HomeScreen() {
                   category={category}
                   locale={locale}
                   size={catTile}
-                  onPress={() => setSelectedCategory(category.id)}
+                  onPress={() => openCategory(category.id)}
                 />
               ))}
               {hasMore && (
@@ -602,22 +653,8 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Today's Deals ── */}
-        <DealsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
-
-        {/* Product rail per category */}
-        {categories?.map((category) => (
-          <CategoryProductsSection
-            key={category.id}
-            category={category}
-            locale={locale}
-            cardWidth={discoverCardW}
-            onSeeAll={() => setSelectedCategory(category.id)}
-          />
-        ))}
-
-        {/* All products */}
-        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => setShowAllProducts(true)} />
+        {/* 6. New arrivals */}
+        <AllProductsSection locale={locale} cardWidth={discoverCardW} onSeeAll={() => openCategory(undefined)} />
       </ScrollView>
     );
   }
@@ -748,7 +785,7 @@ export default function HomeScreen() {
 
       {/* Mobile header: delivery address + notifications, then search */}
       {!isWeb && (
-        <View style={{ backgroundColor: COLORS.canvas, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 14, direction: 'rtl' as any }}>
+        <View style={{ backgroundColor: COLORS.canvas, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, direction: 'rtl' as any }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <TouchableOpacity
               onPress={() => router.push('/(customer)/addresses' as any)}
@@ -809,7 +846,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          {SearchBar({})}
         </View>
       )}
 
