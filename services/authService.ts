@@ -76,7 +76,11 @@ export async function sendPasswordResetEmail(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     ...(redirectTo ? { redirectTo } : {}),
   });
-  if (error) throw parseSupabaseError(error);
+  if (error) {
+    // Keep the raw auth error in the logs — the user only sees the mapped message
+    console.warn('[auth] resetPasswordForEmail failed:', error.status, (error as any).code, error.message);
+    throw parseSupabaseError(error);
+  }
 }
 
 export async function resendConfirmationEmail(email: string) {

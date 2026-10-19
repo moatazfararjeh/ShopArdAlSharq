@@ -58,6 +58,19 @@ const getNativeStorage = () => {
   };
 };
 
+// Password-reset links from older app versions carry no redirect, so Auth
+// sends them to SITE_URL (the shop's home page) with #...type=recovery.
+// Move them to the reset page *before* the client consumes the hash, so the
+// customer sees the "new password" form instead of silently being logged in.
+if (
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  /[#&]type=recovery\b/.test(window.location.hash) &&
+  window.location.pathname !== '/reset-password'
+) {
+  window.location.replace(`/reset-password${window.location.hash}`);
+}
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storageKey: AUTH_STORAGE_KEY,

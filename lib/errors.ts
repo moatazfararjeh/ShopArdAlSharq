@@ -40,7 +40,19 @@ export function parseSupabaseError(error: { message: string; code?: string }): A
     case 'weak_password':
       return new AppError('WEAK_PASSWORD', 'كلمة المرور ضعيفة جداً. يجب أن تكون 6 أحرف على الأقل.', 422);
     case 'over_request_rate_limit':
+    case 'over_email_send_rate_limit':
       return new AppError('RATE_LIMIT', 'محاولات كثيرة. يرجى الانتظار قبل المحاولة مجدداً.', 429);
+    case 'email_address_invalid':
+      return new AppError('EMAIL_INVALID', 'البريد الإلكتروني غير صحيح.', 400);
+  }
+
+  // Auth service couldn't send the email (SMTP login/connection failed on the server)
+  const authMsg = error.message?.toLowerCase() ?? '';
+  if (authMsg.includes('error sending') || authMsg.includes('smtp')) {
+    return new AppError('EMAIL_SEND_FAILED', 'تعذّر إرسال البريد الإلكتروني حالياً. يرجى المحاولة لاحقاً أو التواصل معنا.', 500);
+  }
+  if (authMsg.includes('rate limit')) {
+    return new AppError('RATE_LIMIT', 'محاولات كثيرة. يرجى الانتظار قبل المحاولة مجدداً.', 429);
   }
 
   // Fallback: match on message text for older GoTrue versions that don't set code
