@@ -326,6 +326,8 @@ export default function ProductDetailScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   // Opened from a shared link / notification → no history, so offer Home instead of Back
   const hasHistory = router.canGoBack();
+  // Admins get a quick "edit" shortcut to the admin product form
+  const isAdmin = useAuthStore((s) => s.isAdmin);
 
   // Flash sale — must be computed before early returns so useCountdown is always called
   const flashActive    = !!product?.flash_sale_price && !!product?.flash_sale_ends_at &&
@@ -602,6 +604,16 @@ export default function ProductDetailScreen() {
 
           {/* End (left in RTL): actions — favourite sits at the outer edge */}
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => router.push(`/(admin)/products/${product.id}/edit` as any)}
+                accessibilityLabel="تعديل المنتج"
+                style={[TOP_BTN, { width: 'auto' as any, paddingHorizontal: 12, flexDirection: 'row', gap: 6, backgroundColor: COLORS.ink, borderColor: COLORS.ink }]}
+              >
+                <Ionicons name="create-outline" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>تعديل</Text>
+              </TouchableOpacity>
+            )}
             <ShareButton productId={product.id} productName={name} />
             <WishlistButton productId={product.id} />
           </View>
