@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
 import { useStockAlertStatus, useToggleStockAlert } from '@/hooks/useStockAlerts';
 import { COLORS } from '@/lib/theme';
+import Head from 'expo-router/head';
 
 // ─── Flash Sale Countdown ─────────────────────────────────────────────────────
 function useCountdown(endsAt: string | null | undefined) {
@@ -100,8 +101,10 @@ function ImageGallery({
   discounted,
   originalPrice,
   discountPrice,
+  alt,
 }: {
   images: { id: string; url: string }[];
+  alt: string;
   discounted: boolean;
   originalPrice: number;
   discountPrice?: number;
@@ -124,6 +127,7 @@ function ImageGallery({
           <View style={{ width: SCREEN_WIDTH, height: 300, paddingTop: 56, alignItems: 'center', justifyContent: 'center' }}>
             <Image
               source={{ uri: item.url }}
+              accessibilityLabel={alt}
               style={{ width: SCREEN_WIDTH * 0.7, height: 230 }}
               contentFit="contain"
             />
@@ -397,6 +401,11 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', direction: 'rtl' as any }}>
+      {/* Browser tab title while navigating inside the app. Crawlers get the
+          full meta + Product JSON-LD from scripts/seo-prerender.mjs. */}
+      <Head>
+        <title>{`${name}${product.brands?.name ? ` - ${product.brands.name}` : ''} | فود بوكس`}</title>
+      </Head>
       <View style={{ height: insets.top, backgroundColor: COLORS.surface }} />
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -410,6 +419,7 @@ export default function ProductDetailScreen() {
             discounted={discounted}
             originalPrice={product.price}
             discountPrice={product.discount_price ?? undefined}
+            alt={name}
           />
         </View>
 

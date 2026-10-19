@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Signed-in customer and admin screens — nothing useful for search
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order-success
+Disallow: /orders
+Disallow: /profile
+Disallow: /addresses
+Disallow: /edit-address
+Disallow: /wishlist
+Disallow: /notifications
+Disallow: /change-password
+Disallow: /delete-account
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /dashboard
+
+Sitemap: https://shop.ardalsharq.com/sitemap.xml

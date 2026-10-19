@@ -99,6 +99,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         }}>
           <Image
             source={{ uri: mainImage }}
+            accessibilityLabel={name}
             style={{ width: '100%', height: '100%', opacity: outOfStock ? 0.45 : 1 }}
             contentFit="contain"
             placeholder={{ blurhash: PLACEHOLDER_HASH }}

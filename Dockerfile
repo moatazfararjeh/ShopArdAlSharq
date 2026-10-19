@@ -57,6 +57,7 @@ COPY stores/     ./stores/
 COPY types/      ./types/
 COPY utils/      ./utils/
 COPY public/     ./public/
+COPY scripts/seo-prerender.mjs ./scripts/
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Free npm/package-manager memory before the export step
@@ -75,6 +76,11 @@ RUN --mount=type=cache,target=/root/.metro-cache \
     EXPO_USE_FAST_RESOLVER=1 \
     METRO_CACHE_DIR=/root/.metro-cache \
     npx expo export --platform web --output-dir dist --max-workers 1
+
+# SEO: per-product HTML pages (title, meta, Open Graph, Product JSON-LD) and
+# sitemap.xml with product images, from the public Supabase API. Never fails
+# the build — on any error it logs and keeps the plain SPA export.
+RUN node scripts/seo-prerender.mjs dist
 
 # ---- Serve Stage ----
 FROM nginx:alpine
@@ -109,8 +115,9 @@ RUN printf 'server {\n\
     add_header X-Content-Type-Options "nosniff" always;\n\
   }\n\
 \n\
+  # /products/<id> -> pre-rendered products/<id>.html (SEO), else the SPA shell\n\
   location / {\n\
-    try_files $uri $uri/ /index.html;\n\
+    try_files $uri $uri.html $uri/ /index.html;\n\
   }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
