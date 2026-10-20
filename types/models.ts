@@ -25,8 +25,22 @@ export interface Profile {
 
 // ─── Category ────────────────────────────────────────────────────────────────
 
+export interface Section {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  description_ar: string | null;
+  description_en: string | null;
+  image_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Category {
   id: string;
+  section_id: string | null;
   name_ar: string;
   name_en: string | null;
   description_ar: string | null;
@@ -41,6 +55,10 @@ export interface Category {
 /** Returns the localized name for a category */
 export function getCategoryName(cat: Category, locale: SupportedLocale): string {
   return locale === 'ar' ? cat.name_ar : (cat.name_en ?? cat.name_ar);
+}
+
+export function getSectionName(section: Section, locale: SupportedLocale): string {
+  return locale === 'ar' ? section.name_ar : (section.name_en ?? section.name_ar);
 }
 
 export function getMinOrderQuantity(product: { min_order_quantity?: number | null }): number {

@@ -38,7 +38,7 @@ export async function getCategoryById(id: string): Promise<Category> {
 }
 
 export async function createCategory(
-  payload: Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active'> & { image_url?: string | null },
+  payload: Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active'> & { image_url?: string | null; section_id?: string | null },
 ): Promise<Category> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('categories') as any)
@@ -51,7 +51,7 @@ export async function createCategory(
 
 export async function updateCategory(
   id: string,
-  payload: Partial<Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active' | 'image_url'>>,
+  payload: Partial<Pick<Category, 'name_ar' | 'name_en' | 'description_ar' | 'description_en' | 'sort_order' | 'is_active' | 'image_url' | 'section_id'>>,
 ): Promise<Category> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('categories') as any)

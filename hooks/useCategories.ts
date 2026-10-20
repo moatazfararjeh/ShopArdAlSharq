@@ -35,6 +35,7 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: (values: CategoryFormValues) =>
       createCategory({
+        section_id: values.section_id || null,
         name_ar: values.name_ar,
         name_en: values.name_en || null,
         description_ar: values.description_ar || null,
@@ -52,6 +53,7 @@ export function useUpdateCategory(id: string) {
   return useMutation({
     mutationFn: (values: Partial<CategoryFormValues>) =>
       updateCategory(id, {
+        section_id: values.section_id || null,
         name_ar: values.name_ar,
         name_en: values.name_en || null,
         description_ar: values.description_ar || null,

@@ -30,8 +30,22 @@ export interface ProfileRow {
   updated_at: string;
 }
 
+export interface SectionRow {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  description_ar: string | null;
+  description_en: string | null;
+  image_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CategoryRow {
   id: string;
+  section_id: string | null;
   name_ar: string;
   name_en: string | null;
   description_ar: string | null;
@@ -208,6 +222,7 @@ export interface Database {
     PostgrestVersion: '12';
     Tables: {
       profiles:     { Row: ProfileRow;      Insert: Omit<ProfileRow, 'created_at' | 'updated_at'>;           Update: Partial<Omit<ProfileRow, 'id' | 'email' | 'created_at'>>; Relationships: [] };
+      sections:     { Row: SectionRow;      Insert: Omit<SectionRow, 'id' | 'created_at' | 'updated_at'>;    Update: Partial<Omit<SectionRow, 'id' | 'created_at'>>; Relationships: [] };
       categories:   { Row: CategoryRow;     Insert: Omit<CategoryRow, 'id' | 'created_at' | 'updated_at'>;   Update: Partial<Omit<CategoryRow, 'id' | 'created_at'>>; Relationships: [] };
       products:     { Row: ProductRow;      Insert: Omit<ProductRow, 'id' | 'created_at' | 'updated_at'>;    Update: Partial<Omit<ProductRow, 'id' | 'created_at'>>; Relationships: [] };
       product_images: { Row: ProductImageRow; Insert: Omit<ProductImageRow, 'id' | 'created_at'>; Update: Partial<Omit<ProductImageRow, 'id' | 'created_at'>>; Relationships: [] };

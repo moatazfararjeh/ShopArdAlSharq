@@ -33,6 +33,7 @@ export default function EditCategoryScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f4f8' }}>
       <CategoryForm
         initial={{
+          section_id: category.section_id ?? '',
           name_ar: category.name_ar,
           name_en: category.name_en ?? '',
           description_ar: category.description_ar ?? '',

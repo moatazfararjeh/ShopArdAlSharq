@@ -8,12 +8,17 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryFormValues } from '@/schemas/categorySchema';
 import { uploadImage } from '@/services/storageService';
 import { CATEGORY_IMAGE_BUCKET } from '@/lib/constants';
+import { useSections } from '@/hooks/useSections';
+import { getSectionName } from '@/types/models';
+import { getCurrentLocale } from '@/i18n';
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
@@ -69,6 +74,10 @@ export interface CategoryFormProps {
 }
 
 export default function CategoryForm({ initial, onSubmit, submitLabel, isLoading }: CategoryFormProps) {
+  const locale = getCurrentLocale();
+  const { data: sections } = useSections(false);
+  const [sectionId, setSectionId] = useState(initial?.section_id ?? '');
+  const [sectionPickerOpen, setSectionPickerOpen] = useState(false);
   const [nameAr, setNameAr] = useState(initial?.name_ar ?? '');
   const [nameEn, setNameEn] = useState(initial?.name_en ?? '');
   const [descAr, setDescAr] = useState(initial?.description_ar ?? '');
@@ -121,6 +130,7 @@ export default function CategoryForm({ initial, onSubmit, submitLabel, isLoading
     }
     setErrors({});
     await onSubmit({
+      section_id: sectionId || '',
       name_ar: nameAr.trim(),
       name_en: nameEn.trim() || '',
       description_ar: descAr.trim() || '',
@@ -132,6 +142,7 @@ export default function CategoryForm({ initial, onSubmit, submitLabel, isLoading
   }
 
   return (
+    <>
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
       {/* Category Image */}
       <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, gap: 12 }}>
@@ -204,6 +215,26 @@ export default function CategoryForm({ initial, onSubmit, submitLabel, isLoading
       {/* Category Data */}
       <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, gap: 12 }}>
         <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>بيانات التصنيف</Text>
+
+        <View>
+          <FieldLabel label="القسم" />
+          <TouchableOpacity
+            onPress={() => setSectionPickerOpen(true)}
+            style={{
+              borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12,
+              paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f9fafb',
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            }}
+          >
+            <Text style={{ fontSize: 14, color: sectionId ? '#111827' : '#9ca3af' }}>
+              {(() => {
+                const selected = sections?.find((s) => s.id === sectionId);
+                return selected ? getSectionName(selected, locale) : 'بدون قسم';
+              })()}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#9ca3af" />
+          </TouchableOpacity>
+        </View>
 
         <View>
           <FieldLabel label="الاسم بالعربية" required />
@@ -288,5 +319,46 @@ export default function CategoryForm({ initial, onSubmit, submitLabel, isLoading
         </Text>
       </TouchableOpacity>
     </ScrollView>
+
+    <Modal visible={sectionPickerOpen} transparent animationType="fade" onRequestClose={() => setSectionPickerOpen(false)}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}
+        activeOpacity={1}
+        onPress={() => setSectionPickerOpen(false)}
+      >
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{
+          width: 300, maxHeight: 420, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden',
+        }}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#1e293b' }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'right' }}>اختر القسم</Text>
+          </View>
+          <FlatList
+            data={[{ id: '', name_ar: 'بدون قسم', name_en: 'بدون قسم' } as any, ...(sections ?? [])]}
+            style={{ maxHeight: 360 }}
+            keyExtractor={(item) => item.id || '__none__'}
+            renderItem={({ item }) => {
+              const selected = item.id === sectionId;
+              return (
+                <TouchableOpacity
+                  onPress={() => { setSectionId(item.id); setSectionPickerOpen(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 16, paddingVertical: 12,
+                    borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+                    backgroundColor: selected ? '#fff7ed' : '#fff',
+                  }}
+                >
+                  {selected && <Ionicons name="checkmark" size={16} color="#e36523" />}
+                  <Text style={{ flex: 1, fontSize: 14, color: selected ? '#e36523' : '#111827', fontWeight: selected ? '700' : '400', textAlign: 'right' }}>
+                    {item.id ? getSectionName(item, locale) : item.name_ar}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+    </>
   );
 }

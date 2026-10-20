@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const categorySchema = z.object({
+  section_id: z.string().optional().or(z.literal('')),
   name_ar: z
     .string()
     .min(2, 'الاسم بالعربية مطلوب (حرفان على الأقل)')

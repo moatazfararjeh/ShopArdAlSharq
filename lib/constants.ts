@@ -24,6 +24,7 @@ export const MAX_PRODUCT_IMAGES = 5;
 export const PRODUCT_IMAGE_BUCKET = 'product-images';
 export const CATEGORY_IMAGE_BUCKET = 'category-images';
 export const BRAND_IMAGE_BUCKET = 'brand-images';
+export const SECTION_IMAGE_BUCKET = 'section-images';
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 20;

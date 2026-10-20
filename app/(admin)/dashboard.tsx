@@ -28,6 +28,7 @@ const ACTIONS: Array<{
   { label: 'الطلبات',          route: '/(admin)/orders/',            icon: 'receipt-outline',    color: '#3b82f6', bg: '#eff6ff' },
   { label: 'المنتجات',         route: '/(admin)/products/',          icon: 'cube-outline',       color: C.brand,   bg: '#fff7ed' },
   { label: 'التحليلات',        route: '/(admin)/analytics',          icon: 'bar-chart-outline',  color: '#8b5cf6', bg: '#f5f3ff' },
+  { label: 'الأقسام',          route: '/(admin)/sections/',          icon: 'file-tray-stacked-outline', color: '#0ea5e9', bg: '#f0f9ff' },
   { label: 'الفئات',           route: '/(admin)/categories/',        icon: 'grid-outline',       color: '#10b981', bg: '#ecfdf5' },
   { label: 'الماركات',         route: '/(admin)/brands/',            icon: 'ribbon-outline',     color: '#f59e0b', bg: '#fffbeb' },
   { label: 'البانرات',         route: '/(admin)/banners/',           icon: 'images-outline',     color: '#06b6d4', bg: '#ecfeff' },
