@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator, Alert, Modal, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -58,7 +58,98 @@ function exportToExcel(rows: any[]) {
   });
 }
 
-// ─── Inline-editable cell ─────────────────────────────────────────────────────
+// Alert.alert is a no-op on web, so errors there go through window.alert.
+function showError(message: string) {
+  Platform.OS === 'web' ? window.alert(message) : Alert.alert('خطأ', message);
+}
+
+// Only one cell edits at a time: opening an editor closes the one already open.
+let closeActiveEditor: (() => void) | null = null;
+
+function useSingleEditor() {
+  const [editing, setEditing] = useState(false);
+  const close = useCallback(() => setEditing(false), []);
+  useEffect(() => () => { if (closeActiveEditor === close) closeActiveEditor = null; }, [close]);
+  return {
+    editing,
+    open() {
+      if (closeActiveEditor && closeActiveEditor !== close) closeActiveEditor();
+      closeActiveEditor = close;
+      setEditing(true);
+    },
+    done() {
+      if (closeActiveEditor === close) closeActiveEditor = null;
+      setEditing(false);
+    },
+  };
+}
+
+// A table cell; minWidth 0 keeps wide content (inputs) from stretching the column.
+const cellStyle = { flex: 2, minWidth: 0, paddingHorizontal: 4 } as const;
+
+function CellSpinner() {
+  return (
+    <View style={{ ...cellStyle, alignItems: 'flex-end' }}>
+      <ActivityIndicator size="small" color={C.brand} />
+    </View>
+  );
+}
+
+/**
+ * Input + save/cancel. Columns are narrow, so the editor floats over the
+ * neighbouring cells (anchored to its own cell) instead of widening the column.
+ * Enter saves, Esc cancels.
+ */
+function CellEditor({ draft, setDraft, numeric, onSave, onCancel }: {
+  draft: string;
+  setDraft: (v: string) => void;
+  numeric?: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <View style={{ ...cellStyle, height: 32, zIndex: 10 }}>
+    <View style={{
+      position: 'absolute', right: 0, top: -4, width: 180, zIndex: 10,
+      flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4, borderRadius: 10, backgroundColor: '#fff',
+      shadowColor: '#1C1917', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+    }}>
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        keyboardType={numeric ? 'decimal-pad' : 'default'}
+        autoFocus
+        selectTextOnFocus
+        onSubmitEditing={onSave}
+        onKeyPress={(e) => { if (e.nativeEvent.key === 'Escape') onCancel(); }}
+        style={{
+          flex: 1, width: 0, minWidth: 0, height: 32, borderWidth: 1, borderColor: C.brand, borderRadius: 8,
+          paddingHorizontal: 6, fontSize: 13, color: C.text, textAlign: 'right', backgroundColor: '#fff',
+        } as any}
+      />
+      <TouchableOpacity onPress={onSave} accessibilityLabel="حفظ" style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: COLORS.green, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="checkmark" size={16} color="#fff" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onCancel} accessibilityLabel="إلغاء" style={{ width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="close" size={16} color={C.muted} />
+      </TouchableOpacity>
+    </View>
+    </View>
+  );
+}
+
+function CellDisplay({ text, filled, bold, onPress }: { text: string; filled: boolean; bold?: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={cellStyle} onPress={onPress}>
+      <Text style={{ fontSize: 13, color: filled ? (bold ? C.brand : C.text) : C.muted, fontWeight: filled ? (bold ? '700' : '600') : '400', textAlign: 'right' }} numberOfLines={2}>
+        {text}
+      </Text>
+      <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
+    </TouchableOpacity>
+  );
+}
+
+// ─── Inline-editable number cell ──────────────────────────────────────────────
 function EditableCell({
   value,
   onSave,
@@ -70,72 +161,39 @@ function EditableCell({
   suffix?: string;
   numeric?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const editor = useSingleEditor();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
-
-  function startEdit() {
-    setDraft(value != null ? String(value) : '');
-    setEditing(true);
-  }
 
   async function commit() {
     const parsed = draft.trim() === '' ? null : parseFloat(draft.replace(',', '.'));
     if (parsed !== null && isNaN(parsed)) {
-      Alert.alert('خطأ', 'يرجى إدخال رقم صحيح');
+      showError('يرجى إدخال رقم صحيح');
       return;
     }
+    editor.done();
+    if (parsed === value) return;
     setSaving(true);
     try {
       await onSave(parsed);
     } catch (e: any) {
-      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+      showError(e?.message ?? 'فشل الحفظ');
     } finally {
       setSaving(false);
-      setEditing(false);
     }
   }
 
-  if (saving) {
-    return (
-      <View style={{ flex: 2, alignItems: 'flex-end', paddingHorizontal: 4 }}>
-        <ActivityIndicator size="small" color={C.brand} />
-      </View>
-    );
+  if (saving) return <CellSpinner />;
+  if (editor.editing) {
+    return <CellEditor draft={draft} setDraft={setDraft} numeric={numeric} onSave={commit} onCancel={editor.done} />;
   }
-
-  if (editing) {
-    return (
-      <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          keyboardType={numeric ? 'decimal-pad' : 'numeric'}
-          autoFocus
-          style={{
-            flex: 1, borderWidth: 1.5, borderColor: C.brand, borderRadius: 6,
-            paddingHorizontal: 6, paddingVertical: 4, fontSize: 12,
-            color: C.text, textAlign: 'right', backgroundColor: '#fff',
-          }}
-          onSubmitEditing={commit}
-        />
-        <TouchableOpacity onPress={commit} style={{ backgroundColor: '#16a34a', borderRadius: 6, padding: 4 }}>
-          <Ionicons name="checkmark" size={14} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setEditing(false)} style={{ backgroundColor: '#ef4444', borderRadius: 6, padding: 4 }}>
-          <Ionicons name="close" size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <TouchableOpacity style={{ flex: 2, paddingHorizontal: 4 }} onPress={startEdit}>
-      <Text style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
-        {value != null ? `${value}${suffix ?? ''}` : '—'}
-      </Text>
-      <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
-    </TouchableOpacity>
+    <CellDisplay
+      text={value != null ? `${value}${suffix ?? ''}` : '—'}
+      filled={value != null}
+      bold
+      onPress={() => { setDraft(value != null ? String(value) : ''); editor.open(); }}
+    />
   );
 }
 
@@ -147,71 +205,34 @@ function EditableTextCell({
   value: string | null;
   onSave: (v: string | null) => Promise<void>;
 }) {
-  const [editing, setEditing] = useState(false);
+  const editor = useSingleEditor();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
 
-  function startEdit() {
-    setDraft(value ?? '');
-    setEditing(true);
-  }
-
   async function commit() {
     const next = draft.trim() === '' ? null : draft.trim();
-    if (next === value) {
-      setEditing(false);
-      return;
-    }
+    editor.done();
+    if (next === value) return;
     setSaving(true);
     try {
       await onSave(next);
     } catch (e: any) {
-      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+      showError(e?.message ?? 'فشل الحفظ');
     } finally {
       setSaving(false);
-      setEditing(false);
     }
   }
 
-  if (saving) {
-    return (
-      <View style={{ flex: 2, alignItems: 'flex-end', paddingHorizontal: 4 }}>
-        <ActivityIndicator size="small" color={C.brand} />
-      </View>
-    );
+  if (saving) return <CellSpinner />;
+  if (editor.editing) {
+    return <CellEditor draft={draft} setDraft={setDraft} onSave={commit} onCancel={editor.done} />;
   }
-
-  if (editing) {
-    return (
-      <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          autoFocus
-          style={{
-            flex: 1, borderWidth: 1.5, borderColor: C.brand, borderRadius: 6,
-            paddingHorizontal: 6, paddingVertical: 4, fontSize: 12,
-            color: C.text, textAlign: 'right', backgroundColor: '#fff',
-          }}
-          onSubmitEditing={commit}
-        />
-        <TouchableOpacity onPress={commit} style={{ backgroundColor: '#16a34a', borderRadius: 6, padding: 4 }}>
-          <Ionicons name="checkmark" size={14} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setEditing(false)} style={{ backgroundColor: '#ef4444', borderRadius: 6, padding: 4 }}>
-          <Ionicons name="close" size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <TouchableOpacity style={{ flex: 2, paddingHorizontal: 4 }} onPress={startEdit}>
-      <Text style={{ fontSize: 12, color: value ? C.text : C.muted, fontWeight: value ? '600' : '400', textAlign: 'right' }}>
-        {value ?? '—'}
-      </Text>
-      <Ionicons name="pencil-outline" size={11} color={C.muted} style={{ position: 'absolute', left: 0, top: '50%', marginTop: -6 }} />
-    </TouchableOpacity>
+    <CellDisplay
+      text={value ?? '—'}
+      filled={!!value}
+      onPress={() => { setDraft(value ?? ''); editor.open(); }}
+    />
   );
 }
 
@@ -241,26 +262,20 @@ function EditableSelectCell({
     try {
       await onSave(id);
     } catch (e: any) {
-      Alert.alert('خطأ', e?.message ?? 'فشل الحفظ');
+      showError(e?.message ?? 'فشل الحفظ');
     } finally {
       setSaving(false);
     }
   }
 
-  if (saving) {
-    return (
-      <View style={{ flex: 2, alignItems: 'flex-end', paddingHorizontal: 4 }}>
-        <ActivityIndicator size="small" color={C.brand} />
-      </View>
-    );
-  }
+  if (saving) return <CellSpinner />;
 
   const listData = allowNone ? [{ id: '__none__', name: noneLabel ?? 'بدون' }, ...options] : options;
 
   return (
     <>
       <TouchableOpacity
-        style={{ flex: 2, paddingHorizontal: 4 }}
+        style={cellStyle}
         onPress={() => setOpen(true)}
       >
         <Text numberOfLines={2} ellipsizeMode="tail" style={{ fontSize: 13, color: value != null ? C.brand : C.muted, fontWeight: value != null ? '700' : '400', textAlign: 'right' }}>
@@ -336,7 +351,7 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
       borderBottomWidth: 1, borderBottomColor: C.line,
     }}>
       <TouchableOpacity
-        style={{ flex: 3 }}
+        style={{ flex: 3, minWidth: 0, paddingHorizontal: 4 }}
         onPress={() => router.push(`/(admin)/products/${product.id}/edit` as any)}
       >
         <Text style={{ fontSize: 13, fontWeight: '600', color: C.brand, textAlign: 'right' }} numberOfLines={2}>
@@ -658,6 +673,8 @@ export default function ProductsReportScreen() {
 
 const styles = {
   hCell: {
+    minWidth: 0,
+    paddingHorizontal: 4,
     fontSize: 12,
     fontWeight: '700' as const,
     color: COLORS.muted,
