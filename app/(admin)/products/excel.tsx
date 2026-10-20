@@ -15,6 +15,7 @@ import {
   parseProductsFile,
   buildPlan,
   applyPlan,
+  newSectionsInPlan,
   type PlanRow,
   type RowStatus,
   type ApplyResult,
@@ -67,6 +68,7 @@ export default function ProductsExcelScreen() {
   }, [plan]);
   const readyRows = plan?.filter((r) => r.status === 'ready') ?? [];
   const problemRows = plan?.filter((r) => r.status === 'error' || r.status === 'not_found' || r.status === 'new') ?? [];
+  const newSections = plan ? newSectionsInPlan(plan) : [];
 
   async function doExport() {
     setError(null);
@@ -112,7 +114,9 @@ export default function ProductsExcelScreen() {
     if (!plan || !readyRows.length) return;
     const ok = await confirm({
       title: 'تحديث المنتجات',
-      message: `سيتم تحديث ${readyRows.length} منتج حسب الملف. الصفوف التي فيها أخطاء لن تُعدَّل. متابعة؟`,
+      message: `سيتم تحديث ${readyRows.length} منتج حسب الملف`
+        + (newSections.length ? ` وإنشاء ${newSections.length} قسم جديد (${newSections.join('، ')})` : '')
+        + '. الصفوف التي فيها أخطاء لن تُعدَّل. متابعة؟',
       confirmText: 'تحديث',
     });
     if (!ok) return;
@@ -121,10 +125,11 @@ export default function ProductsExcelScreen() {
     setProgress({ done: 0, total: readyRows.length });
     setError(null);
     try {
-      const res = await applyPlan(plan, (done, total) => setProgress({ done, total }));
+      const res = await applyPlan(plan, sections, (done, total) => setProgress({ done, total }));
       setResult(res);
       setPlan(null);
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (res.createdSections.length) queryClient.invalidateQueries({ queryKey: ['sections'] });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -208,6 +213,11 @@ export default function ProductsExcelScreen() {
         {result && (
           <View style={{ backgroundColor: '#f0fdf4', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#bbf7d0' }}>
             <Text style={{ fontSize: 15, fontWeight: '800', color: '#16a34a', textAlign: 'right' }}>تم تحديث {result.updated} منتج</Text>
+            {result.createdSections.length > 0 && (
+              <Text style={{ fontSize: 13, color: '#15803d', textAlign: 'right' }}>
+                أقسام جديدة تم إنشاؤها: {result.createdSections.join('، ')}
+              </Text>
+            )}
             {result.failed.map((f) => (
               <Text key={f.rowNumber} style={{ fontSize: 12, color: '#dc2626', textAlign: 'right' }}>
                 صف {f.rowNumber} — {f.name}: {f.message}
@@ -251,6 +261,19 @@ export default function ProductsExcelScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Sections that will be created */}
+            {newSections.length > 0 && (
+              <View style={{ backgroundColor: '#eff6ff', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#1d4ed8', textAlign: 'right' }}>
+                  أقسام جديدة ستُنشأ تلقائياً ({newSections.length})
+                </Text>
+                <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }}>{newSections.join('، ')}</Text>
+                <Text style={{ fontSize: 12, color: C.muted, textAlign: 'right' }}>
+                  يمكنك إضافة صورة أو اسم بالإنجليزية لها لاحقاً من "الأقسام" في لوحة التحكم.
+                </Text>
+              </View>
+            )}
 
             {/* Problems first — they need fixing in the file */}
             {problemRows.length > 0 && (

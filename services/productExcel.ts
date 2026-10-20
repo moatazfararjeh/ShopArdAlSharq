@@ -158,6 +158,19 @@ export interface PlanRow {
   changes: string[];          // human-readable "السعر: 10.000 ← 11.000"
   reason: string | null;
   update: Record<string, unknown> | null;
+  /** Section name that doesn't exist yet — created on apply, then linked */
+  newSectionName?: string;
+}
+
+/** Distinct new section names the plan will create (in first-seen order). */
+export function newSectionsInPlan(rows: PlanRow[]): string[] {
+  const seen = new Map<string, string>();
+  for (const r of rows) {
+    if (r.status === 'ready' && r.newSectionName && !seen.has(key(r.newSectionName))) {
+      seen.set(key(r.newSectionName), r.newSectionName);
+    }
+  }
+  return [...seen.values()];
 }
 
 function toNumber(v: unknown): number | null {
@@ -210,12 +223,19 @@ export function buildPlan(
         changes.push(`الفئة: ${norm(p.categories?.name_ar)} ← ${cat.name_ar}`);
       }
 
-      // Section (optional — blank clears it)
+      // Section (optional — blank clears it; an unknown name is created on apply)
       const sec = r.section ? secByName.get(key(r.section)) : null;
-      if (r.section && !sec) errors.push(`قسم غير موجود: ${r.section}`);
-      else if ((sec?.id ?? null) !== (p.section_id ?? null)) {
+      const oldSection = p.section_id ? sectionName.get(p.section_id) ?? '—' : '—';
+      let newSectionName: string | undefined;
+      if (r.section && !sec) {
+        if (r.section.length < 2) errors.push(`اسم القسم قصير جداً: ${r.section}`);
+        else {
+          newSectionName = r.section;
+          changes.push(`القسم: ${oldSection} ← ${r.section} (قسم جديد)`);
+        }
+      } else if ((sec?.id ?? null) !== (p.section_id ?? null)) {
         update.section_id = sec?.id ?? null;
-        changes.push(`القسم: ${p.section_id ? sectionName.get(p.section_id) ?? '—' : '—'} ← ${sec?.name_ar ?? '—'}`);
+        changes.push(`القسم: ${oldSection} ← ${sec?.name_ar ?? '—'}`);
       }
 
       // Brand (optional — blank clears it)
@@ -253,7 +273,7 @@ export function buildPlan(
 
       if (errors.length) return { ...base, status: 'error', reason: errors.join('، '), changes };
       if (!changes.length) return { ...base, status: 'unchanged', reason: null };
-      return { ...base, status: 'ready', reason: null, changes, update };
+      return { ...base, status: 'ready', reason: null, changes, update, newSectionName };
     });
 }
 
@@ -261,21 +281,51 @@ export function buildPlan(
 
 export interface ApplyResult {
   updated: number;
+  createdSections: string[];
   failed: { rowNumber: number; name: string; message: string }[];
 }
 
 export async function applyPlan(
   rows: PlanRow[],
+  existingSections: Section[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<ApplyResult> {
   const ready = rows.filter((r) => r.status === 'ready' && r.update && r.productId);
-  const result: ApplyResult = { updated: 0, failed: [] };
+  const result: ApplyResult = { updated: 0, createdSections: [], failed: [] };
+
+  // 1. Create each new section once, at the end of the current order
+  const newIds = new Map<string, string>();
+  const sectionErrors = new Map<string, string>();
+  let nextOrder = existingSections.reduce((m, s) => Math.max(m, s.sort_order ?? 0), 0) + 1;
+  for (const name of newSectionsInPlan(ready)) {
+    const { data, error } = await (supabase.from('sections') as any)
+      .insert({ name_ar: name, is_active: true, sort_order: nextOrder++ })
+      .select('id')
+      .single();
+    if (error) sectionErrors.set(key(name), error.message);
+    else {
+      newIds.set(key(name), data.id);
+      result.createdSections.push(name);
+    }
+  }
+  for (const r of ready) {
+    if (!r.newSectionName) continue;
+    const id = newIds.get(key(r.newSectionName));
+    if (id) r.update!.section_id = id;
+  }
+
+  // 2. Update products
   let done = 0;
   // Small batches in parallel: fast enough for a few hundred rows without
   // hammering the server
   for (let i = 0; i < ready.length; i += 8) {
     const batch = ready.slice(i, i + 8);
     await Promise.all(batch.map(async (r) => {
+      const secErr = r.newSectionName ? sectionErrors.get(key(r.newSectionName)) : undefined;
+      if (secErr) {
+        result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: `تعذّر إنشاء القسم "${r.newSectionName}": ${secErr}` });
+        return;
+      }
       const { error } = await (supabase.from('products') as any).update(r.update).eq('id', r.productId);
       if (error) result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: error.message });
       else result.updated += 1;
