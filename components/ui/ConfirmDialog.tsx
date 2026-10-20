@@ -11,6 +11,8 @@ interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
+  /** Only show the confirm button (an informational message). */
+  hideCancel?: boolean;
 }
 
 interface ConfirmDialogProps extends ConfirmOptions {
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   confirmText = 'تأكيد',
   cancelText = 'إلغاء',
   destructive = false,
+  hideCancel = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -36,12 +39,14 @@ export function ConfirmDialog({
           <Text style={{ fontSize: 17, fontWeight: '800', color: DARK, textAlign: 'right' }}>{title}</Text>
           <Text style={{ fontSize: 14, color: MUTED, textAlign: 'right', lineHeight: 22 }}>{message}</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-            <TouchableOpacity
-              onPress={onCancel}
-              style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center' }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: MUTED }}>{cancelText}</Text>
-            </TouchableOpacity>
+            {!hideCancel && (
+              <TouchableOpacity
+                onPress={onCancel}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: MUTED }}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={onConfirm}
               style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: destructive ? '#dc2626' : BRAND }}
@@ -62,6 +67,8 @@ export function ConfirmDialog({
  */
 export function useConfirm() {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  // Options stay set after closing so the dialog keeps its text while it fades out.
+  const [visible, setVisible] = useState(false);
   const resolver = useRef<((value: boolean) => void) | null>(null);
 
   const confirm = useCallback(
@@ -69,6 +76,7 @@ export function useConfirm() {
       new Promise<boolean>((resolve) => {
         resolver.current = resolve;
         setOptions(opts);
+        setVisible(true);
       }),
     [],
   );
@@ -76,17 +84,18 @@ export function useConfirm() {
   function close(value: boolean) {
     resolver.current?.(value);
     resolver.current = null;
-    setOptions(null);
+    setVisible(false);
   }
 
   const dialog = (
     <ConfirmDialog
-      visible={!!options}
+      visible={visible}
       title={options?.title ?? ''}
       message={options?.message ?? ''}
       confirmText={options?.confirmText}
       cancelText={options?.cancelText}
       destructive={options?.destructive}
+      hideCancel={options?.hideCancel}
       onConfirm={() => close(true)}
       onCancel={() => close(false)}
     />

@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,6 +13,8 @@ import {
   useGlobalDailyStats,
 } from '@/hooks/useAnalytics';
 import { TopProductMetric } from '@/services/analyticsService';
+import { COLORS } from '@/lib/theme';
+import { AdminHeader, AdminButton } from '@/components/admin/AdminUI';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -24,12 +25,12 @@ const C = {
   share:       '#8b5cf6',
   impression:  '#6b7280',
   abandoned:   '#dc2626',
-  surface:     '#f0f4f8',
+  surface:     COLORS.surface,
   card:        '#ffffff',
-  hairline:    '#e2e8f0',
-  text:        '#1e293b',
-  muted:       '#64748b',
-  brand:       '#e36523',
+  hairline:    COLORS.line,
+  text:        COLORS.ink,
+  muted:       COLORS.muted,
+  brand:       COLORS.brandFill,
 };
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
@@ -42,8 +43,6 @@ function KpiCard({
     <View style={{
       flex: 1, minWidth: '44%', margin: 4,
       backgroundColor: C.card, borderRadius: 16, padding: 14,
-      borderRightWidth: 3, borderRightColor: color,
-      shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <View style={{
@@ -52,9 +51,9 @@ function KpiCard({
         }}>
           <Ionicons name={icon as any} size={14} color={color} />
         </View>
-        <Text style={{ fontSize: 11, color: C.muted, flex: 1 }}>{label}</Text>
+        <Text style={{ fontSize: 12, color: C.muted, flex: 1 }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 24, fontWeight: '900', color: C.text }}>{value}</Text>
+      <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{value}</Text>
       {sub && <Text style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</Text>}
     </View>
   );
@@ -64,7 +63,7 @@ function KpiCard({
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={{ marginBottom: 10, paddingHorizontal: 4 }}>
-      <Text style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{title}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{title}</Text>
       {subtitle && <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{subtitle}</Text>}
     </View>
   );
@@ -170,16 +169,16 @@ function TopProductRow({
     }}>
       <View style={{
         width: 24, height: 24, borderRadius: 12,
-        backgroundColor: rank <= 3 ? color + '20' : '#f1f5f9',
+        backgroundColor: rank <= 3 ? color + '20' : C.surface,
         alignItems: 'center', justifyContent: 'center',
       }}>
         <Text style={{ fontSize: 11, fontWeight: '800', color: rank <= 3 ? color : C.muted }}>{rank}</Text>
       </View>
 
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f1f5f9' }} contentFit="cover" />
+        <Image source={{ uri: imageUrl }} style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: C.surface }} contentFit="cover" />
       ) : (
-        <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="cube-outline" size={16} color={C.muted} />
         </View>
       )}
@@ -211,7 +210,7 @@ function TopProductsPanel() {
   const { data, isLoading } = useTopProducts(tab.metric, 5);
 
   return (
-    <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+    <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14 }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {TOP_TABS.map((t, i) => (
@@ -220,7 +219,7 @@ function TopProductsPanel() {
               onPress={() => setActiveTab(i)}
               style={{
                 paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-                backgroundColor: i === activeTab ? t.color : '#f1f5f9',
+                backgroundColor: i === activeTab ? t.color : C.surface,
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: '700', color: i === activeTab ? '#fff' : C.muted }}>
@@ -256,7 +255,6 @@ function TopProductsPanel() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function AnalyticsDashboardScreen() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -272,36 +270,12 @@ export default function AnalyticsDashboardScreen() {
   const maxFunnel = summary?.total_views ?? 1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-      {/* ── Header ── */}
-      <View style={{
-        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: C.hairline,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <TouchableOpacity
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="home-outline" size={18} color={C.muted} />
-        </TouchableOpacity>
-
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>لوحة التحليلات</Text>
-          <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>جميع المنتجات</Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleRefresh}
-          disabled={refreshing}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}
-        >
-          {refreshing
-            ? <ActivityIndicator size="small" color={C.view} />
-            : <Ionicons name="refresh-outline" size={18} color={C.view} />
-          }
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface, direction: 'rtl' as any }}>
+      <AdminHeader
+        title="لوحة التحليلات"
+        subtitle="سلوك العملاء على جميع المنتجات"
+        actions={<AdminButton icon="refresh-outline" accessibilityLabel="تحديث" loading={refreshing} onPress={handleRefresh} />}
+      />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
@@ -328,7 +302,7 @@ export default function AnalyticsDashboardScreen() {
 
             {/* ── Conversion Funnel ── */}
             <SectionTitle title="قمع التحويل" subtitle="الانتقال من الظهور إلى الشراء" />
-            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 16, shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 16 }}>
               {summary?.total_impressions !== undefined && summary.total_impressions > 0 && (
                 <FunnelBar label="الظهور"     emoji="📋" value={summary.total_impressions}   max={maxFunnel} color={C.impression} />
               )}
@@ -342,7 +316,7 @@ export default function AnalyticsDashboardScreen() {
 
         {/* ── 7-Day Trend ── */}
         <SectionTitle title="النشاط — آخر 7 أيام" />
-        <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 16, shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+        <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 16 }}>
           {loadingDaily
             ? <ActivityIndicator color={C.view} style={{ marginVertical: 16 }} />
             : <DailyTrendChart data={dailyData} />

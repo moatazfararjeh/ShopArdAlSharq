@@ -6,18 +6,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProductsPage, useUpdateProduct } from '@/hooks/useProducts';
 import { useBrands } from '@/hooks/useBrands';
 import { useCategories } from '@/hooks/useCategories';
-import { getCurrentLocale } from '@/i18n';
+import { getCurrentLocale, SupportedLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { useQueryClient } from '@tanstack/react-query';
+import { COLORS } from '@/lib/theme';
+import { AdminHeader, AdminButton, AdminSearch, AdminChip } from '@/components/admin/AdminUI';
 
 const C = {
-  bg:    '#f0f4f8',
+  bg:    COLORS.surface,
   card:  '#ffffff',
-  brand: '#e36523',
-  text:  '#1e293b',
-  muted: '#64748b',
-  header:'#0d1b2a',
+  brand: COLORS.brandText,
+  text:  COLORS.ink,
+  muted: COLORS.muted,
+  line:  COLORS.line,
 };
+
+// The table needs this much width; narrower screens scroll it sideways.
+const TABLE_MIN_WIDTH = 1320;
 
 const UNIT_TYPE_OPTIONS = [
   { id: 'piece', name: 'حبة' },
@@ -273,8 +278,8 @@ function EditableSelectCell({
           <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{
             width: 300, maxHeight: 420, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden',
           }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.header }}>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'right' }}>اختر قيمة</Text>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.line }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: C.text, textAlign: 'right' }}>اختر قيمة</Text>
             </View>
             <FlatList
               data={listData}
@@ -289,7 +294,7 @@ function EditableSelectCell({
                     style={{
                       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                       paddingHorizontal: 16, paddingVertical: 12,
-                      borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+                      borderBottomWidth: 1, borderBottomColor: C.line,
                       backgroundColor: selected ? '#fff7ed' : '#fff',
                     }}
                   >
@@ -310,7 +315,7 @@ function EditableSelectCell({
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
 function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
-  product: any; locale: string; idx: number;
+  product: any; locale: SupportedLocale; idx: number;
   categoryOptions: { id: string; name: string }[];
   brandOptions: { id: string; name: string }[];
 }) {
@@ -326,15 +331,15 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center',
-      backgroundColor: idx % 2 === 0 ? C.card : '#f8fafc',
+      backgroundColor: idx % 2 === 0 ? C.card : '#FBFAF8',
       paddingHorizontal: 12, paddingVertical: 10,
-      borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+      borderBottomWidth: 1, borderBottomColor: C.line,
     }}>
       <TouchableOpacity
         style={{ flex: 3 }}
         onPress={() => router.push(`/(admin)/products/${product.id}/edit` as any)}
       >
-        <Text style={{ fontSize: 13, fontWeight: '600', color: C.brand, textAlign: 'right', textDecorationLine: 'underline' }} numberOfLines={2}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: C.brand, textAlign: 'right' }} numberOfLines={2}>
           {getProductName(product, locale)}
         </Text>
       </TouchableOpacity>
@@ -430,23 +435,20 @@ function BrandHeader({
       style={{
         flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between',
-        marginHorizontal: 0, marginTop: 12, marginBottom: 0,
         paddingHorizontal: 14, paddingVertical: 10,
-        backgroundColor: '#1e293b',
-        borderRightWidth: 4, borderRightColor: C.brand,
+        backgroundColor: COLORS.brandTint,
+        borderTopWidth: 1, borderTopColor: C.line,
       }}
     >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, textAlign: 'right' }}>{name}</Text>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: C.brand }}>{count}</Text>
+      </View>
       <Ionicons
         name={collapsed ? 'chevron-back' : 'chevron-down'}
-        size={14}
-        color="#94a3b8"
+        size={16}
+        color={C.muted}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#e3652322', borderRadius: 20 }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', color: C.brand }}>{count}</Text>
-        </View>
-        <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'right' }}>{name}</Text>
-      </View>
     </TouchableOpacity>
   );
 }
@@ -543,84 +545,40 @@ export default function ProductsReportScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
-      {/* Header */}
-      <View style={{ backgroundColor: C.header, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' }}>تقرير المنتجات</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/(admin)/products/import-stock' as any)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.brand, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
-        >
-          <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>استيراد ERP</Text>
-        </TouchableOpacity>
-        {Platform.OS === 'web' && (
-          <TouchableOpacity
-            onPress={() => exportToExcel(excelRows)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#16a34a', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
-          >
-            <Ionicons name="download-outline" size={16} color="#fff" />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>تصدير Excel</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Search + controls */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 10, paddingHorizontal: 12, gap: 8 }}>
-          <Ionicons name="search-outline" size={16} color={C.muted} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="بحث عن صنف..."
-            placeholderTextColor={C.muted}
-            style={{ flex: 1, paddingVertical: 10, fontSize: 14, color: C.text, textAlign: 'right' }}
-          />
-        </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, direction: 'rtl' as any }} edges={['top']}>
+      <AdminHeader
+        title="تقرير المنتجات"
+        subtitle={isLoading ? 'جاري التحميل...' : `${products.length} صنف · ${Object.keys(grouped).length} ماركة`}
+        actions={
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <AdminButton icon="cloud-upload-outline" label="استيراد ERP" onPress={() => router.push('/(admin)/products/import-stock' as any)} />
+            {Platform.OS === 'web' && (
+              <AdminButton primary icon="download-outline" label="تصدير Excel" onPress={() => exportToExcel(excelRows)} />
+            )}
+          </View>
+        }
+      >
+        <AdminSearch value={search} onChangeText={setSearch} placeholder="بحث عن صنف" />
         {/* Missing-data filters */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }}>
-          {MISSING_FILTER_OPTIONS.map((opt) => {
-            const active = activeMissingFilters.has(opt.id);
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                onPress={() => toggleMissingFilter(opt.id)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
-                  backgroundColor: active ? C.brand : '#f1f5f9',
-                  borderWidth: 1, borderColor: active ? C.brand : '#e2e8f0',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#fff' : C.text }}>
-                  {opt.label}
-                </Text>
-                <View style={{
-                  backgroundColor: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
-                  borderRadius: 10, paddingHorizontal: 6, minWidth: 20, alignItems: 'center',
-                }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: active ? '#fff' : C.muted }}>
-                    {missingCounts[opt.id]}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          {MISSING_FILTER_OPTIONS.map((opt) => (
+            <AdminChip
+              key={opt.id}
+              label={opt.label}
+              count={missingCounts[opt.id]}
+              active={activeMissingFilters.has(opt.id)}
+              onPress={() => toggleMissingFilter(opt.id)}
+            />
+          ))}
           {activeMissingFilters.size > 0 && (
             <TouchableOpacity onPress={() => setActiveMissingFilters(new Set())} style={{ paddingHorizontal: 6, paddingVertical: 6 }}>
               <Text style={{ fontSize: 12, color: C.muted, textDecorationLine: 'underline' }}>مسح الفلتر</Text>
             </TouchableOpacity>
           )}
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <View style={{ flex: 1 }} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={() => setCollapsed({})} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>فتح الكل</Text>
+            <TouchableOpacity onPress={() => setCollapsed({})} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: C.line }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: C.text }}>فتح الكل</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -628,16 +586,13 @@ export default function ProductsReportScreen() {
                 Object.keys(grouped).forEach((id) => { all[id] = true; });
                 setCollapsed(all);
               }}
-              style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}
+              style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: C.line }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>طي الكل</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: C.text }}>طي الكل</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{ fontSize: 12, color: C.muted }}>
-            {isLoading ? 'جاري التحميل...' : `${products.length} صنف — ${Object.keys(grouped).length} براند`}
-          </Text>
         </View>
-      </View>
+      </AdminHeader>
 
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -645,10 +600,13 @@ export default function ProductsReportScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+          <ScrollView horizontal contentContainerStyle={{ flexGrow: 1 }}>
+          <View style={{ flex: 1, minWidth: TABLE_MIN_WIDTH }}>
           {/* Table column header */}
           <View style={{
-            flexDirection: 'row', backgroundColor: C.header,
-            paddingHorizontal: 12, paddingVertical: 8,
+            flexDirection: 'row', backgroundColor: '#fff',
+            paddingHorizontal: 12, paddingVertical: 10,
+            borderBottomWidth: 1, borderBottomColor: C.line,
           }}>
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>كود ERP</Text>
@@ -690,6 +648,8 @@ export default function ProductsReportScreen() {
               <Text style={{ fontSize: 14, color: C.muted }}>لا توجد نتائج</Text>
             </View>
           )}
+          </View>
+          </ScrollView>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -700,7 +660,7 @@ const styles = {
   hCell: {
     fontSize: 12,
     fontWeight: '700' as const,
-    color: '#fff',
+    color: COLORS.muted,
     textAlign: 'right' as const,
   },
 };

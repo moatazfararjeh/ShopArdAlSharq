@@ -161,12 +161,12 @@ export default function AdminDashboardScreen() {
                 onPress={() => router.push(`/(admin)${it.path}` as any)}
                 activeOpacity={0.75}
                 style={{
-                  flexGrow: 1, flexBasis: wide ? 150 : 100, flexDirection: 'row', alignItems: 'center', gap: 8,
+                  flexGrow: 1, flexBasis: wide ? 170 : 140, flexDirection: 'row', alignItems: 'center', gap: 8,
                   backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 12,
                 }}
               >
                 <Ionicons name={it.icon} size={18} color={COLORS.brandText} />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink, flexShrink: 1 }} numberOfLines={1}>{it.label}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink, flexShrink: 1 }} numberOfLines={2}>{it.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
