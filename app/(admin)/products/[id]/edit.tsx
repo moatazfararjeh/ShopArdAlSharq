@@ -12,10 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { productSchema, ProductFormValues } from '@/schemas/productSchema';
 import { useProduct, useUpdateProduct } from '@/hooks/useProducts';
 import { useProductImages } from '@/hooks/useProductImages';
-import { useCategories } from '@/hooks/useCategories';
-import { useSections } from '@/hooks/useSections';
-import { useBrands } from '@/hooks/useBrands';
+import { useCategories, useCreateCategory } from '@/hooks/useCategories';
+import { useSections, useCreateSection } from '@/hooks/useSections';
+import { useBrands, useCreateBrand } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
+import QuickAddModal from '@/components/admin/QuickAddModal';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getSectionName } from '@/types/models';
 import { useStockAlertSubscriberCount } from '@/hooks/useStockAlerts';
@@ -25,6 +26,22 @@ const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293
 
 function FieldLabel({ children }: { children: string }) {
   return <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted, marginBottom: 6, textAlign: 'right', letterSpacing: 0.4 }}>{children}</Text>;
+}
+
+function AddChip({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+        backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.brand, borderStyle: 'dashed',
+      }}
+    >
+      <Ionicons name="add" size={14} color={C.brand} />
+      <Text style={{ fontSize: 13, fontWeight: '700', color: C.brand }}>{label}</Text>
+    </TouchableOpacity>
+  );
 }
 
 export default function EditProductScreen() {
@@ -39,6 +56,10 @@ export default function EditProductScreen() {
   const { data: categories } = useCategories(false);
   const { data: sections } = useSections(false);
   const { data: brands } = useBrands(false);
+  const createBrand = useCreateBrand();
+  const createSection = useCreateSection();
+  const createCategory = useCreateCategory();
+  const [addingType, setAddingType] = useState<'brand' | 'section' | 'category' | null>(null);
   const { images, addImage, removeImage, setPrimary } = useProductImages(id);
   const { data: stockAlertCount = 0 } = useStockAlertSubscriberCount(id);
   const { confirm, dialog } = useConfirm();
@@ -333,6 +354,7 @@ export default function EditProductScreen() {
                 </TouchableOpacity>
               );
             })}
+            <AddChip label="ماركة جديدة" onPress={() => setAddingType('brand')} />
           </View>
           {errors.brand_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.brand_id.message}</Text>}
         </View>
@@ -359,6 +381,7 @@ export default function EditProductScreen() {
                 </TouchableOpacity>
               );
             })}
+            <AddChip label="قسم جديد" onPress={() => setAddingType('section')} />
           </View>
           {errors.section_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.section_id.message}</Text>}
         </View>
@@ -399,6 +422,9 @@ export default function EditProductScreen() {
               </View>
             );
           })}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <AddChip label="فئة جديدة" onPress={() => setAddingType('category')} />
+          </View>
           {errors.category_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.category_id.message}</Text>}
         </View>
 
@@ -656,6 +682,34 @@ export default function EditProductScreen() {
 
       </ScrollView>
       {dialog}
+
+      <QuickAddModal
+        visible={addingType === 'brand'}
+        title="ماركة جديدة"
+        onClose={() => setAddingType(null)}
+        onSubmit={async (name) => {
+          const brand = await createBrand.mutateAsync({ name });
+          setValue('brand_id', brand.id);
+        }}
+      />
+      <QuickAddModal
+        visible={addingType === 'section'}
+        title="قسم جديد"
+        onClose={() => setAddingType(null)}
+        onSubmit={async (name) => {
+          const section = await createSection.mutateAsync({ name_ar: name, is_active: true });
+          setValue('section_id', section.id);
+        }}
+      />
+      <QuickAddModal
+        visible={addingType === 'category'}
+        title="فئة جديدة"
+        onClose={() => setAddingType(null)}
+        onSubmit={async (name) => {
+          const category = await createCategory.mutateAsync({ name_ar: name, is_active: true });
+          setValue('category_id', category.id);
+        }}
+      />
     </SafeAreaView>
   );
 }
