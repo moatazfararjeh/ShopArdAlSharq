@@ -404,10 +404,13 @@ export default function ProductDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', direction: 'rtl' as any }}>
       {/* Browser tab title while navigating inside the app. Crawlers get the
-          full meta + Product JSON-LD from scripts/seo-prerender.mjs. */}
-      <Head>
-        <title>{`${name}${product.brands?.name ? ` - ${product.brands.name}` : ''} | فود بوكس`}</title>
-      </Head>
+          full meta + Product JSON-LD from scripts/seo-prerender.mjs.
+          Web only: on iOS, Head drives Handoff and alerts when no origin is configured. */}
+      {Platform.OS === 'web' && (
+        <Head>
+          <title>{`${name}${product.brands?.name ? ` - ${product.brands.name}` : ''} | فود بوكس`}</title>
+        </Head>
+      )}
       <View style={{ height: insets.top, backgroundColor: COLORS.surface }} />
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
