@@ -676,7 +676,10 @@ export default function HomeScreen() {
           columnWrapperStyle={{ gap: 10, paddingHorizontal: 12 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            // maxWidth: a lone last card keeps column width instead of stretching across the row
+            <View style={{ flex: 1, maxWidth: '50%' }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
           )}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.5}

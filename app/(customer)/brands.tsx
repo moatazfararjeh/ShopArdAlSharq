@@ -1,15 +1,35 @@
 import { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useBrands } from '@/hooks/useBrands';
+import { useBrands, useBrandCategories } from '@/hooks/useBrands';
 import { useProducts } from '@/hooks/useProducts';
 import { ProductCard } from '@/components/product/ProductCard';
-import { Brand, Product } from '@/types/models';
+import { Brand, Product, getCategoryName } from '@/types/models';
+import { getCurrentLocale } from '@/i18n';
+import { COLORS } from '@/lib/theme';
 
 const BRAND = '#e36523';
+
+function CategoryChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={{
+        height: 38, borderRadius: 19, paddingHorizontal: 16, justifyContent: 'center',
+        backgroundColor: active ? COLORS.ink : '#fff',
+        borderWidth: 1, borderColor: active ? COLORS.ink : COLORS.line,
+      }}
+    >
+      <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: active ? '#fff' : COLORS.ink }}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function BrandGridCard({ brand, onPress }: { brand: Brand; onPress: () => void }) {
   return (
@@ -45,12 +65,21 @@ function BrandGridCard({ brand, onPress }: { brand: Brand; onPress: () => void }
 export default function BrandsScreen() {
   const router = useRouter();
   const { data: brands, isLoading: brandsLoading } = useBrands();
-  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const locale = getCurrentLocale();
+  const [selectedBrand, setSelectedBrandState] = useState<Brand | null>(null);
+  // Category filter inside the chosen brand (الكل = undefined)
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const { data: brandCategories } = useBrandCategories(selectedBrand?.id);
+
+  function setSelectedBrand(b: Brand | null) {
+    setSelectedBrandState(b);
+    setSelectedCategory(undefined);
+  }
 
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading: productsLoading,
   } = useProducts(
-    { brandId: selectedBrand?.id, availableOnly: true, sortBy: 'newest' },
+    { brandId: selectedBrand?.id, categoryId: selectedCategory, availableOnly: true, sortBy: 'newest' },
     { enabled: !!selectedBrand },
   );
   const products: Product[] = data?.pages.flatMap((p) => p.data) ?? [];
@@ -97,6 +126,24 @@ export default function BrandsScreen() {
           />
         )
       ) : (
+        <>
+        {/* Categories this brand sells in */}
+        {(brandCategories?.length ?? 0) > 1 && (
+          <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingVertical: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, flexDirection: 'row', direction: 'rtl' as any }}>
+              <CategoryChip label="الكل" active={!selectedCategory} onPress={() => setSelectedCategory(undefined)} />
+              {brandCategories!.map((c) => (
+                <CategoryChip
+                  key={c.id}
+                  label={getCategoryName(c, locale as any)}
+                  active={selectedCategory === c.id}
+                  onPress={() => setSelectedCategory(c.id)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
         <FlatList
           data={products}
           numColumns={2}
@@ -104,7 +151,10 @@ export default function BrandsScreen() {
           contentContainerStyle={{ gap: 16, paddingTop: 16, paddingBottom: 24 }}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            // maxWidth: a lone last card keeps column width instead of stretching across the row
+            <View style={{ flex: 1, maxWidth: '50%' }}>
+              <ProductCard product={item} onPress={() => router.push(`/(public)/products/${item.id}` as any)} />
+            </View>
           )}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.5}
@@ -123,6 +173,7 @@ export default function BrandsScreen() {
             )
           }
         />
+        </>
       )}
     </SafeAreaView>
   );

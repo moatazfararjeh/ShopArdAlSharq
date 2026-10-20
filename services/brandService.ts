@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
-import { Brand } from '@/types/models';
+import { Brand, Category } from '@/types/models';
 
 export async function getBrands(activeOnly = true): Promise<Brand[]> {
   let query = supabase
@@ -34,6 +34,23 @@ export async function getCategoryBrands(categoryId: string): Promise<Brand[]> {
   return [...byId.values()].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'ar'),
   );
+}
+
+/** Active categories in which this brand has at least one available product. */
+export async function getBrandCategories(brandId: string): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('category_id, categories(*)')
+    .eq('brand_id', brandId)
+    .eq('is_available', true);
+  if (error) throw parseSupabaseError(error);
+
+  const byId = new Map<string, Category>();
+  for (const row of (data ?? []) as any[]) {
+    const c = row.categories as Category | null;
+    if (c && (c as any).is_active !== false && !byId.has(c.id)) byId.set(c.id, c);
+  }
+  return [...byId.values()].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
 export async function createBrand(name: string, sort_order = 0, image_url?: string | null): Promise<Brand> {

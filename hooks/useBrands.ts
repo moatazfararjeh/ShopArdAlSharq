@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBrands, getCategoryBrands, createBrand, updateBrand, deleteBrand } from '@/services/brandService';
+import { getBrands, getCategoryBrands, getBrandCategories, createBrand, updateBrand, deleteBrand } from '@/services/brandService';
 
 export const brandKeys = {
   all: ['brands'] as const,
@@ -19,6 +19,16 @@ export function useCategoryBrands(categoryId?: string) {
     queryKey: [...brandKeys.all, 'category', categoryId],
     queryFn: () => getCategoryBrands(categoryId!),
     enabled: !!categoryId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Categories a brand sells in (for the category filter on the brands screen). */
+export function useBrandCategories(brandId?: string) {
+  return useQuery({
+    queryKey: [...brandKeys.all, 'brand-categories', brandId],
+    queryFn: () => getBrandCategories(brandId!),
+    enabled: !!brandId,
     staleTime: 5 * 60 * 1000,
   });
 }
