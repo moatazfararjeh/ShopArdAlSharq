@@ -26,7 +26,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { COLORS } from '@/lib/theme';
 import { SideMenu } from '@/components/ui/SideMenu';
-import { useBrands, useCategoryBrands } from '@/hooks/useBrands';
+import { useBrands } from '@/hooks/useBrands';
+import { useCategorySections } from '@/hooks/useSections';
 import { Brand } from '@/types/models';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -431,10 +432,11 @@ export default function HomeScreen() {
   const [search, setSearch]                     = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [selectedBrand, setSelectedBrand]       = useState<string | undefined>();
+  const [selectedSection, setSelectedSection]   = useState<string | undefined>();
   const [showAllProducts, setShowAllProducts]   = useState(false);
   const [page, setPage]                         = useState(0);
 
-  useEffect(() => { setPage(0); }, [search, selectedCategory, selectedBrand, showAllProducts]);
+  useEffect(() => { setPage(0); }, [search, selectedCategory, selectedBrand, selectedSection, showAllProducts]);
 
   const isDesktop  = windowWidth >= 768;
   const browseMode = showAllProducts || !!selectedCategory || !!selectedBrand || search.length >= 2;
@@ -449,14 +451,16 @@ export default function HomeScreen() {
 
   const { data: categories } = useCategories();
   const selectedCategoryObj = categories?.find((c) => c.id === selectedCategory);
-  // Brand filter: brands that sell in the selected category, or all brands
-  const { data: allBrands }      = useBrands();
-  const { data: categoryBrands } = useCategoryBrands(selectedCategory);
-  const filterBrands: Brand[]    = (selectedCategory ? categoryBrands : allBrands) ?? [];
+  // Second filter row: a selected category → its sections (القسم);
+  // otherwise ("الكل" / a brand from the home row) → brands
+  const { data: allBrands }        = useBrands();
+  const { data: categorySections } = useCategorySections(selectedCategory);
+  const filterBrands: Brand[]      = selectedCategory ? [] : (allBrands ?? []);
 
   function openCategory(id?: string) {
     setSelectedCategory(id);
-    setSelectedBrand(undefined);   // a brand may not exist in the new category
+    setSelectedBrand(undefined);   // switching category clears the second-row filter
+    setSelectedSection(undefined);
     setShowAllProducts(true);      // stay in the list even for "الكل"
   }
   function openBrand(id?: string) {
@@ -464,7 +468,7 @@ export default function HomeScreen() {
     setShowAllProducts(true);
   }
   function closeBrowse() {
-    setShowAllProducts(false); setSelectedCategory(undefined); setSelectedBrand(undefined); setSearch('');
+    setShowAllProducts(false); setSelectedCategory(undefined); setSelectedBrand(undefined); setSelectedSection(undefined); setSearch('');
   }
 
   // Browse-mode queries
@@ -472,6 +476,7 @@ export default function HomeScreen() {
     search: search.length >= 2 ? search : undefined,
     categoryId: selectedCategory,
     brandId: selectedBrand,
+    sectionId: selectedSection,
     availableOnly: true,
     sortBy: 'newest',
   };
@@ -527,7 +532,18 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
 
-            {/* Brands available in this category */}
+            {/* Sections (القسم) of the selected category */}
+            {!!selectedCategory && (categorySections?.length ?? 0) > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingTop: 8, flexDirection: 'row' }}>
+                <FilterChip label="كل الأقسام" active={!selectedSection} onPress={() => setSelectedSection(undefined)} />
+                {categorySections!.map((sec) => (
+                  <FilterChip key={sec.id} label={sec.name_ar} image={sec.image_url} active={selectedSection === sec.id} onPress={() => setSelectedSection(sec.id)} />
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Brands — when no category is selected */}
             {filterBrands.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingTop: 8, flexDirection: 'row' }}>

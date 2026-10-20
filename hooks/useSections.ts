@@ -3,6 +3,7 @@ import { useToastStore } from '@/stores/toastStore';
 import {
   getSections,
   getSectionById,
+  getCategorySections,
   createSection,
   updateSection,
   deleteSection,
@@ -19,6 +20,16 @@ export function useSections(activeOnly = true) {
   return useQuery({
     queryKey: sectionKeys.list(activeOnly),
     queryFn: () => getSections({ activeOnly }),
+  });
+}
+
+/** Sections of the products in a category (home category filter). */
+export function useCategorySections(categoryId?: string) {
+  return useQuery({
+    queryKey: [...sectionKeys.all, 'category', categoryId],
+    queryFn: () => getCategorySections(categoryId!),
+    enabled: !!categoryId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

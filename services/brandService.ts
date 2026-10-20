@@ -16,26 +16,6 @@ export async function getBrands(activeOnly = true): Promise<Brand[]> {
   return (data ?? []) as unknown as Brand[];
 }
 
-/** Active brands that have at least one available product in this category. */
-export async function getCategoryBrands(categoryId: string): Promise<Brand[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('brand_id, brands(*)')
-    .eq('category_id', categoryId)
-    .eq('is_available', true)
-    .not('brand_id', 'is', null);
-  if (error) throw parseSupabaseError(error);
-
-  const byId = new Map<string, Brand>();
-  for (const row of (data ?? []) as any[]) {
-    const b = row.brands as Brand | null;
-    if (b && b.is_active !== false && !byId.has(b.id)) byId.set(b.id, b);
-  }
-  return [...byId.values()].sort(
-    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'ar'),
-  );
-}
-
 /** Active categories in which this brand has at least one available product. */
 export async function getBrandCategories(brandId: string): Promise<Category[]> {
   const { data, error } = await supabase

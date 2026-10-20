@@ -27,6 +27,26 @@ export async function getSections(params: GetSectionsParams = {}): Promise<Secti
   return (data ?? []) as Section[];
 }
 
+/** Active sections that have at least one available product in this category. */
+export async function getCategorySections(categoryId: string): Promise<Section[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('section_id, sections(*)')
+    .eq('category_id', categoryId)
+    .eq('is_available', true)
+    .not('section_id', 'is', null);
+  if (error) throw parseSupabaseError(error);
+
+  const byId = new Map<string, Section>();
+  for (const row of (data ?? []) as any[]) {
+    const sec = row.sections as Section | null;
+    if (sec && sec.is_active !== false && !byId.has(sec.id)) byId.set(sec.id, sec);
+  }
+  return [...byId.values()].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name_ar.localeCompare(b.name_ar, 'ar'),
+  );
+}
+
 export async function getSectionById(id: string): Promise<Section> {
   const { data, error } = await supabase
     .from('sections')
