@@ -15,9 +15,13 @@ export function logError(
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? (error.stack ?? null) : null;
 
+  // supabase-js's query builder is only "thenable" (implements .then, not a
+  // real Promise), so .catch() isn't guaranteed to exist on it directly —
+  // that threw "catch is not a function" at runtime. Promise.resolve(...)
+  // adopts the thenable into a real Promise first, where .catch() is safe.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  void (supabase.from('error_logs') as any)
-    .insert({
+  Promise.resolve(
+    (supabase.from('error_logs') as any).insert({
       user_id: options?.userId ?? null,
       message,
       stack,
@@ -25,6 +29,6 @@ export function logError(
       platform: Platform.OS,
       app_version: Constants.expoConfig?.version ?? null,
       metadata: options?.metadata ?? {},
-    })
-    .catch(() => {});
+    }),
+  ).catch(() => {});
 }

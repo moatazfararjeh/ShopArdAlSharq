@@ -72,13 +72,22 @@ export function useUpdateOrderStatus() {
       // Push notification to customer
       void sendOrderStatusNotification(order.id, order.order_number, order.user_id, status).catch(() => {});
       // WhatsApp to customer
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('phone')
-        .eq('id', order.user_id)
-        .single()
-        .catch(() => ({ data: null }));
-      const phone = (profile as any)?.phone;
+      // Supabase's query builder is only "thenable" (implements .then, not a
+      // real Promise), so chaining .catch() directly on it isn't safe — it
+      // can throw "catch is not a function" at runtime. await inside a plain
+      // try/catch works with any thenable, so it doesn't have this problem.
+      let profile: { phone: string | null } | null = null;
+      try {
+        const result = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', order.user_id)
+          .single();
+        profile = result.data as { phone: string | null } | null;
+      } catch {
+        profile = null;
+      }
+      const phone = profile?.phone;
       if (phone) {
         void sendOrderStatusWhatsApp(phone, String(order.order_number), status).catch(() => {});
       }
