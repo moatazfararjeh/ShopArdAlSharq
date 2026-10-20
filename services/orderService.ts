@@ -10,14 +10,17 @@ export interface GetOrdersParams {
   status?: OrderStatus;
   page?: number;
   limit?: number;
+  /** Admin lists: also join the customer's profile (name, company, phone) */
+  withCustomer?: boolean;
 }
 
 export async function getOrders(params: GetOrdersParams = {}): Promise<Order[]> {
-  const { userId, status, page = 0, limit = DEFAULT_PAGE_SIZE } = params;
+  const { userId, status, page = 0, limit = DEFAULT_PAGE_SIZE, withCustomer = false } = params;
 
+  const itemsSelect = 'order_items(*, products(name_ar, name_en, price, discount_price, is_featured, product_images(*)))';
   let query = supabase
     .from('orders')
-    .select('*, order_items(*, products(name_ar, name_en, price, discount_price, is_featured, product_images(*)))')
+    .select(withCustomer ? `*, profiles(full_name, phone, email, company_name), ${itemsSelect}` : `*, ${itemsSelect}`)
     .order('created_at', { ascending: false })
     .range(page * limit, (page + 1) * limit - 1);
 
@@ -32,6 +35,7 @@ export async function getOrders(params: GetOrdersParams = {}): Promise<Order[]> 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data ?? []).map((o: any) => ({
     ...o,
+    profile: o.profiles ?? null,
     items: (o.order_items ?? []).map((item: any) => ({
       ...item,
       product: item.products ?? null,

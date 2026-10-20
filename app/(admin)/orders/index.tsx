@@ -1,26 +1,18 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useAdminOrders, useUpdateOrderStatus } from '@/hooks/useOrders';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
 import { Order } from '@/types/models';
 import { OrderStatus } from '@/types/database.types';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const C = {
-  surface:  '#f0f4f8',
-  card:     '#ffffff',
-  brand:    '#e36523',
-  text:     '#1e293b',
-  muted:    '#64748b',
-  hairline: '#e2e8f0',
-};
+import { COLORS } from '@/lib/theme';
 
 // ─── Status pipeline ──────────────────────────────────────────────────────────
 const PIPELINE: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered'];
@@ -31,155 +23,92 @@ function nextStatus(current: OrderStatus): OrderStatus | null {
   return PIPELINE[idx + 1];
 }
 
-// ─── Order pipeline stepper ───────────────────────────────────────────────────
-function OrderStepper({ status }: { status: OrderStatus }) {
-  if (status === 'cancelled') {
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
-        <Ionicons name="close-circle" size={14} color="#ef4444" />
-        <Text style={{ fontSize: 11, color: '#ef4444', fontWeight: '700' }}>تم الإلغاء</Text>
-      </View>
-    );
-  }
-
-  const currentIdx = PIPELINE.indexOf(status);
-  const dots: React.ReactNode[] = [];
-
-  PIPELINE.forEach((step, idx) => {
-    const done = idx <= currentIdx;
-    const color = ORDER_STATUS_LABELS[step].color;
-    dots.push(
-      <View
-        key={step}
-        style={{
-          width: 10, height: 10, borderRadius: 5,
-          backgroundColor: done ? color : C.hairline,
-          borderWidth: done ? 0 : 1.5,
-          borderColor: done ? 'transparent' : '#cbd5e1',
-        }}
-      />
-    );
-    if (idx < PIPELINE.length - 1) {
-      dots.push(
-        <View
-          key={`line-${idx}`}
-          style={{
-            flex: 1, height: 2,
-            backgroundColor: idx < currentIdx ? color : C.hairline,
-            borderRadius: 1,
-          }}
-        />
-      );
-    }
-  });
-
+// ─── Pipeline progress (thin bar) ─────────────────────────────────────────────
+function OrderProgress({ status }: { status: OrderStatus }) {
+  if (status === 'cancelled') return null;
+  const idx = PIPELINE.indexOf(status);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}>
-      {dots}
+    <View style={{ flexDirection: 'row', gap: 4 }}>
+      {PIPELINE.map((step, i) => (
+        <View key={step} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i <= idx ? COLORS.green : COLORS.line }} />
+      ))}
     </View>
   );
 }
 
 // ─── Order card ───────────────────────────────────────────────────────────────
-function OrderCard({ item }: { item: Order }) {
+function OrderCard({ item, onCancel }: { item: Order; onCancel: (o: Order) => void }) {
   const router = useRouter();
   const updateStatus = useUpdateOrderStatus();
   const next = nextStatus(item.status);
-  const nextLabel = next ? ORDER_STATUS_LABELS[next].ar : null;
-  const nextColor = next ? ORDER_STATUS_LABELS[next].color : C.muted;
   const statusInfo = ORDER_STATUS_LABELS[item.status];
+  const customer = item.profile?.company_name || item.profile?.full_name || '—';
+  const contact = item.profile?.company_name ? item.profile?.full_name : item.profile?.phone;
+  const open = item.status !== 'delivered' && item.status !== 'cancelled';
 
   return (
-    <View style={{
-      backgroundColor: C.card, borderRadius: 20,
-      marginHorizontal: 16, marginVertical: 5,
-      padding: 16,
-      shadowColor: '#1e293b', shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
-    }}>
-      {/* ── Top row: status badge + order number ── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <TouchableOpacity onPress={() => router.push(`/(customer)/orders/${item.id}` as any)}>
-          <Text style={{ fontSize: 15, fontWeight: '900', color: C.text }}>#{item.order_number}</Text>
-        </TouchableOpacity>
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 5,
-          paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-          backgroundColor: statusInfo.color + '18',
-        }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusInfo.color }} />
-          <Text style={{ fontSize: 12, fontWeight: '700', color: statusInfo.color }}>
-            {statusInfo.ar}
+    <View style={{ backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 16, marginVertical: 5, padding: 14, gap: 10 }}>
+      {/* Customer + status */}
+      <TouchableOpacity
+        onPress={() => router.push(`/(customer)/orders/${item.id}` as any)}
+        activeOpacity={0.75}
+        style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink }} numberOfLines={1}>{customer}</Text>
+          <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }} numberOfLines={1}>
+            {item.order_number}{contact ? ` · ${contact}` : ''}
           </Text>
         </View>
-      </View>
+        <View style={{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: statusInfo.color + '1F' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: statusInfo.color }}>{statusInfo.ar}</Text>
+        </View>
+      </TouchableOpacity>
 
-      {/* ── Meta: date + items + total ── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={{ fontSize: 14, fontWeight: '900', color: C.brand }}>{formatPrice(item.total_amount)}</Text>
+      {/* Total / items / date */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{formatPrice(item.total_amount)}</Text>
         <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 11, color: C.muted }}>{item.items?.length ?? 0} منتج</Text>
-        <Text style={{ fontSize: 11, color: C.hairline, marginHorizontal: 6 }}>·</Text>
-        <Text style={{ fontSize: 11, color: C.muted }}>{formatDate(item.created_at)}</Text>
+        <Text style={{ fontSize: 12, color: COLORS.muted }}>{item.items?.length ?? 0} منتج · {formatDate(item.created_at)}</Text>
       </View>
 
-      {['pending', 'confirmed'].includes(item.status) && (
-        <TouchableOpacity
-          onPress={() => router.push(`/(admin)/orders/${item.id}/edit` as any)}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.brand }}
-        >
-          <Ionicons name="create-outline" size={14} color={C.brand} />
-          <Text style={{ fontSize: 12, fontWeight: '700', color: C.brand }}>تعديل الطلب</Text>
-        </TouchableOpacity>
-      )}
+      <OrderProgress status={item.status} />
 
-      {/* ── Pipeline stepper ── */}
-      <View style={{ marginBottom: 14 }}>
-        <OrderStepper status={item.status} />
-      </View>
-
-      {/* ── Action buttons ── */}
-      {(next || (item.status !== 'delivered' && item.status !== 'cancelled')) && (
+      {/* Actions */}
+      {open && (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {next && (
             <TouchableOpacity
               onPress={() => updateStatus.mutate({ id: item.id, status: next })}
               disabled={updateStatus.isPending}
-              activeOpacity={0.75}
+              activeOpacity={0.8}
               style={{
-                flex: 1, paddingVertical: 10, borderRadius: 12,
-                backgroundColor: nextColor + '14',
-                borderWidth: 1.5, borderColor: nextColor,
-                alignItems: 'center', justifyContent: 'center',
-                flexDirection: 'row', gap: 5,
+                flex: 1, height: 40, borderRadius: 10, backgroundColor: COLORS.brandFill,
+                alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
               }}
             >
-              {updateStatus.isPending ? (
-                <ActivityIndicator size="small" color={nextColor} />
-              ) : (
-                <>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: nextColor }}>{nextLabel}</Text>
-                  <Ionicons name="arrow-back" size={13} color={nextColor} />
-                </>
-              )}
+              {updateStatus.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>نقل إلى: {ORDER_STATUS_LABELS[next].ar}</Text>}
             </TouchableOpacity>
           )}
-
-          {item.status !== 'delivered' && item.status !== 'cancelled' && (
+          {['pending', 'confirmed'].includes(item.status) && (
             <TouchableOpacity
-              onPress={() => updateStatus.mutate({ id: item.id, status: 'cancelled' })}
-              disabled={updateStatus.isPending}
-              activeOpacity={0.75}
-              style={{
-                paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
-                backgroundColor: '#fff1f2',
-                borderWidth: 1.5, borderColor: '#ef4444',
-                alignItems: 'center',
-              }}
+              onPress={() => router.push(`/(admin)/orders/${item.id}/edit` as any)}
+              accessibilityLabel="تعديل الطلب"
+              style={{ height: 40, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#ef4444' }}>إلغاء</Text>
+              <Ionicons name="create-outline" size={16} color={COLORS.ink} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink }}>تعديل</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity
+            onPress={() => onCancel(item)}
+            disabled={updateStatus.isPending}
+            style={{ height: 40, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.danger }}>إلغاء</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -187,134 +116,132 @@ function OrderCard({ item }: { item: Order }) {
 }
 
 // ─── Status filter tabs ───────────────────────────────────────────────────────
-const FILTER_TABS: Array<{ key: OrderStatus | 'all'; label: string }> = [
-  { key: 'all',       label: 'الكل'   },
-  { key: 'pending',   label: 'معلق'   },
+const FILTER_TABS: Array<{ key: OrderStatus | 'all' | 'open'; label: string }> = [
+  { key: 'open',      label: 'المفتوحة'   },
+  { key: 'pending',   label: 'بانتظار التأكيد' },
   { key: 'confirmed', label: 'مؤكد'   },
   { key: 'preparing', label: 'قيد التجهيز' },
-  { key: 'shipped',   label: 'شُحن'   },
+  { key: 'shipped',   label: 'في الطريق'   },
   { key: 'delivered', label: 'مُسلَّم' },
   { key: 'cancelled', label: 'ملغي'   },
+  { key: 'all',       label: 'الكل'   },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AdminOrdersScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState<OrderStatus | 'all'>('all');
+  const { confirm, dialog } = useConfirm();
+  const updateStatus = useUpdateOrderStatus();
+  const [activeFilter, setActiveFilter] = useState<OrderStatus | 'all' | 'open'>('open');
+  const [query, setQuery] = useState('');
 
   const { data: allOrders, isLoading } = useAdminOrders();
 
-  const displayOrders = useMemo(() => {
-    if (!allOrders) return [];
-    if (activeFilter === 'all') return allOrders;
-    return allOrders.filter((o) => o.status === activeFilter);
-  }, [allOrders, activeFilter]);
-
-  // Count per status for filter tab badges
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: allOrders?.length ?? 0 };
-    allOrders?.forEach((o) => { c[o.status] = (c[o.status] ?? 0) + 1; });
+    const c: Record<string, number> = { all: allOrders?.length ?? 0, open: 0 };
+    allOrders?.forEach((o) => {
+      c[o.status] = (c[o.status] ?? 0) + 1;
+      if (o.status !== 'delivered' && o.status !== 'cancelled') c.open += 1;
+    });
     return c;
   }, [allOrders]);
 
+  const displayOrders = useMemo(() => {
+    let list = allOrders ?? [];
+    if (activeFilter === 'open') list = list.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
+    else if (activeFilter !== 'all') list = list.filter((o) => o.status === activeFilter);
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((o) => [o.order_number, o.profile?.full_name, o.profile?.company_name, o.profile?.phone, o.profile?.email]
+        .some((v) => (v ?? '').toLowerCase().includes(q)));
+    }
+    return list;
+  }, [allOrders, activeFilter, query]);
+
+  async function cancelOrder(o: Order) {
+    const ok = await confirm({
+      title: 'إلغاء الطلب',
+      message: `هل تريد إلغاء الطلب ${o.order_number}${o.profile?.full_name ? ` للعميل ${o.profile.full_name}` : ''}؟ لا يمكن التراجع عن الإلغاء.`,
+      confirmText: 'إلغاء الطلب',
+      cancelText: 'رجوع',
+      destructive: true,
+    });
+    if (ok) updateStatus.mutate({ id: o.id, status: 'cancelled' });
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <View style={{
-        backgroundColor: C.card,
-        paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12,
-        borderBottomWidth: 1, borderBottomColor: C.hairline,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+      {dialog}
+      {/* Header */}
+      <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: COLORS.line }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity
             onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}
-            style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="رجوع"
+            style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="home-outline" size={18} color={C.muted} />
+            <Ionicons name="arrow-forward" size={20} color={COLORS.ink} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>
-            {t('admin.manageOrders')}
-          </Text>
-          <View style={{ width: 36 }} />
+          <Text style={{ flex: 1, fontSize: 19, fontWeight: '700', color: COLORS.ink }}>{t('admin.manageOrders')}</Text>
+          <Text style={{ fontSize: 13, color: COLORS.muted }}>{displayOrders.length} طلب</Text>
         </View>
 
-        {/* ── Status filter tabs ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
-        >
+        <View style={{ height: 44, borderRadius: 12, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 }}>
+          <Ionicons name="search-outline" size={18} color={COLORS.muted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="رقم الطلب، اسم العميل، الشركة أو الهاتف"
+            placeholderTextColor={COLORS.muted}
+            style={{ flex: 1, fontSize: 14, color: COLORS.ink, textAlign: 'right' } as any}
+          />
+          {!!query && (
+            <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="مسح البحث">
+              <Ionicons name="close-circle" size={18} color={COLORS.faint} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, flexDirection: 'row' }}>
           {FILTER_TABS.map((tab) => {
             const isActive = activeFilter === tab.key;
             const count = counts[tab.key] ?? 0;
-            if (count === 0 && tab.key !== 'all') return null;
-            const tabColor = tab.key === 'all'
-              ? C.brand
-              : (ORDER_STATUS_LABELS[tab.key as OrderStatus]?.color ?? C.muted);
-
+            if (count === 0 && !['all', 'open'].includes(tab.key) && !isActive) return null;
             return (
               <TouchableOpacity
                 key={tab.key}
                 onPress={() => setActiveFilter(tab.key)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
+                accessibilityState={{ selected: isActive }}
                 style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
-                  paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-                  backgroundColor: isActive ? tabColor : '#f1f5f9',
-                  borderWidth: isActive ? 0 : 1,
-                  borderColor: C.hairline,
+                  height: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 18,
+                  backgroundColor: isActive ? COLORS.ink : '#fff', borderWidth: 1, borderColor: isActive ? COLORS.ink : COLORS.line,
                 }}
               >
-                <Text style={{
-                  fontSize: 12, fontWeight: '700',
-                  color: isActive ? '#fff' : C.muted,
-                }}>
-                  {tab.label}
-                </Text>
-                {count > 0 && (
-                  <View style={{
-                    minWidth: 18, height: 18, borderRadius: 9,
-                    backgroundColor: isActive ? '#ffffff30' : tabColor + '20',
-                    alignItems: 'center', justifyContent: 'center',
-                    paddingHorizontal: 4,
-                  }}>
-                    <Text style={{
-                      fontSize: 10, fontWeight: '900',
-                      color: isActive ? '#fff' : tabColor,
-                    }}>
-                      {count}
-                    </Text>
-                  </View>
-                )}
+                <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? '#fff' : COLORS.ink }}>{tab.label}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? '#fff' : COLORS.muted }}>{count}</Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       </View>
 
-      {/* ── Order list ──────────────────────────────────────────── */}
+      {/* Order list */}
       <FlatList
         data={displayOrders}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <OrderCard item={item} />}
+        renderItem={({ item }) => <OrderCard item={item} onCancel={cancelOrder} />}
         contentContainerStyle={{ paddingVertical: 10, paddingBottom: 40 }}
         ListHeaderComponent={
           isLoading ? (
             <View style={{ padding: 16, gap: 10 }}>
               {[1, 2, 3].map((i) => (
-                <View key={i} style={{
-                  backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 10,
-                  shadowColor: '#1e293b', shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-                }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Skeleton width={80} height={20} borderRadius={6} />
-                    <Skeleton width={70} height={26} borderRadius={20} />
-                  </View>
-                  <Skeleton width={120} height={12} borderRadius={5} />
-                  <Skeleton height={10} borderRadius={5} />
-                  <Skeleton height={40} borderRadius={12} />
+                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 10 }}>
+                  <Skeleton width={140} height={16} borderRadius={6} />
+                  <Skeleton width={100} height={12} borderRadius={5} />
+                  <Skeleton height={4} borderRadius={2} />
+                  <Skeleton height={40} borderRadius={10} />
                 </View>
               ))}
             </View>
@@ -323,9 +250,9 @@ export default function AdminOrdersScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={{ paddingTop: 80, alignItems: 'center', gap: 10 }}>
-              <Ionicons name="receipt-outline" size={48} color="#cbd5e1" />
-              <Text style={{ color: C.muted, fontSize: 15, fontWeight: '600' }}>
-                لا توجد طلبات
+              <Ionicons name="receipt-outline" size={48} color={COLORS.faint} />
+              <Text style={{ color: COLORS.muted, fontSize: 15, fontWeight: '600' }}>
+                {query ? 'لا توجد طلبات مطابقة للبحث' : 'لا توجد طلبات هنا'}
               </Text>
             </View>
           ) : null

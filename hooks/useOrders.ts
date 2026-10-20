@@ -25,11 +25,16 @@ export function useOrders(params: GetOrdersParams = {}) {
   });
 }
 
+// Admin screens need every recent order (the default page size of 20 silently
+// dropped older ones from totals) and the customer's name on each order.
+const ADMIN_ORDERS_LIMIT = 1000;
+
 export function useAdminOrders(params: Omit<GetOrdersParams, 'userId'> = {}) {
   const { isAdmin } = useAuthStore();
+  const full = { limit: ADMIN_ORDERS_LIMIT, withCustomer: true, ...params };
   return useQuery({
-    queryKey: orderKeys.list(params),
-    queryFn: () => getOrders(params),
+    queryKey: orderKeys.list(full),
+    queryFn: () => getOrders(full),
     enabled: isAdmin,
   });
 }

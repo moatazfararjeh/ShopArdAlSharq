@@ -1,177 +1,108 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, FlatList, TextInput } from 'react-native';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useProductsPage, useDeleteProduct } from '@/hooks/useProducts';
-import { useBrands } from '@/hooks/useBrands';
-import { getCurrentLocale } from '@/i18n';
+import { useSections } from '@/hooks/useSections';
+import { getCurrentLocale, SupportedLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { formatPrice } from '@/utils/formatPrice';
 import { Product } from '@/types/models';
+import { COLORS } from '@/lib/theme';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const C = {
-  surface:  '#f0f4f8',
-  card:     '#ffffff',
-  brand:    '#e36523',
-  text:     '#1e293b',
-  muted:    '#64748b',
-  hairline: '#e2e8f0',
-};
+// ─── Filters ──────────────────────────────────────────────────────────────────
+// Keys match the dashboard's "صحة الكتالوج" links (?filter=out etc.).
+type FilterKey = 'all' | 'out' | 'noimage' | 'nosection' | 'nobrand' | 'hidden';
 
-// ─── Thumbnail ────────────────────────────────────────────────────────────────
-function ProductThumb({ url }: { url: string | null }) {
-  if (url) {
-    return (
-      <Image
-        source={{ uri: url }}
-        style={{ width: 52, height: 52, borderRadius: 12, backgroundColor: '#f1f5f9' }}
-        contentFit="cover"
-      />
-    );
-  }
-  return (
-    <View style={{
-      width: 52, height: 52, borderRadius: 12,
-      backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <Ionicons name="image-outline" size={22} color="#94a3b8" />
-    </View>
-  );
-}
+const FILTERS: Array<{ key: FilterKey; label: string; test: (p: Product) => boolean }> = [
+  { key: 'all',       label: 'الكل',        test: () => true },
+  { key: 'out',       label: 'نفدت الكمية', test: (p) => p.is_available && p.stock_quantity === 0 },
+  { key: 'noimage',   label: 'بدون صورة',   test: (p) => !(p.product_images?.length) },
+  { key: 'nosection', label: 'بدون قسم',    test: (p) => !p.section_id },
+  { key: 'nobrand',   label: 'بدون ماركة',  test: (p) => !p.brand_id },
+  { key: 'hidden',    label: 'مخفي',        test: (p) => !p.is_available },
+];
+
+const UNIT_LABELS: Record<string, string> = { kg: 'كغ', carton: 'كرتون', piece: 'حبة', tin: 'تنك' };
 
 // ─── Product row ──────────────────────────────────────────────────────────────
 function ProductRow({
-  item,
-  locale,
-  onEdit,
-  onDelete,
-  onAnalytics,
+  item, locale, sectionName, onEdit, onDelete, onAnalytics,
 }: {
   item: Product;
-  locale: string;
+  locale: SupportedLocale;
+  sectionName?: string;
   onEdit: () => void;
   onDelete: () => void;
   onAnalytics: () => void;
 }) {
   const thumbUrl = item.product_images?.[0]?.url ?? null;
-  const inStock = item.is_available && item.stock_quantity > 0;
-  const unitLabel = item.unit_type === 'kg' ? 'كغ' : item.unit_type === 'carton' ? 'كرتون' : item.unit_type === 'piece' ? 'حبة' : item.unit_type === 'tin' ? 'تنك' : '';
+  const unit = item.unit_type ? UNIT_LABELS[item.unit_type] : '';
+  const meta = [item.categories?.name_ar, sectionName, item.brands?.name].filter(Boolean).join(' · ');
+
+  let stock: { label: string; color: string; bg: string };
+  if (!item.is_available) stock = { label: 'مخفي', color: COLORS.muted, bg: COLORS.surface };
+  else if (item.stock_quantity === 0) stock = { label: 'نفدت', color: COLORS.danger, bg: '#FDECEA' };
+  else stock = { label: `${item.stock_quantity}${unit ? ' ' + unit : ''}`, color: COLORS.green, bg: COLORS.greenTint };
 
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center', gap: 12,
-      marginHorizontal: 16, marginVertical: 4,
-      backgroundColor: C.card, padding: 12, borderRadius: 16,
-      shadowColor: '#1e293b', shadowOpacity: 0.05,
-      shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+      marginHorizontal: 16, marginVertical: 4, backgroundColor: '#fff', padding: 12, borderRadius: 16,
     }}>
-      <ProductThumb url={thumbUrl} />
+      <TouchableOpacity onPress={onEdit} activeOpacity={0.8} accessibilityLabel="تعديل المنتج">
+        {thumbUrl ? (
+          <Image
+            source={{ uri: thumbUrl }}
+            accessibilityLabel={getProductName(item, locale)}
+            style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.surface }}
+            contentFit="cover"
+          />
+        ) : (
+          <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="image-outline" size={22} color={COLORS.brandText} />
+          </View>
+        )}
+      </TouchableOpacity>
 
-      {/* Info block */}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }} numberOfLines={1}>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.ink }} numberOfLines={1}>
           {getProductName(item, locale)}
         </Text>
-        <Text style={{ fontSize: 12, fontWeight: '800', color: C.brand, marginTop: 2 }}>
-          {formatPrice(item.price)}
+        <Text style={{ fontSize: 12, color: meta ? COLORS.muted : COLORS.faint }} numberOfLines={1}>
+          {meta || 'بدون تصنيف'}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-          <View style={{
-            paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20,
-            backgroundColor: inStock ? '#f0fdf4' : '#fff1f2',
-          }}>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: inStock ? '#16a34a' : '#ef4444' }}>
-              {inStock ? 'متوفر' : 'غير متوفر'}
-            </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.ink }}>{formatPrice(item.price)}</Text>
+          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: stock.bg }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: stock.color }}>{stock.label}</Text>
           </View>
-          {inStock && (
-            <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#eff6ff' }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#2563eb' }}>
-                {`الكمية: ${item.stock_quantity}${unitLabel ? ' ' + unitLabel : ''}${item.pieces_per_carton ? ` (${item.pieces_per_carton} حبة/كرتون)` : ''}`}
-              </Text>
-            </View>
-          )}
-          {(item.product_images?.length ?? 0) === 0 && (
-            <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20, backgroundColor: '#fff7ed' }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#f59e0b' }}>بدون صورة</Text>
-            </View>
-          )}
+          {!!item.erp_code && <Text style={{ fontSize: 11, color: COLORS.faint }} numberOfLines={1}>#{item.erp_code}</Text>}
         </View>
       </View>
 
-      {/* Icon actions */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <TouchableOpacity
-          onPress={onAnalytics}
-          style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#f5f3ff', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="bar-chart-outline" size={16} color="#8b5cf6" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onEdit}
-          style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="create-outline" size={16} color="#3b82f6" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onDelete}
-          style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff1f2', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="trash-outline" size={16} color="#ef4444" />
-        </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+        {[
+          { icon: 'bar-chart-outline' as const, label: 'إحصاءات المنتج', onPress: onAnalytics, color: COLORS.muted },
+          { icon: 'create-outline' as const, label: 'تعديل', onPress: onEdit, color: COLORS.ink },
+          { icon: 'trash-outline' as const, label: 'حذف', onPress: onDelete, color: COLORS.danger },
+        ].map((a) => (
+          <TouchableOpacity
+            key={a.icon}
+            onPress={a.onPress}
+            accessibilityLabel={a.label}
+            style={{ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name={a.icon} size={18} color={a.color} />
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
-  );
-}
-
-// ─── Brand section header ─────────────────────────────────────────────────────
-function BrandHeader({
-  name,
-  count,
-  collapsed,
-  onToggle,
-}: {
-  name: string;
-  count: number;
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onToggle}
-      activeOpacity={0.7}
-      style={{
-        flexDirection: 'row', alignItems: 'center',
-        justifyContent: 'space-between',
-        marginHorizontal: 16, marginTop: 16, marginBottom: 6,
-        paddingHorizontal: 14, paddingVertical: 10,
-        backgroundColor: C.card, borderRadius: 12,
-        borderRightWidth: 3, borderRightColor: C.brand,
-        shadowColor: '#1e293b', shadowOpacity: 0.04,
-        shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
-      }}
-    >
-      <Text style={{ fontSize: 14, fontWeight: '800', color: C.text }}>{name}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Ionicons
-          name={collapsed ? 'chevron-back' : 'chevron-down'}
-          size={14}
-          color={C.muted}
-        />
-        <View style={{
-          paddingHorizontal: 8, paddingVertical: 2,
-          backgroundColor: '#fff7ed', borderRadius: 20,
-        }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', color: C.brand }}>{count}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
   );
 }
 
@@ -181,30 +112,37 @@ export default function AdminProductsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = getCurrentLocale();
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [query, setQuery] = useState('');
 
-  function toggleCollapse(brandId: string) {
-    setCollapsed((prev) => ({ ...prev, [brandId]: !prev[brandId] }));
-  }
+  // Follow the dashboard's ?filter= link, including when it changes while mounted.
+  useEffect(() => {
+    if (params.filter && FILTERS.some((f) => f.key === params.filter)) setFilter(params.filter as FilterKey);
+  }, [params.filter]);
 
   const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
-  const { data: brands } = useBrands(false);
+  const { data: sections } = useSections(false);
   const deleteMutation = useDeleteProduct();
 
   const products: Product[] = data?.data ?? [];
+  const sectionNames = useMemo(
+    () => Object.fromEntries((sections ?? []).map((s) => [s.id, s.name_ar])) as Record<string, string>,
+    [sections],
+  );
 
-  const grouped = products.reduce<Record<string, Product[]>>((acc, product) => {
-    const brandId = product.brand_id ?? 'no-brand';
-    if (!acc[brandId]) acc[brandId] = [];
-    acc[brandId].push(product);
-    return acc;
-  }, {});
+  const counts = useMemo(
+    () => Object.fromEntries(FILTERS.map((f) => [f.key, products.filter(f.test).length])) as Record<FilterKey, number>,
+    [products],
+  );
 
-  function getBrandName(brandId: string): string {
-    if (brandId === 'no-brand') return 'أخرى';
-    const brand = brands?.find((b) => b.id === brandId);
-    return brand?.name ?? brandId;
-  }
+  const visible = useMemo(() => {
+    const test = FILTERS.find((f) => f.key === filter)!.test;
+    const q = query.trim().toLowerCase();
+    return products.filter((p) => test(p) && (!q || [
+      p.name_ar, p.name_en, p.erp_code, p.brands?.name, p.categories?.name_ar, p.section_id ? sectionNames[p.section_id] : '',
+    ].some((v) => (v ?? '').toLowerCase().includes(q))));
+  }, [products, filter, query, sectionNames]);
 
   async function confirmDelete(id: string, name: string) {
     const ok = await confirm({
@@ -218,119 +156,122 @@ export default function AdminProductsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: C.card,
-        paddingHorizontal: 16, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: C.hairline,
-      }}>
-        <TouchableOpacity
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="home-outline" size={18} color={C.muted} />
-        </TouchableOpacity>
-
-        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>
-          {t('admin.manageProducts')}
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => router.push('/(admin)/products/add')}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 5,
-            backgroundColor: C.brand, borderRadius: 12,
-            paddingHorizontal: 14, paddingVertical: 8,
-          }}
-        >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>إضافة</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Collapse controls ─────────────────────────────────────── */}
-      {!isLoading && Object.keys(grouped).length > 0 && (
-        <View style={{
-          flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10,
-          backgroundColor: C.card,
-          borderBottomWidth: 1, borderBottomColor: C.hairline,
-        }}>
-          <Text style={{ flex: 1, fontSize: 12, color: C.muted, textAlign: 'right' }}>
-            {products.length} منتج في {Object.keys(grouped).length} ماركة
-          </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+      {/* Header */}
+      <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: COLORS.line }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity
-            onPress={() => setCollapsed({})}
-            style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}
+            accessibilityLabel="رجوع"
+            style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>فتح الكل</Text>
+            <Ionicons name="arrow-forward" size={20} color={COLORS.ink} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 19, fontWeight: '700', color: COLORS.ink }}>{t('admin.manageProducts')}</Text>
+            <Text style={{ fontSize: 12, color: COLORS.muted }}>{visible.length} من {products.length} منتج</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/(admin)/products/excel' as any)}
+            accessibilityLabel="المنتجات عبر Excel"
+            style={{ height: 40, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+          >
+            <Ionicons name="document-attach-outline" size={18} color={COLORS.ink} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink }}>Excel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => {
-              const all: Record<string, boolean> = {};
-              Object.keys(grouped).forEach((id) => { all[id] = true; });
-              setCollapsed(all);
-            }}
-            style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f1f5f9' }}
+            onPress={() => router.push('/(admin)/products/add')}
+            style={{ height: 40, paddingHorizontal: 14, borderRadius: 10, backgroundColor: COLORS.brandFill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
           >
-            <Text style={{ fontSize: 11, fontWeight: '600', color: C.muted }}>طي الكل</Text>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>منتج جديد</Text>
           </TouchableOpacity>
         </View>
-      )}
 
-      {/* ── Content ───────────────────────────────────────────────── */}
-      {isLoading ? (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <View key={i} style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Skeleton width={52} height={52} borderRadius={12} />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Skeleton width="60%" height={13} borderRadius={5} />
-                <Skeleton width="35%" height={11} borderRadius={5} />
-                <Skeleton width="25%" height={10} borderRadius={20} />
-              </View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <Skeleton width={34} height={34} borderRadius={10} />
-                <Skeleton width={34} height={34} borderRadius={10} />
-                <Skeleton width={34} height={34} borderRadius={10} />
-              </View>
-            </View>
-          ))}
+        <View style={{ height: 44, borderRadius: 12, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 }}>
+          <Ionicons name="search-outline" size={18} color={COLORS.muted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="اسم المنتج، الرمز، الفئة، القسم أو الماركة"
+            placeholderTextColor={COLORS.muted}
+            style={{ flex: 1, fontSize: 14, color: COLORS.ink, textAlign: 'right' } as any}
+          />
+          {!!query && (
+            <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="مسح البحث">
+              <Ionicons name="close-circle" size={18} color={COLORS.faint} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, flexDirection: 'row' }}>
+          {FILTERS.map((f) => {
+            const isActive = filter === f.key;
+            const count = counts[f.key] ?? 0;
+            if (count === 0 && f.key !== 'all' && !isActive) return null;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                activeOpacity={0.8}
+                accessibilityState={{ selected: isActive }}
+                style={{
+                  height: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 18,
+                  backgroundColor: isActive ? COLORS.ink : '#fff', borderWidth: 1, borderColor: isActive ? COLORS.ink : COLORS.line,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? '#fff' : COLORS.ink }}>{f.label}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? '#fff' : COLORS.muted }}>{count}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
-      ) : (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
-          {Object.entries(grouped).map(([brandId, items]) => (
-            <View key={brandId}>
-              <BrandHeader
-                name={getBrandName(brandId)}
-                count={items.length}
-                collapsed={!!collapsed[brandId]}
-                onToggle={() => toggleCollapse(brandId)}
-              />
-              {!collapsed[brandId] && items.map((item) => (
-                <ProductRow
-                  key={item.id}
-                  item={item}
-                  locale={locale}
-                  onAnalytics={() => router.push(`/(admin)/products/${item.id}/analytics` as any)}
-                  onEdit={() => router.push(`/(admin)/products/${item.id}/edit` as any)}
-                  onDelete={() => confirmDelete(item.id, getProductName(item, locale))}
-                />
+      </View>
+
+      {/* List */}
+      <FlatList
+        data={isLoading ? [] : visible}
+        keyExtractor={(item) => item.id}
+        initialNumToRender={20}
+        windowSize={10}
+        contentContainerStyle={{ paddingVertical: 10, paddingBottom: 80 }}
+        renderItem={({ item }) => (
+          <ProductRow
+            item={item}
+            locale={locale}
+            sectionName={item.section_id ? sectionNames[item.section_id] : undefined}
+            onAnalytics={() => router.push(`/(admin)/products/${item.id}/analytics` as any)}
+            onEdit={() => router.push(`/(admin)/products/${item.id}/edit` as any)}
+            onDelete={() => confirmDelete(item.id, getProductName(item, locale))}
+          />
+        )}
+        ListHeaderComponent={
+          isLoading ? (
+            <View style={{ paddingHorizontal: 16, gap: 8 }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <View key={i} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Skeleton width={56} height={56} borderRadius={12} />
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton width="60%" height={13} borderRadius={5} />
+                    <Skeleton width="40%" height={11} borderRadius={5} />
+                    <Skeleton width="25%" height={11} borderRadius={5} />
+                  </View>
+                </View>
               ))}
             </View>
-          ))}
-
-          {products.length === 0 && (
-            <View style={{ marginTop: 80, alignItems: 'center', gap: 10 }}>
-              <Ionicons name="cube-outline" size={48} color="#cbd5e1" />
-              <Text style={{ color: C.muted, fontSize: 15, fontWeight: '600' }}>
-                {t('products.noProducts')}
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={{ paddingTop: 80, alignItems: 'center', gap: 10 }}>
+              <Ionicons name="cube-outline" size={48} color={COLORS.faint} />
+              <Text style={{ color: COLORS.muted, fontSize: 15, fontWeight: '600' }}>
+                {query || filter !== 'all' ? 'لا توجد منتجات مطابقة' : t('products.noProducts')}
               </Text>
             </View>
-          )}
-        </ScrollView>
-      )}
+          ) : null
+        }
+      />
       {dialog}
     </SafeAreaView>
   );

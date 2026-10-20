@@ -1,215 +1,159 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useSignOut } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
+import { useAdminOrders } from '@/hooks/useOrders';
+import { ADMIN_NAV_GROUPS, activeAdminPath } from '@/lib/adminNav';
+import { COLORS } from '@/lib/theme';
 
-const ADMIN_NAV = [
-  { label: 'لوحة التحكم', icon: 'grid-outline'    as const, activeIcon: 'grid'    as const, path: '/dashboard' },
-  { label: 'المنتجات',    icon: 'cube-outline'    as const, activeIcon: 'cube'    as const, path: '/products'  },
-  { label: 'الفئات',      icon: 'list-outline'    as const, activeIcon: 'list'    as const, path: '/categories'},
-  { label: 'الطلبات',     icon: 'receipt-outline' as const, activeIcon: 'receipt' as const, path: '/orders'    },
-  { label: 'البانرات',    icon: 'images-outline'  as const, activeIcon: 'images'  as const, path: '/banners'   },
-  { label: 'المستخدمون',  icon: 'people-outline'  as const, activeIcon: 'people'  as const, path: '/users'     },
-];
+const SIDEBAR_W = 248;
+const WIDE = 1024; // at or above this width the sidebar is always shown
+
+function useWindowWidth() {
+  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
+  useEffect(() => {
+    const onResize = () => setW(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return w;
+}
 
 export function AdminWebLayout({ children }: { children: React.ReactNode }) {
   const pathname        = usePathname();
   const router          = useRouter();
   const signOutMutation = useSignOut();
   const profile         = useAuthStore((s) => s.profile);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const wide            = useWindowWidth() >= WIDE;
+  const [open, setOpen] = useState(false);
+  const active          = activeAdminPath(pathname);
+  const { data: pending } = useAdminOrders({ status: 'pending' });
+  const pendingCount    = pending?.length ?? 0;
+
+  function go(path: string) {
+    router.push(`/(admin)${path}` as any);
+    setOpen(false);
+  }
+
+  const sidebar = (
+    <View style={{
+      width: SIDEBAR_W, backgroundColor: '#fff', flexShrink: 0,
+      borderLeftWidth: 1, borderLeftColor: COLORS.line, height: '100%' as any,
+    }}>
+      <ScrollView contentContainerStyle={{ padding: 14, gap: 16 }}>
+        {/* Brand */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6, paddingTop: 6 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.ink, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 17 }}>ف</Text>
+          </View>
+          <View>
+            <Text style={{ fontWeight: '700', fontSize: 15, color: COLORS.ink }}>فود بوكس</Text>
+            <Text style={{ fontSize: 12, color: COLORS.muted }}>لوحة الإدارة</Text>
+          </View>
+        </View>
+
+        {/* Grouped navigation */}
+        {ADMIN_NAV_GROUPS.map((group) => (
+          <View key={group.title} style={{ gap: 2 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.faint, paddingHorizontal: 10, paddingBottom: 4 }}>
+              {group.title}
+            </Text>
+            {group.items.map((item) => {
+              const isActive = active === item.path;
+              const badge = item.path === '/orders' && pendingCount > 0 ? pendingCount : 0;
+              return (
+                <TouchableOpacity
+                  key={item.path}
+                  onPress={() => go(item.path)}
+                  activeOpacity={0.75}
+                  accessibilityRole="link"
+                  accessibilityState={{ selected: isActive }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    paddingHorizontal: 10, paddingVertical: 9, borderRadius: 10,
+                    backgroundColor: isActive ? COLORS.brandTint : 'transparent',
+                    cursor: 'pointer' as any,
+                  }}
+                >
+                  <Ionicons name={item.icon} size={18} color={isActive ? COLORS.brandText : COLORS.muted} />
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: isActive ? '700' : '500', color: isActive ? COLORS.brandText : COLORS.ink }}>
+                    {item.label}
+                  </Text>
+                  {badge > 0 && (
+                    <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: COLORS.brandFill, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{badge}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+
+        {/* Footer actions */}
+        <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: COLORS.line, paddingTop: 12 }}>
+          <TouchableOpacity
+            onPress={() => { router.push('/(customer)/home' as any); setOpen(false); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line }}
+          >
+            <Ionicons name="storefront-outline" size={18} color={COLORS.ink} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.ink }}>عرض المتجر</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { signOutMutation.mutate(undefined, { onSuccess: () => router.replace('/(public)/login' as any) }); setOpen(false); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 10 }}
+          >
+            <Ionicons name="log-out-outline" size={18} color={COLORS.danger} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.danger }}>تسجيل الخروج</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any }}>
+    <View style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' as any, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+      {/* Wide screens: sidebar always visible (first child → right side in RTL) */}
+      {wide && sidebar}
 
-      {/* ── Dark sidebar — FIRST so it sits on the RIGHT in RTL ──────────── */}
-      {sidebarOpen && (
-      <View
-        style={{
-          width: 240,
-          backgroundColor: '#1e1a17',
-          flexShrink: 0,
-          flexDirection: 'column',
-          overflowY: 'auto' as any,
-          borderLeftWidth: 1,
-          borderLeftColor: '#2e2924',
-        }}
-      >
-        {/* Brand */}
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingTop: 24,
-            paddingBottom: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: '#2e2924',
-          }}
-        >
-          <Image
-            source={require('@/assets/logo.png')}
-            style={{ width: 180, height: 60 }}
-            contentFit="contain"
-          />
-          <View
-            style={{
-              marginTop: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <View
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 13,
-                backgroundColor: '#e36523',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="shield-checkmark" size={13} color="#fff" />
-            </View>
-            <Text style={{ color: '#a09284', fontSize: 12, fontWeight: '600' }}>
-              لوحة الإدارة
-            </Text>
-          </View>
-        </View>
-
-        {/* Nav items */}
-        <View style={{ flex: 1, paddingHorizontal: 10, paddingTop: 14 }}>
-          {ADMIN_NAV.map((item) => {
-            const isActive =
-              pathname === item.path || pathname.startsWith(item.path + '/');
-
-            return (
-              <TouchableOpacity
-                key={item.path}
-                onPress={() => { router.push(`/(admin)${item.path}` as any); setSidebarOpen(false); }}
-                activeOpacity={0.75}
-                style={[
-                  styles.navItem,
-                  isActive && styles.navItemActive,
-                ]}
-              >
-                <Ionicons
-                  name={isActive ? item.activeIcon : item.icon}
-                  size={18}
-                  color={isActive ? '#e36523' : '#a09284'}
-                />
-                <Text
-                  style={[
-                    styles.navLabel,
-                    { color: isActive ? '#f5f0eb' : '#a09284', fontWeight: isActive ? '700' : '400' },
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Bottom actions */}
-        <View style={{ paddingHorizontal: 10, paddingBottom: 24 }}>
-          <View style={styles.divider} />
-          <TouchableOpacity
-            onPress={() => { router.push('/(customer)/home' as any); setSidebarOpen(false); }}
-            activeOpacity={0.75}
-            style={styles.navItem}
-          >
-            <Ionicons name="storefront-outline" size={18} color="#a09284" />
-            <Text style={[styles.navLabel, { color: '#a09284' }]}>عرض المتجر</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => { signOutMutation.mutate(undefined, { onSuccess: () => router.replace('/(public)/login' as any) }); setSidebarOpen(false); }}
-            activeOpacity={0.75}
-            style={styles.navItem}
-          >
-            <Ionicons name="log-out-outline" size={18} color="#a09284" />
-            <Text style={[styles.navLabel, { color: '#a09284' }]}>تسجيل الخروج</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      )}
-
-      {/* ── Content area ─────────────────────────────────────────────────── */}
+      {/* Content */}
       <View style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' as any }}>
-        {/* Sticky top bar */}
-        <View
-          style={{
-            backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#e6e0d8',
-            paddingHorizontal: 24,
-            height: 56,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 4,
-                backgroundColor: '#16a34a',
-              }}
-            />
-            <Text style={{ fontSize: 12, color: '#857d78' }}>متصل</Text>
-          </View>
-          <Text style={{ fontSize: 14, color: '#5c4a35', fontWeight: '500' }}>
+        <View style={{
+          backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line,
+          paddingHorizontal: 20, height: 56, flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0,
+        }}>
+          {!wide && (
+            <TouchableOpacity
+              onPress={() => setOpen(true)}
+              accessibilityLabel="القائمة"
+              style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="menu" size={22} color={COLORS.ink} />
+            </TouchableOpacity>
+          )}
+          <Text style={{ flex: 1, fontSize: 14, color: COLORS.muted }}>
             {profile?.full_name ?? 'المدير'} · أرض الشرق
           </Text>
-          <TouchableOpacity
-            onPress={() => setSidebarOpen((v) => !v)}
-            activeOpacity={0.7}
-            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f0ec', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name={sidebarOpen ? 'close-outline' : 'menu-outline'} size={20} color="#5c4a35" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.green }} />
+            <Text style={{ fontSize: 12, color: COLORS.muted }}>متصل</Text>
+          </View>
         </View>
 
-        {/* Page content */}
         <View style={{ flex: 1, overflowY: 'auto' as any }}>
           {children}
         </View>
       </View>
 
-
+      {/* Narrow screens: slide-over sidebar */}
+      {!wide && open && (
+        <View style={{ position: 'fixed' as any, top: 0, bottom: 0, left: 0, right: 0, zIndex: 500, flexDirection: 'row' }}>
+          {sidebar}
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(28,25,23,0.45)' }} onPress={() => setOpen(false)} accessibilityLabel="إغلاق القائمة" />
+        </View>
+      )}
     </View>
   );
 }
-
-// ── Shared style objects ─────────────────────────────────────────────────────
-const styles = {
-  divider: {
-    height: 1,
-    backgroundColor: '#2e2924',
-    marginHorizontal: 4,
-    marginBottom: 8,
-  },
-  navItem: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginBottom: 2,
-    cursor: 'pointer' as any,
-  },
-  navItemActive: {
-    backgroundColor: 'rgba(227, 101, 35, 0.15)',
-    borderStartWidth: 3,
-    borderStartColor: '#e36523',
-  },
-  navLabel: {
-    fontSize: 14,
-  },
-};
