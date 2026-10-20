@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProductsPage, useUpdateProduct } from '@/hooks/useProducts';
 import { useBrands } from '@/hooks/useBrands';
 import { useCategories } from '@/hooks/useCategories';
+import { useSections } from '@/hooks/useSections';
 import { getCurrentLocale, SupportedLocale } from '@/i18n';
 import { getProductName } from '@/types/models';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,7 +23,7 @@ const C = {
 };
 
 // The table needs this much width; narrower screens scroll it sideways.
-const TABLE_MIN_WIDTH = 1320;
+const TABLE_MIN_WIDTH = 1440;
 
 const UNIT_TYPE_OPTIONS = [
   { id: 'piece', name: 'حبة' },
@@ -31,9 +32,10 @@ const UNIT_TYPE_OPTIONS = [
   { id: 'tin', name: 'تنك' },
 ];
 
-type MissingFilter = 'weight' | 'price' | 'erp_code';
+type MissingFilter = 'section' | 'weight' | 'price' | 'erp_code';
 
 const MISSING_FILTER_OPTIONS: { id: MissingFilter; label: string }[] = [
+  { id: 'section', label: 'بدون قسم' },
   { id: 'weight', label: 'بدون وزن' },
   { id: 'price', label: 'بدون سعر' },
   { id: 'erp_code', label: 'بدون كود ERP' },
@@ -41,6 +43,7 @@ const MISSING_FILTER_OPTIONS: { id: MissingFilter; label: string }[] = [
 
 function isMissingField(product: any, filter: MissingFilter): boolean {
   switch (filter) {
+    case 'section': return !product.section_id;
     case 'weight': return product.weight == null;
     case 'price': return product.price == null;
     case 'erp_code': return !product.erp_code;
@@ -51,7 +54,7 @@ function exportToExcel(rows: any[]) {
   if (Platform.OS !== 'web') return;
   import('xlsx').then((XLSX) => {
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 14 }];
+    ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
     XLSX.writeFile(wb, 'products-report.xlsx');
@@ -329,9 +332,10 @@ function EditableSelectCell({
 }
 
 // ─── Row ──────────────────────────────────────────────────────────────────────
-function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
+function ProductRow({ product, locale, idx, categoryOptions, sectionOptions, brandOptions }: {
   product: any; locale: SupportedLocale; idx: number;
   categoryOptions: { id: string; name: string }[];
+  sectionOptions: { id: string; name: string }[];
   brandOptions: { id: string; name: string }[];
 }) {
   const router = useRouter();
@@ -366,6 +370,13 @@ function ProductRow({ product, locale, idx, categoryOptions, brandOptions }: {
         value={product.category_id ?? null}
         options={categoryOptions}
         onSave={(v) => save({ category_id: v })}
+      />
+      <EditableSelectCell
+        value={product.section_id ?? null}
+        options={sectionOptions}
+        onSave={(v) => save({ section_id: v })}
+        allowNone
+        noneLabel="بدون قسم"
       />
       <EditableSelectCell
         value={product.brand_id ?? null}
@@ -487,10 +498,15 @@ export default function ProductsReportScreen() {
   const { data, isLoading } = useProductsPage({ availableOnly: false, page: 0, limit: 9999 });
   const { data: brands } = useBrands(false);
   const { data: categories } = useCategories(false);
+  const { data: sections } = useSections(false);
 
   const categoryOptions = useMemo(
     () => (categories ?? []).map((c) => ({ id: c.id, name: c.name_ar })),
     [categories],
+  );
+  const sectionOptions = useMemo(
+    () => (sections ?? []).map((s) => ({ id: s.id, name: s.name_ar })),
+    [sections],
   );
   const brandOptions = useMemo(
     () => (brands ?? []).map((b) => ({ id: b.id, name: b.name })),
@@ -509,7 +525,7 @@ export default function ProductsReportScreen() {
   }, [data, search, locale]);
 
   const missingCounts = useMemo(() => {
-    const counts: Record<MissingFilter, number> = { weight: 0, price: 0, erp_code: 0 };
+    const counts: Record<MissingFilter, number> = { section: 0, weight: 0, price: 0, erp_code: 0 };
     for (const p of searched) {
       for (const opt of MISSING_FILTER_OPTIONS) {
         if (isMissingField(p, opt.id)) counts[opt.id]++;
@@ -545,6 +561,7 @@ export default function ProductsReportScreen() {
     products.map((p) => ({
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
       'الفئة':                getCategoryDisplayName(p.category_id),
+      'القسم':                sections?.find((x) => x.id === p.section_id)?.name_ar ?? '—',
       'نوع الوحدة':          UNIT_TYPE_OPTIONS.find((o) => o.id === p.unit_type)?.name ?? '—',
       'أدنى كمية للبيع':     p.min_order_quantity ?? 1,
       'اسم الصنف':           getProductName(p, locale),
@@ -556,7 +573,7 @@ export default function ProductsReportScreen() {
       'التعبئة في الكرتون':  p.pieces_per_carton ?? '—',
       'الوزن':               p.weight != null ? `${p.weight} ${p.weight_unit ?? 'kg'}` : '—',
     })),
-    [products, locale, brands, categories],
+    [products, locale, brands, categories, sections],
   );
 
   return (
@@ -626,6 +643,7 @@ export default function ProductsReportScreen() {
             <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>كود ERP</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
+            <Text style={[styles.hCell, { flex: 2 }]}>القسم</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>نوع الوحدة</Text>
             <Text style={[styles.hCell, { flex: 2 }]}>أدنى كمية للبيع</Text>
@@ -652,6 +670,7 @@ export default function ProductsReportScreen() {
                   locale={locale}
                   idx={idx}
                   categoryOptions={categoryOptions}
+                  sectionOptions={sectionOptions}
                   brandOptions={brandOptions}
                 />
               ))}
