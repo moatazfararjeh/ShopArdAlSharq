@@ -71,6 +71,7 @@ export default function EditProductScreen() {
       name_en: '',
       brand_id: '',
       section_id: '',
+      erp_code: '',
       description_ar: '',
       description_en: '',
       price: '',
@@ -99,6 +100,7 @@ export default function EditProductScreen() {
       name_en: product.name_en ?? '',
       brand_id: product.brand_id ?? '',
       section_id: product.section_id ?? '',
+      erp_code: product.erp_code ?? '',
       description_ar: product.description_ar ?? '',
       description_en: product.description_en ?? '',
       price: String(product.price ?? ''),
@@ -139,6 +141,7 @@ export default function EditProductScreen() {
       name_en: values.name_en || null,
       brand_id: values.brand_id || null,
       section_id: values.section_id || null,
+      erp_code: values.erp_code || null,
       description_ar: values.description_ar || null,
       description_en: values.description_en || null,
       price: parseFloat(values.price),
@@ -294,6 +297,11 @@ export default function EditProductScreen() {
           <Controller control={control} name="name_en"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input label="Name in English" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.name_en?.message} />
+            )}
+          />
+          <Controller control={control} name="erp_code"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input label="كود ERP" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} error={errors.erp_code?.message} />
             )}
           />
           <Controller control={control} name="description_ar"
