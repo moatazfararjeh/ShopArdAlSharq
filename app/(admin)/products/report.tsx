@@ -479,6 +479,109 @@ function BrandHeader({
   );
 }
 
+// ─── Column filter (Excel-style multi-select) ────────────────────────────────
+const EMPTY_VALUE = '—';
+
+interface ReportColumn {
+  key: string;
+  label: string;
+  flex: number;
+  /** The value shown for the product in this column; also what the filter matches. */
+  value: (p: any) => string;
+}
+
+function ColumnFilterModal({ column, options, selected, onApply, onClose }: {
+  column: ReportColumn;
+  /** Distinct values with how many rows have each. */
+  options: { value: string; count: number }[];
+  /** Current filter; empty means no filter (everything shown). */
+  selected: Set<string>;
+  onApply: (next: Set<string>) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<Set<string>>(() => new Set(selected));
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const visible = q ? options.filter((o) => o.value.toLowerCase().includes(q)) : options;
+
+  function toggle(value: string) {
+    setDraft((prev) => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+  }
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(28,25,23,0.45)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ width: '100%', maxWidth: 360, maxHeight: '85%', backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', direction: 'rtl' as any }}>
+          <View style={{ padding: 14, gap: 10, borderBottomWidth: 1, borderBottomColor: C.line }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, textAlign: 'right' }}>تصفية: {column.label}</Text>
+            <AdminSearch value={query} onChangeText={setQuery} placeholder="بحث في القيم" />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity onPress={() => setDraft((prev) => new Set([...prev, ...visible.map((o) => o.value)]))}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: C.brand }}>تحديد الكل</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setDraft(new Set())}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted }}>إلغاء التحديد</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <Text style={{ fontSize: 12, color: C.muted }}>{draft.size} محدد</Text>
+            </View>
+          </View>
+
+          <FlatList
+            data={visible}
+            keyExtractor={(o) => o.value}
+            style={{ maxHeight: 340 }}
+            ListEmptyComponent={<Text style={{ padding: 16, color: C.muted, textAlign: 'center' }}>لا توجد قيم مطابقة</Text>}
+            renderItem={({ item }) => {
+              const on = draft.has(item.value);
+              return (
+                <TouchableOpacity
+                  onPress={() => toggle(item.value)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.line }}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: on ? COLORS.brandFill : C.line, backgroundColor: on ? COLORS.brandFill : '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                    {on && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 14, color: C.text, textAlign: 'right' }} numberOfLines={2}>
+                    {item.value === EMPTY_VALUE ? '(فارغ)' : item.value}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: C.muted }}>{item.count}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+
+          <View style={{ flexDirection: 'row', gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: C.line }}>
+            <TouchableOpacity
+              onPress={() => onApply(draft.size === options.length ? new Set() : draft)}
+              style={{ flex: 1, height: 44, borderRadius: 10, backgroundColor: COLORS.brandFill, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>تطبيق</Text>
+            </TouchableOpacity>
+            {selected.size > 0 && (
+              <TouchableOpacity
+                onPress={() => onApply(new Set())}
+                style={{ height: 44, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>إزالة الفلتر</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={{ height: 44, paddingHorizontal: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: C.muted }}>إغلاق</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ProductsReportScreen() {
   const router = useRouter();
@@ -534,10 +637,68 @@ export default function ProductsReportScreen() {
     return counts;
   }, [searched]);
 
-  const products = useMemo(() => {
+  const afterMissing = useMemo(() => {
     if (activeMissingFilters.size === 0) return searched;
     return searched.filter((p) => Array.from(activeMissingFilters).some((f) => isMissingField(p, f)));
   }, [searched, activeMissingFilters]);
+
+  // Column order must match ProductRow's cells.
+  const columns = useMemo<ReportColumn[]>(() => {
+    const num = (v: number | null | undefined, suffix = '') => (v != null ? `${v}${suffix}` : EMPTY_VALUE);
+    const nameOf = (list: { id: string; name: string }[], id: string | null | undefined) =>
+      (id && list.find((o) => o.id === id)?.name) || EMPTY_VALUE;
+    return [
+      { key: 'name',     label: 'اسم الصنف',       flex: 3, value: (p) => getProductName(p, locale) },
+      { key: 'erp',      label: 'كود ERP',         flex: 2, value: (p) => p.erp_code || EMPTY_VALUE },
+      { key: 'category', label: 'الفئة',           flex: 2, value: (p) => nameOf(categoryOptions, p.category_id) },
+      { key: 'section',  label: 'القسم',           flex: 2, value: (p) => nameOf(sectionOptions, p.section_id) },
+      { key: 'brand',    label: 'الماركة',         flex: 2, value: (p) => nameOf(brandOptions, p.brand_id) },
+      { key: 'unit',     label: 'نوع الوحدة',      flex: 2, value: (p) => nameOf(UNIT_TYPE_OPTIONS, p.unit_type) },
+      { key: 'minQty',   label: 'أدنى كمية للبيع', flex: 2, value: (p) => num(p.min_order_quantity) },
+      { key: 'price',    label: 'سعر المنتج',      flex: 2, value: (p) => num(p.price) },
+      { key: 'piece',    label: 'سعر الحبة',       flex: 2, value: (p) => num(p.price_per_piece) },
+      { key: 'kg',       label: 'سعر الكيلو',      flex: 2, value: (p) => num(p.price_per_kg) },
+      { key: 'carton',   label: 'السعر بالكرتونة', flex: 2, value: (p) => num(p.price_per_carton) },
+      { key: 'pieces',   label: 'التعبئة/كرتون',   flex: 2, value: (p) => num(p.pieces_per_carton) },
+      { key: 'weight',   label: 'الوزن',           flex: 2, value: (p) => num(p.weight, p.weight != null ? ` ${p.weight_unit ?? 'kg'}` : '') },
+    ];
+  }, [locale, categoryOptions, sectionOptions, brandOptions]);
+
+  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string>>>({});
+  const [filterColumn, setFilterColumn] = useState<ReportColumn | null>(null);
+  const activeColumnFilters = Object.entries(columnFilters).filter(([, set]) => set.size > 0);
+
+  function matchesColumnFilters(p: any, skipKey?: string) {
+    return activeColumnFilters.every(([key, set]) => {
+      if (key === skipKey) return true;
+      const col = columns.find((c) => c.key === key);
+      return !col || set.has(col.value(p));
+    });
+  }
+
+  const products = useMemo(
+    () => afterMissing.filter((p) => matchesColumnFilters(p)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [afterMissing, columnFilters, columns],
+  );
+
+  // Options for the open filter: values left after every *other* filter, like Excel.
+  const filterOptions = useMemo(() => {
+    if (!filterColumn) return [];
+    const counts = new Map<string, number>();
+    for (const p of afterMissing) {
+      if (!matchesColumnFilters(p, filterColumn.key)) continue;
+      const v = filterColumn.value(p);
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    const isNum = (v: string) => v !== EMPTY_VALUE && !isNaN(parseFloat(v));
+    return Array.from(counts, ([value, count]) => ({ value, count })).sort((a, b) => {
+      if (a.value === EMPTY_VALUE) return -1;
+      if (b.value === EMPTY_VALUE) return 1;
+      return isNum(a.value) && isNum(b.value) ? parseFloat(a.value) - parseFloat(b.value) : a.value.localeCompare(b.value, 'ar');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterColumn, afterMissing, columnFilters]);
 
   const grouped = useMemo(() => {
     return products.reduce<Record<string, any[]>>((acc, p) => {
@@ -578,6 +739,18 @@ export default function ProductsReportScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, direction: 'rtl' as any }} edges={['top']}>
+      {filterColumn && (
+        <ColumnFilterModal
+          column={filterColumn}
+          options={filterOptions}
+          selected={columnFilters[filterColumn.key] ?? new Set()}
+          onClose={() => setFilterColumn(null)}
+          onApply={(next) => {
+            setColumnFilters((prev) => ({ ...prev, [filterColumn.key]: next }));
+            setFilterColumn(null);
+          }}
+        />
+      )}
       <AdminHeader
         title="تقرير المنتجات"
         subtitle={isLoading ? 'جاري التحميل...' : `${products.length} صنف · ${Object.keys(grouped).length} ماركة`}
@@ -602,9 +775,14 @@ export default function ProductsReportScreen() {
               onPress={() => toggleMissingFilter(opt.id)}
             />
           ))}
-          {activeMissingFilters.size > 0 && (
-            <TouchableOpacity onPress={() => setActiveMissingFilters(new Set())} style={{ paddingHorizontal: 6, paddingVertical: 6 }}>
-              <Text style={{ fontSize: 12, color: C.muted, textDecorationLine: 'underline' }}>مسح الفلتر</Text>
+          {(activeMissingFilters.size > 0 || activeColumnFilters.length > 0) && (
+            <TouchableOpacity
+              onPress={() => { setActiveMissingFilters(new Set()); setColumnFilters({}); }}
+              style={{ paddingHorizontal: 6, paddingVertical: 6 }}
+            >
+              <Text style={{ fontSize: 12, color: C.muted, textDecorationLine: 'underline' }}>
+                مسح الفلاتر{activeColumnFilters.length ? ` (${activeColumnFilters.map(([k]) => columns.find((c) => c.key === k)?.label).join('، ')})` : ''}
+              </Text>
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }} />
@@ -640,19 +818,20 @@ export default function ProductsReportScreen() {
             paddingHorizontal: 12, paddingVertical: 10,
             borderBottomWidth: 1, borderBottomColor: C.line,
           }}>
-            <Text style={[styles.hCell, { flex: 3 }]}>اسم الصنف</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>كود ERP</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>الفئة</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>القسم</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>الماركة</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>نوع الوحدة</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>أدنى كمية للبيع</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>سعر المنتج</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>سعر الحبة</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>سعر الكيلو</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>السعر بالكرتونة</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>التعبئة/كرتون</Text>
-            <Text style={[styles.hCell, { flex: 2 }]}>الوزن</Text>
+            {columns.map((col) => {
+              const active = (columnFilters[col.key]?.size ?? 0) > 0;
+              return (
+                <TouchableOpacity
+                  key={col.key}
+                  onPress={() => setFilterColumn(col)}
+                  accessibilityLabel={`تصفية ${col.label}`}
+                  style={{ flex: col.flex, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4 }}
+                >
+                  <Text style={[styles.hCell, { flexShrink: 1, paddingHorizontal: 0, color: active ? C.brand : COLORS.muted }]} numberOfLines={2}>{col.label}</Text>
+                  <Ionicons name={active ? 'funnel' : 'funnel-outline'} size={12} color={active ? C.brand : COLORS.faint} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {Object.entries(grouped).map(([brandId, items]) => (

@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
 import { Section } from '@/types/models';
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
 export interface GetSectionsParams {
   activeOnly?: boolean;
@@ -9,7 +8,9 @@ export interface GetSectionsParams {
 }
 
 export async function getSections(params: GetSectionsParams = {}): Promise<Section[]> {
-  const { activeOnly = true, limit = DEFAULT_PAGE_SIZE } = params;
+  // Whole list by default: screens build pickers and name lookups from it, and the
+  // Excel import matches names against it, so a short page silently drops rows.
+  const { activeOnly = true, limit = 1000 } = params;
 
   let query = supabase
     .from('sections')
