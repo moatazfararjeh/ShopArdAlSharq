@@ -16,6 +16,7 @@ import {
   buildPlan,
   applyPlan,
   newSectionsInPlan,
+  newBrandsInPlan,
   type PlanRow,
   type RowStatus,
   type ApplyResult,
@@ -69,6 +70,7 @@ export default function ProductsExcelScreen() {
   const readyRows = plan?.filter((r) => r.status === 'ready') ?? [];
   const problemRows = plan?.filter((r) => r.status === 'error' || r.status === 'not_found' || r.status === 'new') ?? [];
   const newSections = plan ? newSectionsInPlan(plan) : [];
+  const newBrands = plan ? newBrandsInPlan(plan) : [];
 
   async function doExport() {
     setError(null);
@@ -116,6 +118,7 @@ export default function ProductsExcelScreen() {
       title: 'تحديث المنتجات',
       message: `سيتم تحديث ${readyRows.length} منتج حسب الملف`
         + (newSections.length ? ` وإنشاء ${newSections.length} قسم جديد (${newSections.join('، ')})` : '')
+        + (newBrands.length ? ` و${newBrands.length} ماركة جديدة (${newBrands.join('، ')})` : '')
         + '. الصفوف التي فيها أخطاء لن تُعدَّل. متابعة؟',
       confirmText: 'تحديث',
     });
@@ -125,11 +128,12 @@ export default function ProductsExcelScreen() {
     setProgress({ done: 0, total: readyRows.length });
     setError(null);
     try {
-      const res = await applyPlan(plan, sections, (done, total) => setProgress({ done, total }));
+      const res = await applyPlan(plan, sections, brands, (done, total) => setProgress({ done, total }));
       setResult(res);
       setPlan(null);
       queryClient.invalidateQueries({ queryKey: ['products'] });
       if (res.createdSections.length) queryClient.invalidateQueries({ queryKey: ['sections'] });
+      if (res.createdBrands.length) queryClient.invalidateQueries({ queryKey: ['brands'] });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -218,6 +222,11 @@ export default function ProductsExcelScreen() {
                 أقسام جديدة تم إنشاؤها: {result.createdSections.join('، ')}
               </Text>
             )}
+            {result.createdBrands.length > 0 && (
+              <Text style={{ fontSize: 13, color: '#15803d', textAlign: 'right' }}>
+                ماركات جديدة تم إنشاؤها: {result.createdBrands.join('، ')}
+              </Text>
+            )}
             {result.failed.map((f) => (
               <Text key={f.rowNumber} style={{ fontSize: 12, color: '#dc2626', textAlign: 'right' }}>
                 صف {f.rowNumber} — {f.name}: {f.message}
@@ -262,15 +271,27 @@ export default function ProductsExcelScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Sections that will be created */}
-            {newSections.length > 0 && (
+            {/* Sections / brands that will be created */}
+            {(newSections.length > 0 || newBrands.length > 0) && (
               <View style={{ backgroundColor: '#eff6ff', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#bfdbfe' }}>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: '#1d4ed8', textAlign: 'right' }}>
-                  أقسام جديدة ستُنشأ تلقائياً ({newSections.length})
-                </Text>
-                <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }}>{newSections.join('، ')}</Text>
+                {newSections.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#1d4ed8', textAlign: 'right' }}>
+                      أقسام جديدة ستُنشأ تلقائياً ({newSections.length})
+                    </Text>
+                    <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }}>{newSections.join('، ')}</Text>
+                  </>
+                )}
+                {newBrands.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#1d4ed8', textAlign: 'right', marginTop: newSections.length ? 6 : 0 }}>
+                      ماركات جديدة ستُنشأ تلقائياً ({newBrands.length})
+                    </Text>
+                    <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }}>{newBrands.join('، ')}</Text>
+                  </>
+                )}
                 <Text style={{ fontSize: 12, color: C.muted, textAlign: 'right' }}>
-                  يمكنك إضافة صورة أو اسم بالإنجليزية لها لاحقاً من "الأقسام" في لوحة التحكم.
+                  يمكنك إضافة الصور لاحقاً من "الأقسام" و"الماركات" في لوحة التحكم.
                 </Text>
               </View>
             )}
