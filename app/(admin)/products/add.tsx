@@ -12,10 +12,11 @@ import { productSchema, ProductFormValues } from '@/schemas/productSchema';
 import { useCreateProduct } from '@/hooks/useProducts';
 import { uploadProductImages } from '@/hooks/useProductImages';
 import { useCategories } from '@/hooks/useCategories';
+import { useSections } from '@/hooks/useSections';
 import { useBrands } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
 import { getCurrentLocale } from '@/i18n';
-import { getCategoryName } from '@/types/models';
+import { getCategoryName, getSectionName } from '@/types/models';
 
 const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
@@ -29,6 +30,7 @@ export default function AddProductScreen() {
   const locale = getCurrentLocale();
   const createMutation = useCreateProduct();
   const { data: categories } = useCategories(false);
+  const { data: sections } = useSections(false);
   const { data: brands } = useBrands(false);
   const [pendingImages, setPendingImages] = useState<{ uri: string; mimeType?: string }[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -59,6 +61,7 @@ export default function AddProductScreen() {
       name_ar: '',
       name_en: '',
       brand_id: '',
+      section_id: '',
       description_ar: '',
       price: '',
       discount_price: '',
@@ -85,6 +88,7 @@ export default function AddProductScreen() {
       name_ar: values.name_ar,
       name_en: values.name_en || null,
       brand_id: values.brand_id || null,
+      section_id: values.section_id || null,
       description_ar: values.description_ar || null,
       description_en: values.description_en || null,
       price: parseFloat(values.price),
@@ -242,16 +246,16 @@ export default function AddProductScreen() {
           {errors.brand_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.brand_id.message}</Text>}
         </View>
 
-        {/* ── Category picker ── */}
+        {/* ── Section picker ── */}
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
-          <FieldLabel>الفئة *</FieldLabel>
+          <FieldLabel>القسم</FieldLabel>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {categories?.map((cat) => {
-              const selected = watch('category_id') === cat.id;
+            {sections?.map((section) => {
+              const selected = watch('section_id') === section.id;
               return (
                 <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => setValue('category_id', cat.id)}
+                  key={section.id}
+                  onPress={() => setValue('section_id', selected ? '' : section.id)}
                   style={{
                     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
                     backgroundColor: selected ? C.brand : '#f1f5f9',
@@ -259,12 +263,51 @@ export default function AddProductScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>
-                    {getCategoryName(cat, locale)}
+                    {getSectionName(section, locale)}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {errors.section_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.section_id.message}</Text>}
+        </View>
+
+        {/* ── Category picker (grouped by section) ── */}
+        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 14 }}>
+          <FieldLabel>الفئة *</FieldLabel>
+          {[...(sections ?? []), null].map((section) => {
+            const sectionCategories = (categories ?? []).filter((cat) =>
+              section ? cat.section_id === section.id : !cat.section_id,
+            );
+            if (sectionCategories.length === 0) return null;
+            return (
+              <View key={section?.id ?? '__none__'} style={{ gap: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: C.muted, textAlign: 'right' }}>
+                  {section ? getSectionName(section, locale) : 'بدون قسم'}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {sectionCategories.map((cat) => {
+                    const selected = watch('category_id') === cat.id;
+                    return (
+                      <TouchableOpacity
+                        key={cat.id}
+                        onPress={() => setValue('category_id', cat.id)}
+                        style={{
+                          paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                          backgroundColor: selected ? C.brand : '#f1f5f9',
+                          borderWidth: 1.5, borderColor: selected ? C.brand : C.hairline,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>
+                          {getCategoryName(cat, locale)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })}
           {errors.category_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.category_id.message}</Text>}
         </View>
 

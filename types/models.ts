@@ -129,6 +129,7 @@ export interface Product {
   id: string;
   category_id: string;
   brand_id: string | null;
+  section_id: string | null;
   name_ar: string;
   name_en: string | null;
   description_ar: string | null;

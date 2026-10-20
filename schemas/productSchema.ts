@@ -15,6 +15,11 @@ export const productSchema = z.object({
     .uuid('يرجى اختيار ماركة صحيحة')
     .optional()
     .or(z.literal('')),
+  section_id: z
+    .string()
+    .uuid('يرجى اختيار قسم صحيح')
+    .optional()
+    .or(z.literal('')),
   description_ar: z.string().max(2000, 'الوصف يجب ألا يتجاوز 2000 حرف').optional().or(z.literal('')),
   description_en: z.string().max(2000, 'الوصف يجب ألا يتجاوز 2000 حرف').optional().or(z.literal('')),
   price: z

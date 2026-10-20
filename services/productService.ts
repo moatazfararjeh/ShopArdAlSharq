@@ -6,6 +6,7 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 export interface GetProductsParams {
   categoryId?: string;
   brandId?: string;
+  sectionId?: string;
   noBrand?: boolean;
   search?: string;
   featured?: boolean;
@@ -42,6 +43,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
   if (availableOnly) query = query.eq('is_available', true).gt('stock_quantity', 0);
   if (categoryId) query = query.eq('category_id', categoryId);
   if (params.brandId) query = query.eq('brand_id', params.brandId);
+  if (params.sectionId) query = query.eq('section_id', params.sectionId);
   if (params.noBrand) query = query.is('brand_id', null);
   if (featured !== undefined) query = query.eq('is_featured', featured);
   if (params.onDeal) query = query.not('discount_price', 'is', null).gt('discount_price', 0);
