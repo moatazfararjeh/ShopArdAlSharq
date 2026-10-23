@@ -6,7 +6,6 @@ import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useCart } from '@/hooks/useCart';
-import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
 import { getProductName, getProductDescription, getMinOrderQuantity, getProductUnits, UNIT_LABELS, SaleUnit } from '@/types/models';
@@ -27,8 +26,7 @@ function getAvailableUnits(item: CartItemType): UnitKey[] {
 
 function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) {
   const locale = getCurrentLocale();
-  const { removeItem, updateQuantity } = useCart();
-  const changeUnit = useCartStore((s) => s.changeUnit);
+  const { removeItem, updateQuantity, changeUnit } = useCart();
   const effectivePrice = getCartItemPrice(item);
   const availableUnits = getAvailableUnits(item);
   const currentUnit = (item.selected_unit ?? availableUnits[0] ?? null) as UnitKey | null;
@@ -57,7 +55,7 @@ function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) 
             {getProductName(item.product, locale)}
           </Text>
           <TouchableOpacity
-            onPress={() => removeItem(item.product_id)}
+            onPress={() => removeItem(item.product_id, currentUnit)}
             accessibilityLabel="حذف المنتج"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', marginTop: -4 }}
@@ -100,7 +98,7 @@ function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) 
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', height: 36, borderRadius: 11, backgroundColor: COLORS.surface, paddingHorizontal: 2 }}>
             <TouchableOpacity
-              onPress={() => updateQuantity(item.product_id, item.quantity + 1)}
+              onPress={() => updateQuantity(item.product_id, item.quantity + 1, currentUnit)}
               accessibilityLabel="زيادة الكمية"
               style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
             >
@@ -110,7 +108,7 @@ function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) 
               {item.quantity}
             </Text>
             <TouchableOpacity
-              onPress={() => updateQuantity(item.product_id, item.quantity - 1)}
+              onPress={() => updateQuantity(item.product_id, item.quantity - 1, currentUnit)}
               disabled={atMin}
               accessibilityLabel="إنقاص الكمية"
               style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', opacity: atMin ? 0.35 : 1 }}

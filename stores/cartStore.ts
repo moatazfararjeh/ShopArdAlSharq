@@ -20,12 +20,16 @@ export function getCartItemPrice(item: CartItem): number {
 
 // A line without a unit is the product's default unit, so "null" and the
 // default unit's name are the same line.
+export function cartLineUnit(item: CartItem): CartItem['selected_unit'] {
+  return item.selected_unit ?? findProductUnit(item.product)?.unit ?? null;
+}
+
 function unitKey(item: CartItem): string | null {
   return item.selected_unit ?? findProductUnit(item.product)?.unit ?? null;
 }
 
 /** Line of this product in this unit; undefined unit = any line of the product. */
-function matches(i: CartItem, productId: string, unit: CartItem['selected_unit'] | undefined): boolean {
+export function matches(i: CartItem, productId: string, unit: CartItem['selected_unit'] | undefined): boolean {
   if (i.product_id !== productId) return false;
   if (unit === undefined) return true;
   return unitKey(i) === (unit ?? findProductUnit(i.product)?.unit ?? null);

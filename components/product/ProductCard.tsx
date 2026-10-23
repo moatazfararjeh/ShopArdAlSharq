@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '@/hooks/useCart';
-import { useCartStore } from '@/stores/cartStore';
+import { useCartStore, matches } from '@/stores/cartStore';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
 import { useToastStore } from '@/stores/toastStore';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
@@ -28,7 +28,8 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const locale        = getCurrentLocale();
   const { addItem, updateQuantity } = useCart();
   const cartItems     = useCartStore((s) => s.items);
-  const cartQty       = cartItems.find((i) => i.product_id === product.id)?.quantity ?? 0;
+  // The card's stepper edits the default-unit line (other units are changed from the cart).
+  const cartQty       = cartItems.find((i) => matches(i, product.id, null))?.quantity ?? 0;
   const { data: favoriteIds = [] } = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
   const showToast     = useToastStore((s) => s.show);

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { useCartStore } from '@/stores/cartStore';
+import { useCartStore, cartLineUnit, matches } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import * as cartService from '@/services/cartService';
 import { CartItem, getMinOrderQuantity } from '@/types/models';
+
+type Unit = CartItem['selected_unit'];
 
 const cartKeys = {
   all: ['cart'] as const,
@@ -28,33 +30,38 @@ export function useCartSync() {
   return query;
 }
 
+/** The store's line for this product + unit (after an optimistic update). */
+function currentLine(productId: string, unit: Unit): CartItem | undefined {
+  return useCartStore.getState().items.find((i) => matches(i, productId, unit));
+}
+
+// Cart lines are per product *and* unit: 3 pieces and 1 carton of the same
+// product are two lines, saved and removed separately.
 export function useCart() {
-  const { items, summary, addItem, removeItem, updateQuantity, clearCart } = useCartStore();
+  const { items, summary, addItem, removeItem, updateQuantity, changeUnit, clearCart } = useCartStore();
   const { session } = useAuthStore();
   const qc = useQueryClient();
+  const refresh = () => { if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) }); };
 
   const addMutation = useMutation({
     mutationFn: (item: CartItem) => {
-      if (session) {
-        return cartService.upsertCartItem(session.user.id, item.product_id, item.quantity, item.selected_unit);
-      }
-      return Promise.resolve();
+      if (!session) return Promise.resolve();
+      const unit = cartLineUnit(item);
+      // Save the line's total after merging, not just the quantity being added.
+      const line = currentLine(item.product_id, unit);
+      return cartService.upsertCartItem(session.user.id, item.product_id, line?.quantity ?? item.quantity, unit);
     },
     onMutate: (item) => addItem(item),
-    onSuccess: () => {
-      if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) });
-    },
+    onSuccess: refresh,
   });
 
   const removeMutation = useMutation({
-    mutationFn: (productId: string) => {
-      if (session) return cartService.removeCartItem(session.user.id, productId);
+    mutationFn: ({ productId, unit }: { productId: string; unit?: Unit }) => {
+      if (session) return cartService.removeCartItem(session.user.id, productId, unit);
       return Promise.resolve();
     },
-    onMutate: (productId) => removeItem(productId),
-    onSuccess: () => {
-      if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) });
-    },
+    onMutate: ({ productId, unit }) => removeItem(productId, unit),
+    onSuccess: refresh,
   });
 
   const clearMutation = useMutation({
@@ -66,29 +73,44 @@ export function useCart() {
   });
 
   const updateQuantityMutation = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) => {
-      if (session) {
-        if (quantity <= 0) return cartService.removeCartItem(session.user.id, productId);
-        return cartService.upsertCartItem(session.user.id, productId, quantity);
-      }
-      return Promise.resolve();
+    mutationFn: ({ productId, quantity, unit }: { productId: string; quantity: number; unit: Unit }) => {
+      if (!session) return Promise.resolve();
+      if (quantity <= 0) return cartService.removeCartItem(session.user.id, productId, unit);
+      return cartService.upsertCartItem(session.user.id, productId, quantity, unit);
     },
-    onMutate: ({ productId, quantity }) => updateQuantity(productId, quantity),
-    onSuccess: () => {
-      if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) });
+    onMutate: ({ productId, quantity, unit }) => updateQuantity(productId, quantity, unit),
+    onSuccess: refresh,
+  });
+
+  const changeUnitMutation = useMutation({
+    mutationFn: async ({ productId, from, to }: { productId: string; from: Unit; to: Unit }) => {
+      if (!session) return;
+      // The old unit's line goes; the new unit's line gets the merged quantity.
+      await cartService.removeCartItem(session.user.id, productId, from);
+      const line = currentLine(productId, to);
+      if (line) await cartService.upsertCartItem(session.user.id, productId, line.quantity, to);
     },
+    onMutate: ({ productId, from, to }) => changeUnit(productId, from, to),
+    onSuccess: refresh,
   });
 
   return {
     items,
     summary,
     addItem: addMutation.mutate,
-    removeItem: removeMutation.mutate,
-    updateQuantity: (productId: string, quantity: number) => {
-      const item = items.find((i) => i.product_id === productId);
-      const next = quantity > 0 && item ? Math.max(quantity, getMinOrderQuantity(item.product, item.selected_unit)) : quantity;
-      updateQuantityMutation.mutate({ productId, quantity: next });
+    /** Remove one unit's line; without a unit, every line of the product. */
+    removeItem: (productId: string, unit?: Unit) => {
+      const line = unit === undefined ? undefined : items.find((i) => matches(i, productId, unit));
+      removeMutation.mutate({ productId, unit: line ? cartLineUnit(line) : unit });
     },
+    /** Set the quantity of one line; without a unit, the product's default-unit line. */
+    updateQuantity: (productId: string, quantity: number, unit?: Unit) => {
+      const item = items.find((i) => matches(i, productId, unit ?? null));
+      const lineUnit = item ? cartLineUnit(item) : unit ?? null;
+      const next = quantity > 0 && item ? Math.max(quantity, getMinOrderQuantity(item.product, lineUnit)) : quantity;
+      updateQuantityMutation.mutate({ productId, quantity: next, unit: lineUnit });
+    },
+    changeUnit: (productId: string, from: Unit, to: Unit) => changeUnitMutation.mutate({ productId, from, to }),
     clearCart: clearMutation.mutate,
   };
 }

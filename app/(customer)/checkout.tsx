@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { checkoutSchema, CheckoutFormValues } from '@/schemas/checkoutSchema';
 import { usePlaceOrder } from '@/hooks/useOrders';
 import { useCart } from '@/hooks/useCart';
-import { useCartStore, getCartItemPrice } from '@/stores/cartStore';
+import { useCartStore, getCartItemPrice, cartLineUnit } from '@/stores/cartStore';
 import { upsertCartItem } from '@/services/cartService';
 import { Input } from '@/components/ui/Input';
 import { formatPrice } from '@/utils/formatPrice';
@@ -284,7 +284,7 @@ export default function CheckoutScreen() {
       }
       await Promise.all(
         cartItems.map((item) =>
-          upsertCartItem(user.id, item.product_id, item.quantity, item.selected_unit),
+          upsertCartItem(user.id, item.product_id, item.quantity, cartLineUnit(item)),
         ),
       );
 
