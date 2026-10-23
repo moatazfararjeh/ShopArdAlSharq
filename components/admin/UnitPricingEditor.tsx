@@ -60,30 +60,30 @@ export function validateUnitDrafts(drafts: UnitDraft[]): { units?: ProductUnitIn
   for (const d of enabled) {
     const label = UNIT_LABELS[d.unit];
     const price = num(d.price);
-    if (!(price > 0)) return { error: `أدخل سعراً صحيحاً لـ${label}.` };
+    if (!(price > 0)) return { error: `أدخل سعراً صحيحاً لل${label}.` };
 
     let sale: number | null = null;
     let endsAt: string | null = null;
     if (d.sale_price.trim()) {
       sale = num(d.sale_price);
-      if (!(sale > 0)) return { error: `سعر العرض لـ${label} غير صحيح.` };
-      if (sale >= price) return { error: `سعر العرض لـ${label} يجب أن يكون أقل من سعره (${formatPrice(price)}).` };
+      if (!(sale > 0)) return { error: `سعر العرض لل${label} غير صحيح.` };
+      if (sale >= price) return { error: `سعر العرض لل${label} يجب أن يكون أقل من سعره (${formatPrice(price)}).` };
       if (d.sale_ends_on.trim()) {
         const m = d.sale_ends_on.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
         const end = m ? new Date(+m[1], +m[2] - 1, +m[3], 23, 59, 59) : null;
-        if (!end || isNaN(end.getTime())) return { error: `تاريخ انتهاء العرض لـ${label} يجب أن يكون بالشكل 2026-12-31.` };
-        if (end.getTime() < Date.now()) return { error: `تاريخ انتهاء العرض لـ${label} مضى. اتركه فارغاً أو اختر تاريخاً قادماً.` };
+        if (!end || isNaN(end.getTime())) return { error: `تاريخ انتهاء العرض لل${label} يجب أن يكون بالشكل 2026-12-31.` };
+        if (end.getTime() < Date.now()) return { error: `تاريخ انتهاء العرض لل${label} مضى. اتركه فارغاً أو اختر تاريخاً قادماً.` };
         endsAt = end.toISOString();
       }
     }
 
     const minQty = d.min_qty.trim() ? parseInt(d.min_qty, 10) : 1;
-    if (!(minQty >= 1)) return { error: `أقل كمية لـ${label} يجب أن تكون 1 أو أكثر.` };
+    if (!(minQty >= 1)) return { error: `أقل كمية لل${label} يجب أن تكون 1 أو أكثر.` };
 
     let pieces: number | null = null;
     if (HAS_CONTENTS.includes(d.unit) && d.pieces_per_unit.trim()) {
       pieces = parseInt(d.pieces_per_unit, 10);
-      if (!(pieces >= 1)) return { error: `عدد الحبات في ${label} يجب أن يكون 1 أو أكثر.` };
+      if (!(pieces >= 1)) return { error: `عدد الحبات في ال${label} يجب أن يكون 1 أو أكثر.` };
     }
 
     units.push({ unit: d.unit, price, sale_price: sale, sale_ends_at: endsAt, min_qty: minQty, pieces_per_unit: pieces, is_default: d.is_default });

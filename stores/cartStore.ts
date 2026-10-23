@@ -96,7 +96,8 @@ export const useCartStore = create<CartState>((set, get) => ({
     const { items } = get();
     const source = items.find((i) => matches(i, productId, oldUnit));
     if (!source) return;
-    // Each unit has its own minimum.
+    // Moving into a fresh line: respect the new unit's minimum. Merging into an
+    // existing line: just add the moved quantity (that line already meets it).
     const qty = Math.max(source.quantity, getMinOrderQuantity(source.product, newUnit));
     const withoutSource = items.filter((i) => !matches(i, productId, oldUnit));
     const existingNew = withoutSource.find((i) => matches(i, productId, newUnit));
@@ -104,7 +105,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (existingNew) {
       updated = withoutSource.map((i) =>
         matches(i, productId, newUnit)
-          ? { ...i, quantity: Math.min(i.quantity + qty, MAX_CART_ITEM_QUANTITY) }
+          ? { ...i, quantity: Math.min(i.quantity + source.quantity, MAX_CART_ITEM_QUANTITY) }
           : i,
       );
     } else {
