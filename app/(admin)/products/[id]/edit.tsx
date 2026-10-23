@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Image } from 'expo-image';
@@ -10,13 +10,14 @@ import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { productSchema, ProductFormValues } from '@/schemas/productSchema';
-import { useProduct, useUpdateProduct } from '@/hooks/useProducts';
+import { useProduct, useUpdateProduct, useSaveProductUnits } from '@/hooks/useProducts';
 import { useProductImages } from '@/hooks/useProductImages';
 import { useCategories, useCreateCategory } from '@/hooks/useCategories';
 import { useSections, useCreateSection } from '@/hooks/useSections';
 import { useBrands, useCreateBrand } from '@/hooks/useBrands';
 import { Input } from '@/components/ui/Input';
 import QuickAddModal from '@/components/admin/QuickAddModal';
+import { UnitPricingEditor, UnitDraft, unitsToDrafts, validateUnitDrafts } from '@/components/admin/UnitPricingEditor';
 import { getCurrentLocale } from '@/i18n';
 import { getCategoryName, getSectionName } from '@/types/models';
 import { useStockAlertSubscriberCount } from '@/hooks/useStockAlerts';
@@ -53,6 +54,11 @@ export default function EditProductScreen() {
 
   const { data: product, isLoading } = useProduct(id);
   const updateMutation = useUpdateProduct(id);
+  const saveUnits = useSaveProductUnits();
+  const [unitDrafts, setUnitDrafts] = useState<UnitDraft[]>(() => unitsToDrafts(null));
+  const [unitError, setUnitError] = useState<string | null>(null);
+  // Fill the unit editor once per product, so background refetches don't wipe edits.
+  const unitsLoadedFor = useRef<string | null>(null);
   const { data: categories } = useCategories(false);
   const { data: sections } = useSections(false);
   const { data: brands } = useBrands(false);
@@ -95,22 +101,12 @@ export default function EditProductScreen() {
       erp_code: '',
       description_ar: '',
       description_en: '',
-      price: '',
-      discount_price: '',
       category_id: '',
       stock_quantity: '0',
       is_available: true,
       is_featured: false,
       weight: '',
       weight_unit: '',
-      unit_type: undefined,
-      price_per_piece: '',
-      price_per_carton: '',
-      price_per_kg: '',
-      pieces_per_carton: '',
-      min_order_quantity: '1',
-      flash_sale_price: '',
-      flash_sale_ends_at: '',
     },
   });
 
@@ -124,39 +120,25 @@ export default function EditProductScreen() {
       erp_code: product.erp_code ?? '',
       description_ar: product.description_ar ?? '',
       description_en: product.description_en ?? '',
-      price: String(product.price ?? ''),
-      discount_price: product.discount_price != null ? String(product.discount_price) : '',
       category_id: product.category_id ?? '',
       stock_quantity: String(product.stock_quantity ?? 0),
       is_available: product.is_available ?? true,
       is_featured: product.is_featured ?? false,
       weight: product.weight != null ? String(product.weight) : '',
       weight_unit: product.weight_unit ?? '',
-      unit_type: (product.unit_type as 'piece' | 'kg' | 'carton' | 'tin') ?? undefined,
-      price_per_piece: product.price_per_piece != null ? String(product.price_per_piece) : '',
-      price_per_carton: product.price_per_carton != null ? String(product.price_per_carton) : '',
-      price_per_kg: product.price_per_kg != null ? String(product.price_per_kg) : '',
-      pieces_per_carton: product.pieces_per_carton != null ? String(product.pieces_per_carton) : '',
-      min_order_quantity: String(product.min_order_quantity ?? 1),
-      flash_sale_price: product.flash_sale_price != null ? String(product.flash_sale_price) : '',
-      flash_sale_ends_at: product.flash_sale_ends_at
-        ? new Date(product.flash_sale_ends_at).toISOString().slice(0, 16).replace('T', ' ')
-        : '',
     });
+    if (unitsLoadedFor.current !== product.id) {
+      unitsLoadedFor.current = product.id;
+      setUnitDrafts(unitsToDrafts(product));
+    }
   }, [product]);
 
-  // Once any unit price (piece/kg/carton) is set, the main "price" field
-  // mirrors whichever unit price was last edited — never entered independently,
-  // so it can't drift from what's actually charged.
-  const anyUnitPriceSet = !!watch('price_per_piece') || !!watch('price_per_kg') || !!watch('price_per_carton');
-
   async function onSubmit(values: ProductFormValues) {
-    let flashEndsAt: string | null = null;
-    if (values.flash_sale_ends_at && values.flash_sale_ends_at.trim()) {
-      const parsed = new Date(values.flash_sale_ends_at.trim().replace(' ', 'T'));
-      if (!isNaN(parsed.getTime())) flashEndsAt = parsed.toISOString();
-    }
+    const { units, error } = validateUnitDrafts(unitDrafts);
+    setUnitError(error ?? null);
+    if (!units) return;
 
+    try {
     await updateMutation.mutateAsync({
       name_ar: values.name_ar,
       name_en: values.name_en || null,
@@ -165,23 +147,18 @@ export default function EditProductScreen() {
       erp_code: values.erp_code || null,
       description_ar: values.description_ar || null,
       description_en: values.description_en || null,
-      price: parseFloat(values.price),
-      discount_price: values.discount_price ? parseFloat(values.discount_price) : null,
       category_id: values.category_id,
       stock_quantity: parseInt(values.stock_quantity),
       is_available: values.is_available,
       is_featured: values.is_featured,
       weight: values.weight ? parseFloat(values.weight) : null,
       weight_unit: values.weight_unit || null,
-      unit_type: values.unit_type ?? null,
-      price_per_piece: values.price_per_piece ? parseFloat(values.price_per_piece) : null,
-      price_per_carton: values.price_per_carton ? parseFloat(values.price_per_carton) : null,
-      price_per_kg: values.price_per_kg ? parseFloat(values.price_per_kg) : null,
-      pieces_per_carton: values.pieces_per_carton ? parseInt(values.pieces_per_carton) : null,
-      min_order_quantity: parseInt(values.min_order_quantity),
-      flash_sale_price: values.flash_sale_price ? parseFloat(values.flash_sale_price) : null,
-      flash_sale_ends_at: flashEndsAt,
-    } as Parameters<typeof updateMutation.mutateAsync>[0]);
+    });
+    await saveUnits.mutateAsync({ productId: id, units });
+    } catch (e) {
+      setUnitError((e as Error).message ?? 'تعذّر الحفظ. حاول مجدداً.');
+      return;
+    }
     const returnPage = pageParam ? parseInt(pageParam, 10) : 0;
     router.replace(`/(admin)/products?page=${returnPage}` as any);
   }
@@ -428,35 +405,18 @@ export default function EditProductScreen() {
           {errors.category_id && <Text style={{ fontSize: 12, color: '#ef4444', textAlign: 'right' }}>{errors.category_id.message}</Text>}
         </View>
 
-        {/* ── Pricing ── */}
+        {/* ── Stock ── */}
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 8 }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>التسعير والمخزون</Text>
-          <Controller control={control} name="price"
-            render={({ field: { onChange, value, onBlur } }) => (
-              <Input
-                label="السعر (د.أ) *"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                keyboardType="decimal-pad"
-                editable={!anyUnitPriceSet}
-                style={anyUnitPriceSet ? { backgroundColor: '#f1f5f9', color: C.muted } : undefined}
-                hint={anyUnitPriceSet ? 'يُحدَّث تلقائياً حسب آخر سعر وحدة تم إدخاله' : undefined}
-                error={errors.price?.message}
-              />
-            )}
-          />
-          <Controller control={control} name="discount_price"
-            render={({ field: { onChange, value, onBlur } }) => (
-              <Input label="سعر الخصم (اختياري)" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" error={errors.discount_price?.message} />
-            )}
-          />
+          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>المخزون</Text>
           <Controller control={control} name="stock_quantity"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input label="الكمية المتاحة *" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" error={errors.stock_quantity?.message} />
             )}
           />
         </View>
+
+        {/* ── Selling units: price, sale and minimum per unit ── */}
+        <UnitPricingEditor value={unitDrafts} onChange={setUnitDrafts} error={unitError} />
 
         {/* ── Weight ── */}
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 8 }}>
@@ -479,90 +439,6 @@ export default function EditProductScreen() {
           </View>
         </View>
 
-        {/* ── Unit pricing ── */}
-        <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 10 }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'right', marginBottom: 4 }}>وحدات البيع</Text>
-          <FieldLabel>نوع الوحدة الأساسية (للمخزون)</FieldLabel>
-          <Controller control={control} name="unit_type"
-            render={({ field: { onChange, value } }) => (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {([{ key: 'piece', label: 'حبة' }, { key: 'kg', label: 'كيلو' }, { key: 'carton', label: 'كرتون' }, { key: 'tin', label: 'تنك' }] as const).map(({ key, label }) => {
-                  const selected = value === key;
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      onPress={() => onChange(selected ? undefined : key)}
-                      style={{
-                        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-                        backgroundColor: selected ? C.brand : '#f1f5f9',
-                        borderWidth: 1.5, borderColor: selected ? C.brand : C.hairline,
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? '#fff' : C.text }}>{label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          />
-          <Controller control={control} name="min_order_quantity"
-            render={({ field: { onChange, value, onBlur } }) => (
-              <Input label="أدنى كمية للبيع (بوحدة النوع أعلاه)" value={value} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" hint="الزبون ما يقدر يطلب أقل من هذا العدد" error={errors.min_order_quantity?.message} />
-            )}
-          />
-          {([
-            { key: 'price_per_piece' as const,  icon: '🔢', label: 'بالحبة',   priceLabel: 'سعر الحبة (د.أ)' },
-            { key: 'price_per_kg' as const,     icon: '⚖️', label: 'بالكيلو',  priceLabel: 'سعر الكيلو (د.أ)' },
-            { key: 'price_per_carton' as const, icon: '📦', label: 'بالكرتون', priceLabel: 'سعر الكرتون (د.أ)' },
-          ]).map(({ key, icon, label, priceLabel }) => {
-            const isEnabled = !!(watch(key));
-            return (
-              <View key={key} style={{
-                borderWidth: 1.5,
-                borderColor: isEnabled ? C.brand : C.hairline,
-                borderRadius: 14,
-                backgroundColor: isEnabled ? '#fff7ed' : '#f8fafc',
-                overflow: 'hidden',
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12 }}>
-                  <Switch
-                    value={isEnabled}
-                    onValueChange={(v) => {
-                      if (!v) setValue(key, '');
-                      else { setValue(key, '0'); setValue('price', '0'); }
-                    }}
-                    trackColor={{ true: C.brand, false: '#e2e8f0' }}
-                  />
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }}>{icon} {label}</Text>
-                </View>
-                {isEnabled && (
-                  <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
-                    <Controller control={control} name={key}
-                      render={({ field: { onChange, value, onBlur } }) => (
-                        <Input
-                          label={priceLabel}
-                          value={value ?? ''}
-                          onChangeText={(text) => { onChange(text); if (text.trim() !== '') setValue('price', text); }}
-                          onBlur={onBlur}
-                          keyboardType="decimal-pad"
-                          error={(errors as any)[key]?.message}
-                        />
-                      )}
-                    />
-                    {key === 'price_per_carton' && (
-                      <Controller control={control} name="pieces_per_carton"
-                        render={({ field: { onChange, value, onBlur } }) => (
-                          <Input label="عدد الحبات في الكرتون" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="number-pad" />
-                        )}
-                      />
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
         {/* ── Toggles ── */}
         <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16 }}>
           <Controller control={control} name="is_available"
@@ -581,37 +457,6 @@ export default function EditProductScreen() {
               </View>
             )}
           />
-        </View>
-
-        {/* ── Flash Sale ── */}
-        <View style={{
-          borderWidth: 2, borderColor: '#fed7aa', borderRadius: 18,
-          backgroundColor: '#fff7ed', overflow: 'hidden',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12 }}>
-            <Text style={{ fontSize: 18 }}>⚡</Text>
-            <Text style={{ fontSize: 15, fontWeight: '800', color: '#ea580c' }}>عرض فلاش</Text>
-          </View>
-          <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 0 }}>
-            <Controller control={control} name="flash_sale_price"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="سعر الفلاش (د.أ)" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} keyboardType="decimal-pad" placeholder="مثال: 1.500" error={(errors as any).flash_sale_price?.message} />
-              )}
-            />
-            <Controller control={control} name="flash_sale_ends_at"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input label="تاريخ انتهاء العرض (YYYY-MM-DD HH:MM)" value={value ?? ''} onChangeText={onChange} onBlur={onBlur} placeholder="2025-12-31 23:59" error={(errors as any).flash_sale_ends_at?.message} />
-              )}
-            />
-            {(watch('flash_sale_price') || watch('flash_sale_ends_at')) ? (
-              <TouchableOpacity
-                onPress={() => { setValue('flash_sale_price', ''); setValue('flash_sale_ends_at', ''); }}
-                style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 10 }}
-              >
-                <Text style={{ fontSize: 12, color: '#dc2626', fontWeight: '700' }}>إلغاء الفلاش سيل ✕</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
         </View>
 
         {/* ── Stock Alerts ── */}
@@ -662,7 +507,7 @@ export default function EditProductScreen() {
         {/* ── Submit ── */}
         <TouchableOpacity
           onPress={handleSubmit(onSubmit)}
-          disabled={updateMutation.isPending}
+          disabled={updateMutation.isPending || saveUnits.isPending}
           style={{
             backgroundColor: updateMutation.isPending ? '#e2e8f0' : C.brand,
             borderRadius: 16, paddingVertical: 16,

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { parseSupabaseError } from '@/lib/errors';
-import { Order } from '@/types/models';
+import { AppError, parseSupabaseError } from '@/lib/errors';
+import { Order, SaleUnit } from '@/types/models';
 import { CheckoutPayload, PlaceOrderResult } from '@/types/models';
 import { OrderStatus } from '@/types/database.types';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
@@ -46,7 +46,7 @@ export async function getOrders(params: GetOrdersParams = {}): Promise<Order[]> 
 export async function getOrderById(orderId: string): Promise<Order> {
   const { data, error } = await supabase
     .from('orders')
-    .select('*, profiles(full_name, phone, email, company_name), order_items(*, products(*, product_images(*)))')
+    .select('*, profiles(full_name, phone, email, company_name), order_items(*, products(*, product_images(*), product_units(*)))')
     .eq('id', orderId)
     .single();
   if (error) throw parseSupabaseError(error);
@@ -65,6 +65,8 @@ export async function getOrderById(orderId: string): Promise<Order> {
 
 export interface AdminOrderItemInput {
   product_id: string;
+  /** Unit of the line; omitted = the product's existing line / default unit. */
+  unit?: SaleUnit | null;
   quantity: number;
 }
 
@@ -87,7 +89,7 @@ export async function adminUpdateOrderItems(
   });
   if (error) {
     const msg = error.message ?? '';
-    if (/^(INSUFFICIENT_STOCK|PRODUCT_UNAVAILABLE|ORDER_NOT_EDITABLE|ORDER_NOT_FOUND|EMPTY_ORDER|FORBIDDEN)/.test(msg)) {
+    if (/^(INSUFFICIENT_STOCK|PRODUCT_UNAVAILABLE|UNIT_UNAVAILABLE|ORDER_NOT_EDITABLE|ORDER_NOT_FOUND|EMPTY_ORDER|FORBIDDEN)/.test(msg)) {
       throw new Error(msg);
     }
     throw parseSupabaseError(error);
@@ -102,8 +104,30 @@ export async function placeOrder(payload: CheckoutPayload): Promise<PlaceOrderRe
     p_payment_method: payload.payment_method,
     p_notes: payload.notes ?? null,
   });
-  if (error) throw parseSupabaseError(error);
+  if (error) throw placeOrderError(error);
   return data as PlaceOrderResult;
+}
+
+/** place_order raises "CODE:detail"; turn the ones a customer can act on into Arabic messages. */
+function placeOrderError(error: { message: string; code?: string }): Error {
+  const msg = error.message ?? '';
+  const detail = (code: string) => msg.slice(code.length + 1).replace(/\s*\(.*\)\s*$/, '').trim();
+  const paren = msg.match(/\(([^)]*)\)\s*$/)?.[1];
+  if (msg.startsWith('INSUFFICIENT_STOCK:')) {
+    return new AppError('INSUFFICIENT_STOCK', `الكمية المتوفرة من "${detail('INSUFFICIENT_STOCK')}" لا تكفي لطلبك. قلّل الكمية وحاول مجدداً.`, 409);
+  }
+  if (msg.startsWith('BELOW_MIN_QUANTITY:')) {
+    return new AppError('BELOW_MIN_QUANTITY', `الحد الأدنى لطلب "${detail('BELOW_MIN_QUANTITY')}" هو ${paren ?? ''}.`, 422);
+  }
+  if (msg.startsWith('UNIT_UNAVAILABLE:')) {
+    return new AppError('UNIT_UNAVAILABLE', `"${detail('UNIT_UNAVAILABLE')}" لم يعد يُباع بوحدة ${paren ?? 'المختارة'}. غيّر الوحدة من السلة.`, 409);
+  }
+  if (msg.startsWith('PRODUCT_UNAVAILABLE:')) {
+    return new AppError('PRODUCT_UNAVAILABLE', `"${detail('PRODUCT_UNAVAILABLE')}" غير متوفر حالياً. احذفه من السلة وأكمل الطلب.`, 409);
+  }
+  if (msg.startsWith('EMPTY_CART')) return new AppError('EMPTY_CART', 'السلة فارغة.', 400);
+  if (msg.startsWith('INVALID_ADDRESS')) return new AppError('INVALID_ADDRESS', 'عنوان التوصيل غير صالح. اختر عنواناً آخر.', 400);
+  return parseSupabaseError(error);
 }
 
 export async function updateOrderStatus(

@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 import { useFavoriteProducts, useToggleFavorite } from '@/hooks/useFavorites';
 import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getMinOrderQuantity, hasDiscount, Product } from '@/types/models';
+import { getProductName, getProductUnits, getUnitPrice, isUnitOnSale, Product } from '@/types/models';
 import { useCart } from '@/hooks/useCart';
 import { WishlistItemSkeleton } from '@/components/ui/Skeleton';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
@@ -23,7 +23,8 @@ function WishlistItem({ product }: { product: Product }) {
   const recordEvent = useRecordProductEvent();
   const userId = useAuthStore((s) => s.profile?.id);
   const name = getProductName(product, locale);
-  const discounted = hasDiscount(product);
+  const unit = getProductUnits(product)[0];
+  const discounted = !!unit && isUnitOnSale(unit);
   const mainImage = (product.images?.[0] ?? (product as any).product_images?.[0])?.url;
 
   const scale = useRef(new Animated.Value(1)).current;
@@ -62,18 +63,18 @@ function WishlistItem({ product }: { product: Product }) {
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: '#e36523' }}>
-            {formatPrice(discounted ? product.discount_price! : product.price)}
+            {formatPrice(unit ? getUnitPrice(unit) : product.price)}
           </Text>
           {discounted && (
             <Text style={{ fontSize: 11, color: '#857d78', textDecorationLine: 'line-through' }}>
-              {formatPrice(product.price)}
+              {formatPrice(unit.price)}
             </Text>
           )}
         </View>
         <TouchableOpacity
           onPress={() => {
             recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-            addItem({ id: '', cart_id: '', product_id: product.id, quantity: getMinOrderQuantity(product), selected_unit: null, product });
+            addItem({ id: '', cart_id: '', product_id: product.id, quantity: Math.max(1, unit?.min_qty ?? 1), selected_unit: unit?.unit ?? null, product });
           }}
           disabled={product.stock_quantity === 0}
           style={{

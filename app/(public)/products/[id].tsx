@@ -12,7 +12,7 @@ import { useProduct, useProductsPage } from '@/hooks/useProducts';
 import { useCart } from '@/hooks/useCart';
 import { useToastStore } from '@/stores/toastStore';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getProductDescription, getMinOrderQuantity, hasDiscount } from '@/types/models';
+import { getProductName, getProductDescription, getProductUnits, getUnitPrice, isUnitOnSale, UNIT_LABELS, SaleUnit } from '@/types/models';
 import { formatPrice, getDiscountPercent } from '@/utils/formatPrice';
 import { ProductCard } from '@/components/product/ProductCard';
 import { useFavoriteIds, useToggleFavorite } from '@/hooks/useFavorites';
@@ -318,9 +318,7 @@ export default function ProductDetailScreen() {
   const { addItem } = useCart();
   const showToast = useToastStore((s) => s.show);
   const [quantity, setQuantity] = useState(1);
-  const minQty = product ? getMinOrderQuantity(product) : 1;
-  const orderQty = Math.max(quantity, minQty);
-  const [selectedUnit, setSelectedUnit] = useState<'piece' | 'kg' | 'carton' | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<SaleUnit | null>(null);
   const recordEvent = useRecordProductEvent();
   const userId = useAuthStore((s) => s.profile?.id);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -329,10 +327,14 @@ export default function ProductDetailScreen() {
   // Admins get a quick "edit" shortcut to the admin product form
   const isAdmin = useAuthStore((s) => s.isAdmin);
 
-  // Flash sale — must be computed before early returns so useCountdown is always called
-  const flashActive    = !!product?.flash_sale_price && !!product?.flash_sale_ends_at &&
-                         new Date(product.flash_sale_ends_at) > new Date();
-  const flashCountdown = useCountdown(flashActive ? product?.flash_sale_ends_at : null);
+  // Selling units (default first) and the one being bought. Computed before the
+  // early returns so useCountdown is always called.
+  const units          = product ? getProductUnits(product) : [];
+  const unit           = units.find((u) => u.unit === selectedUnit) ?? units[0];
+  const onSale         = !!unit && isUnitOnSale(unit);
+  // A sale with an end date shows as a countdown ("flash" offer).
+  const flashActive    = onSale && !!unit?.sale_ends_at;
+  const flashCountdown = useCountdown(flashActive ? unit!.sale_ends_at : null);
 
   // Track product view
   useEffect(() => {
@@ -359,25 +361,13 @@ export default function ProductDetailScreen() {
 
   const name        = getProductName(product, locale);
   const description = getProductDescription(product, locale);
-  const discounted  = hasDiscount(product);
   const images      = product.images?.length ? product.images : (product.product_images ?? []);
   const outOfStock  = product.stock_quantity === 0;
 
-  // Unit options
-  const unitOptions: { unit: 'piece' | 'kg' | 'carton'; label: string; price: number }[] = [];
-  if (product.price_per_piece != null)   unitOptions.push({ unit: 'piece',  label: 'بالحبة',   price: product.price_per_piece });
-  if (product.price_per_kg != null)      unitOptions.push({ unit: 'kg',     label: 'بالكيلو',  price: product.price_per_kg });
-  if (product.price_per_carton != null)  unitOptions.push({
-    unit: 'carton',
-    label: product.pieces_per_carton ? `بالكرتون (${product.pieces_per_carton} حبة)` : 'بالكرتون',
-    price: product.price_per_carton,
-  });
-  const hasUnitOptions = unitOptions.length > 0;
-  const effectiveUnit  = selectedUnit ?? (unitOptions[0]?.unit ?? null) as 'piece' | 'kg' | 'carton' | null;
-  const basePrice      = hasUnitOptions
-    ? (unitOptions.find((o) => o.unit === effectiveUnit)?.price ?? product.price)
-    : (discounted ? product.discount_price! : product.price);
-  const displayPrice   = (!hasUnitOptions && flashActive) ? product.flash_sale_price! : basePrice;
+  const hasUnitOptions = units.length > 0;
+  const displayPrice   = unit ? getUnitPrice(unit) : product.price;
+  const minQty   = Math.max(1, unit?.min_qty ?? 1);
+  const orderQty = Math.max(quantity, minQty);
 
   function handleAddToCart() {
     if (outOfStock) return;
@@ -387,18 +377,18 @@ export default function ProductDetailScreen() {
       cart_id: '',
       product_id: product!.id,
       quantity: orderQty,
-      selected_unit: effectiveUnit,
+      selected_unit: unit?.unit ?? null,
       product: product!,
     });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
   // Per-piece price inside a carton, to show the saving vs. buying single pieces
-  const perPieceInCarton = product.price_per_carton != null && product.pieces_per_carton
-    ? product.price_per_carton / product.pieces_per_carton
-    : null;
-  const cartonSaving = perPieceInCarton != null && product.price_per_piece
-    ? Math.round((1 - perPieceInCarton / product.price_per_piece) * 100)
+  const cartonUnit = units.find((u) => u.unit === 'carton');
+  const pieceUnit  = units.find((u) => u.unit === 'piece');
+  const perPieceInCarton = cartonUnit?.pieces_per_unit ? getUnitPrice(cartonUnit) / cartonUnit.pieces_per_unit : null;
+  const cartonSaving = perPieceInCarton != null && pieceUnit
+    ? Math.round((1 - perPieceInCarton / getUnitPrice(pieceUnit)) * 100)
     : 0;
 
   return (
@@ -421,9 +411,9 @@ export default function ProductDetailScreen() {
         <View style={{ position: 'relative' }}>
           <ImageGallery
             images={images}
-            discounted={discounted}
-            originalPrice={product.price}
-            discountPrice={product.discount_price ?? undefined}
+            discounted={onSale}
+            originalPrice={unit?.price ?? product.price}
+            discountPrice={onSale ? unit!.sale_price! : undefined}
             alt={name}
           />
         </View>
@@ -474,7 +464,7 @@ export default function ProductDetailScreen() {
               </View>
               <View style={{ backgroundColor: COLORS.brandFill, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
-                  −{getDiscountPercent(product.price, product.flash_sale_price!)}%
+                  −{getDiscountPercent(unit!.price, unit!.sale_price!)}%
                 </Text>
               </View>
             </View>
@@ -484,7 +474,7 @@ export default function ProductDetailScreen() {
           {!hasUnitOptions && (
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
               <Text style={{ fontSize: 24, fontWeight: '700', color: COLORS.ink }}>{formatPrice(displayPrice)}</Text>
-              {(flashActive || discounted) && (
+              {onSale && (
                 <Text style={{ fontSize: 15, color: COLORS.faint, textDecorationLine: 'line-through' }}>
                   {formatPrice(product.price)}
                 </Text>
@@ -497,8 +487,11 @@ export default function ProductDetailScreen() {
             <View style={{ gap: 10 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.ink }}>اختر طريقة الشراء</Text>
               <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-                {unitOptions.map((opt) => {
-                  const active = effectiveUnit === opt.unit;
+                {units.map((opt) => {
+                  const active = unit?.unit === opt.unit;
+                  const optPrice = getUnitPrice(opt);
+                  const optDiscounted = isUnitOnSale(opt);
+                  const label = `بال${UNIT_LABELS[opt.unit]}${opt.pieces_per_unit && opt.unit !== 'piece' ? ` (${opt.pieces_per_unit} حبة)` : ''}`;
                   const note = opt.unit === 'carton' && perPieceInCarton != null
                     ? `${formatPrice(perPieceInCarton)} للحبة${cartonSaving > 0 ? ` · وفّر ${cartonSaving}%` : ''}`
                     : opt.unit === 'kg' ? 'سعر الكيلو' : opt.unit === 'piece' ? 'سعر الحبة' : '';
@@ -516,8 +509,22 @@ export default function ProductDetailScreen() {
                         padding: active ? 12 : 13, gap: 2,
                       }}
                     >
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink }}>{opt.label}</Text>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.ink }}>{formatPrice(opt.price)}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.ink }}>{label}</Text>
+                        {optDiscounted && (
+                          <View style={{ backgroundColor: COLORS.green, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>−{getDiscountPercent(opt.price, opt.sale_price!)}%</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.ink }}>{formatPrice(optPrice)}</Text>
+                        {optDiscounted && (
+                          <Text style={{ fontSize: 12, color: COLORS.faint, textDecorationLine: 'line-through' }}>
+                            {formatPrice(opt.price)}
+                          </Text>
+                        )}
+                      </View>
                       {!!note && (
                         <Text style={{ fontSize: 12, fontWeight: '500', color: opt.unit === 'carton' && cartonSaving > 0 ? COLORS.green : COLORS.muted }}>
                           {note}

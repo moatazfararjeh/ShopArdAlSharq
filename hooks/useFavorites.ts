@@ -22,7 +22,7 @@ async function getFavoriteIds(userId: string): Promise<string[]> {
 async function getFavoriteProducts(userId: string): Promise<Product[]> {
   const { data, error } = await db
     .from('favorites')
-    .select('product_id, products(*, product_images(*))')
+    .select('product_id, products(*, product_images(*), product_units(*))')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;

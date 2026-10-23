@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CartItem, CartSummary, getMinOrderQuantity } from '@/types/models';
+import { CartItem, CartSummary, findProductUnit, getEffectiveUnitPrice, getMinOrderQuantity } from '@/types/models';
 import { MAX_CART_ITEM_QUANTITY } from '@/lib/constants';
 
 interface CartState {
@@ -13,28 +13,34 @@ interface CartState {
   hydrateCart: (items: CartItem[]) => void;
 }
 
-/** Returns the effective unit price for a cart item */
+/** Returns the effective unit price for a cart item, discount/flash-sale applied */
 export function getCartItemPrice(item: CartItem): number {
-  if (item.selected_unit === 'piece' && item.product.price_per_piece != null) {
-    return item.product.price_per_piece;
-  }
-  if (item.selected_unit === 'kg' && item.product.price_per_kg != null) {
-    return item.product.price_per_kg;
-  }
-  if (item.selected_unit === 'carton' && item.product.price_per_carton != null) {
-    return item.product.price_per_carton;
-  }
-  return item.product.discount_price ?? item.product.price;
+  return getEffectiveUnitPrice(item.product, item.selected_unit);
+}
+
+// A line without a unit is the product's default unit, so "null" and the
+// default unit's name are the same line.
+function unitKey(item: CartItem): string | null {
+  return item.selected_unit ?? findProductUnit(item.product)?.unit ?? null;
+}
+
+/** Line of this product in this unit; undefined unit = any line of the product. */
+function matches(i: CartItem, productId: string, unit: CartItem['selected_unit'] | undefined): boolean {
+  if (i.product_id !== productId) return false;
+  if (unit === undefined) return true;
+  return unitKey(i) === (unit ?? findProductUnit(i.product)?.unit ?? null);
 }
 
 function isSameItem(a: CartItem, b: CartItem): boolean {
-  return a.product_id === b.product_id && a.selected_unit === b.selected_unit;
+  return a.product_id === b.product_id && unitKey(a) === unitKey(b);
 }
 
 function computeSummary(items: CartItem[]): CartSummary {
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + getCartItemPrice(i) * i.quantity, 0);
-  const originalTotal = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  // Before sales: each line's own unit price.
+  const originalTotal = items.reduce(
+    (sum, i) => sum + (findProductUnit(i.product, i.selected_unit)?.price ?? i.product.price) * i.quantity, 0);
   const discount = Math.max(0, originalTotal - subtotal);
   return { items, itemCount, subtotal, discount, total: subtotal };
 }
@@ -56,7 +62,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           : i,
       );
     } else {
-      const minQty = getMinOrderQuantity(incomingItem.product);
+      const minQty = getMinOrderQuantity(incomingItem.product, incomingItem.selected_unit);
       updated = [...items, { ...incomingItem, quantity: Math.min(Math.max(incomingItem.quantity, minQty), MAX_CART_ITEM_QUANTITY) }];
     }
     set({ items: updated, summary: computeSummary(updated) });
@@ -64,7 +70,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   removeItem: (productId, selectedUnit) => {
     const updated = get().items.filter(
-      (i) => !(i.product_id === productId && (selectedUnit === undefined || i.selected_unit === selectedUnit)),
+      (i) => !matches(i, productId, selectedUnit),
     );
     set({ items: updated, summary: computeSummary(updated) });
   },
@@ -75,8 +81,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
     const updated = get().items.map((i) =>
-      i.product_id === productId && (selectedUnit === undefined || i.selected_unit === selectedUnit)
-        ? { ...i, quantity: Math.min(Math.max(quantity, getMinOrderQuantity(i.product)), MAX_CART_ITEM_QUANTITY) }
+      matches(i, productId, selectedUnit)
+        ? { ...i, quantity: Math.min(Math.max(quantity, getMinOrderQuantity(i.product, i.selected_unit)), MAX_CART_ITEM_QUANTITY) }
         : i,
     );
     set({ items: updated, summary: computeSummary(updated) });
@@ -84,20 +90,21 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   changeUnit: (productId, oldUnit, newUnit) => {
     const { items } = get();
-    const source = items.find((i) => i.product_id === productId && i.selected_unit === oldUnit);
+    const source = items.find((i) => matches(i, productId, oldUnit));
     if (!source) return;
-    const qty = source.quantity;
-    const withoutSource = items.filter((i) => !(i.product_id === productId && i.selected_unit === oldUnit));
-    const existingNew = withoutSource.find((i) => i.product_id === productId && i.selected_unit === newUnit);
+    // Each unit has its own minimum.
+    const qty = Math.max(source.quantity, getMinOrderQuantity(source.product, newUnit));
+    const withoutSource = items.filter((i) => !matches(i, productId, oldUnit));
+    const existingNew = withoutSource.find((i) => matches(i, productId, newUnit));
     let updated: CartItem[];
     if (existingNew) {
       updated = withoutSource.map((i) =>
-        i.product_id === productId && i.selected_unit === newUnit
+        matches(i, productId, newUnit)
           ? { ...i, quantity: Math.min(i.quantity + qty, MAX_CART_ITEM_QUANTITY) }
           : i,
       );
     } else {
-      updated = [...withoutSource, { ...source, selected_unit: newUnit }];
+      updated = [...withoutSource, { ...source, quantity: Math.min(qty, MAX_CART_ITEM_QUANTITY), selected_unit: newUnit }];
     }
     set({ items: updated, summary: computeSummary(updated) });
   },

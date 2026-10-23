@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
-import { Product } from '@/types/models';
+import { Product, ProductUnit, SaleUnit } from '@/types/models';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
 export interface GetProductsParams {
@@ -35,9 +35,12 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
     limit = DEFAULT_PAGE_SIZE,
   } = params;
 
+  // On-deal: products with at least one unit on sale right now. The sale units
+  // are joined under a second alias so product_units(*) still lists every unit.
+  const dealJoin = params.onDeal ? ', deal_units:product_units!inner(id)' : '';
   let query = supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)', { count: 'exact' })
+    .select(`*, product_images(*), product_units(*), categories(name_ar, name_en, image_url), brands(name)${dealJoin}`, { count: 'exact' })
     .range(page * limit, (page + 1) * limit - 1);
 
   if (availableOnly) query = query.eq('is_available', true).gt('stock_quantity', 0);
@@ -46,7 +49,11 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
   if (params.sectionId) query = query.eq('section_id', params.sectionId);
   if (params.noBrand) query = query.is('brand_id', null);
   if (featured !== undefined) query = query.eq('is_featured', featured);
-  if (params.onDeal) query = query.not('discount_price', 'is', null).gt('discount_price', 0);
+  if (params.onDeal) {
+    query = query
+      .not('deal_units.sale_price', 'is', null)
+      .or(`sale_ends_at.is.null,sale_ends_at.gt.${new Date().toISOString()}`, { referencedTable: 'deal_units' });
+  }
   if (search) query = query.ilike('name_ar', `%${search}%`);
 
   // Primary sort by category when grouping requested
@@ -82,7 +89,7 @@ export async function getProducts(params: GetProductsParams = {}): Promise<Produ
 export async function getProductById(id: string): Promise<Product> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)')
+    .select('*, product_images(*), product_units(*), categories(name_ar, name_en, image_url), brands(name)')
     .eq('id', id)
     .single();
   if (error) throw parseSupabaseError(error);
@@ -92,7 +99,7 @@ export async function getProductById(id: string): Promise<Product> {
 export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), categories(name_ar, name_en, image_url), brands(name)')
+    .select('*, product_images(*), product_units(*), categories(name_ar, name_en, image_url), brands(name)')
     .eq('is_available', true)
     .gt('stock_quantity', 0)
     .eq('is_featured', true)
@@ -141,4 +148,22 @@ export async function updateProduct(
 export async function deleteProduct(id: string): Promise<void> {
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw parseSupabaseError(error);
+}
+
+export interface ProductUnitInput {
+  unit: SaleUnit;
+  price: number;
+  sale_price: number | null;
+  sale_ends_at: string | null;
+  min_qty: number;
+  pieces_per_unit: number | null;
+  is_default: boolean;
+}
+
+/** Replace a product's selling units (admin). The DB keeps the product's summary price columns in sync. */
+export async function saveProductUnits(productId: string, units: ProductUnitInput[]): Promise<ProductUnit[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('save_product_units', { p_product_id: productId, p_units: units });
+  if (error) throw parseSupabaseError(error);
+  return (data ?? []) as ProductUnit[];
 }

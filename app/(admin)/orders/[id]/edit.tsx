@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useOrder, useAdminUpdateOrderItems } from '@/hooks/useOrders';
 import { useProductsPage } from '@/hooks/useProducts';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, Product } from '@/types/models';
+import { getProductName, getProductUnits, getUnitLabel, getUnitPrice, Product, ProductUnit, SaleUnit } from '@/types/models';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { formatPrice } from '@/utils/formatPrice';
 
@@ -24,10 +24,16 @@ const EDITABLE_STATUSES = ['pending', 'confirmed'];
 
 interface Line {
   product_id: string;
+  /** null on orders placed before per-unit pricing */
+  unit: SaleUnit | null;
+  unit_label: string;
   name: string;
   unit_price: number;
   quantity: number;
 }
+
+// One line per product *and* unit (a carton line and a piece line can coexist).
+const lineKey = (l: { product_id: string; unit: SaleUnit | null }) => `${l.product_id}|${l.unit ?? ''}`;
 
 function friendlyError(message: string): string {
   const stock = message.match(/INSUFFICIENT_STOCK:(.*)\|(\d+)/);
@@ -35,6 +41,7 @@ function friendlyError(message: string): string {
     return `لا توجد كمية كافية من ${stock[1].trim()} في المخزون. المتوفر حالياً: ${stock[2]}. لم يتم حفظ أي تغيير.`;
   }
   if (message.includes('PRODUCT_UNAVAILABLE')) return 'أحد المنتجات غير متوفر للبيع.';
+  if (message.includes('UNIT_UNAVAILABLE')) return 'أحد المنتجات لم يعد يُباع بالوحدة المختارة. احذف السطر وأضفه بوحدة أخرى.';
   if (message.includes('ORDER_NOT_EDITABLE')) return 'لا يمكن تعديل الطلب بعد بدء التحضير.';
   if (message.includes('EMPTY_ORDER')) return 'لازم يبقى منتج واحد على الأقل في الطلب.';
   if (message.includes('FORBIDDEN')) return 'ليس لديك صلاحية تعديل الطلبات.';
@@ -62,6 +69,8 @@ export default function EditOrderScreen() {
         .filter((i) => i.product_id)
         .map((i) => ({
           product_id: i.product_id!,
+          unit: i.unit ?? null,
+          unit_label: i.unit ? getUnitLabel(i) : '',
           name: i.product_name_ar,
           unit_price: i.unit_price,
           quantity: i.quantity,
@@ -70,13 +79,13 @@ export default function EditOrderScreen() {
   }, [order, lines]);
 
   const originalQty = useMemo(
-    () => new Map((order?.items ?? []).filter((i) => i.product_id).map((i) => [i.product_id!, i.quantity])),
+    () => new Map((order?.items ?? []).filter((i) => i.product_id).map((i) => [lineKey({ product_id: i.product_id!, unit: i.unit ?? null }), i.quantity])),
     [order],
   );
 
   const hasChanges = !!lines && (
     lines.length !== originalQty.size ||
-    lines.some((l) => originalQty.get(l.product_id) !== l.quantity)
+    lines.some((l) => originalQty.get(lineKey(l)) !== l.quantity)
   );
 
   const total = (lines ?? []).reduce((sum, l) => sum + l.unit_price * l.quantity, 0);
@@ -84,26 +93,30 @@ export default function EditOrderScreen() {
   const candidates = useMemo<Product[]>(() => {
     const q = search.trim().toLowerCase();
     if (!q || !lines) return [];
-    const inOrder = new Set(lines.map((l) => l.product_id));
     return (productsPage?.data ?? [])
-      .filter((p) => !inOrder.has(p.id) && getProductName(p, locale).toLowerCase().includes(q))
+      .filter((p) => getProductName(p, locale).toLowerCase().includes(q))
       .slice(0, 15);
   }, [search, lines, productsPage, locale]);
 
-  function addProduct(p: Product) {
+  const inOrder = new Set((lines ?? []).map(lineKey));
+
+  function addProduct(p: Product, u: ProductUnit) {
     setLines((prev) => [
       ...(prev ?? []),
-      { product_id: p.id, name: getProductName(p, locale), unit_price: p.discount_price ?? p.price, quantity: 1 },
+      {
+        product_id: p.id, unit: u.unit, unit_label: getUnitLabel(u), name: getProductName(p, locale),
+        unit_price: getUnitPrice(u), quantity: Math.max(1, u.min_qty),
+      },
     ]);
     setSearch('');
   }
 
-  function setQuantity(productId: string, quantity: number) {
-    setLines((prev) => (prev ?? []).map((l) => (l.product_id === productId ? { ...l, quantity: Math.max(1, quantity) } : l)));
+  function setQuantity(key: string, quantity: number) {
+    setLines((prev) => (prev ?? []).map((l) => (lineKey(l) === key ? { ...l, quantity: Math.max(1, quantity) } : l)));
   }
 
-  function removeLine(productId: string) {
-    setLines((prev) => (prev ?? []).filter((l) => l.product_id !== productId));
+  function removeLine(key: string) {
+    setLines((prev) => (prev ?? []).filter((l) => lineKey(l) !== key));
   }
 
   async function save() {
@@ -123,7 +136,13 @@ export default function EditOrderScreen() {
     try {
       await update.mutateAsync({
         orderId: order.id,
-        items: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
+        // Removed lines go as quantity 0 so the server matches them by product + unit.
+        items: [
+          ...lines.map((l) => ({ product_id: l.product_id, unit: l.unit, quantity: l.quantity })),
+          ...(order.items ?? [])
+            .filter((i) => i.product_id && !lines.some((l) => lineKey(l) === lineKey({ product_id: i.product_id!, unit: i.unit ?? null })))
+            .map((i) => ({ product_id: i.product_id!, unit: i.unit ?? null, quantity: 0 })),
+        ],
         note: note.trim() || null,
       });
       router.back();
@@ -177,17 +196,19 @@ export default function EditOrderScreen() {
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 10 }}>
           <Text style={{ fontSize: 14, fontWeight: '800', color: C.text, textAlign: 'right' }}>المنتجات</Text>
           {lines.map((l) => (
-            <View key={l.product_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, paddingVertical: 8 }}>
-              <TouchableOpacity onPress={() => removeLine(l.product_id)} disabled={!editable}>
+            <View key={lineKey(l)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: C.hairline, paddingVertical: 8 }}>
+              <TouchableOpacity onPress={() => removeLine(lineKey(l))} disabled={!editable}>
                 <Ionicons name="trash-outline" size={18} color={editable ? '#dc2626' : C.muted} />
               </TouchableOpacity>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: C.text, textAlign: 'right' }} numberOfLines={2}>{l.name}</Text>
-                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'right' }}>{formatPrice(l.unit_price)} للوحدة</Text>
+                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'right' }}>
+                  {formatPrice(l.unit_price)} {l.unit_label ? `لل${l.unit_label}` : 'للوحدة'}
+                </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity
-                  onPress={() => setQuantity(l.product_id, l.quantity - 1)}
+                  onPress={() => setQuantity(lineKey(l), l.quantity - 1)}
                   disabled={!editable || l.quantity <= 1}
                   style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center', opacity: !editable || l.quantity <= 1 ? 0.4 : 1 }}
                 >
@@ -195,7 +216,7 @@ export default function EditOrderScreen() {
                 </TouchableOpacity>
                 <Text style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: '800', color: C.text }}>{l.quantity}</Text>
                 <TouchableOpacity
-                  onPress={() => setQuantity(l.product_id, l.quantity + 1)}
+                  onPress={() => setQuantity(lineKey(l), l.quantity + 1)}
                   disabled={!editable}
                   style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center', opacity: editable ? 1 : 0.4 }}
                 >
@@ -217,17 +238,26 @@ export default function EditOrderScreen() {
               style={{ borderWidth: 1, borderColor: C.hairline, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, textAlign: 'right' }}
             />
             {candidates.map((p) => (
-              <TouchableOpacity
-                key={p.id}
-                onPress={() => addProduct(p)}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.hairline }}
-              >
-                <Ionicons name="add-circle-outline" size={18} color={C.brand} />
-                <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }} numberOfLines={2}>{getProductName(p, locale)}</Text>
-                  <Text style={{ fontSize: 11, color: C.muted }}>{formatPrice(p.discount_price ?? p.price)}</Text>
+              <View key={p.id} style={{ paddingVertical: 10, gap: 6, borderBottomWidth: 1, borderBottomColor: C.hairline }}>
+                <Text style={{ fontSize: 13, color: C.text, textAlign: 'right' }} numberOfLines={2}>{getProductName(p, locale)}</Text>
+                {/* One add button per selling unit, with that unit's current price */}
+                <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 }}>
+                  {getProductUnits(p).map((u) => {
+                    const added = inOrder.has(lineKey({ product_id: p.id, unit: u.unit }));
+                    return (
+                      <TouchableOpacity
+                        key={u.unit}
+                        onPress={() => addProduct(p, u)}
+                        disabled={added}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: added ? C.hairline : C.brand, opacity: added ? 0.5 : 1 }}
+                      >
+                        <Ionicons name={added ? 'checkmark' : 'add'} size={14} color={C.brand} />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: C.text }}>{getUnitLabel(u)} · {formatPrice(getUnitPrice(u))}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}

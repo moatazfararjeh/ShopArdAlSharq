@@ -7,7 +7,7 @@ import { useOrder } from '@/hooks/useOrders';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDateTime } from '@/utils/formatDate';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, Order } from '@/types/models';
+import { getProductName, getUnitLabel, Order } from '@/types/models';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/lib/theme';
@@ -39,7 +39,8 @@ function printOrderWindow(order: Order, locale: string) {
       ? (locale === 'ar' ? prod.name_ar : (prod.name_en ?? prod.name_ar))
       : (locale === 'ar' ? item.product_name_ar : (item.product_name_en ?? item.product_name_ar)) || '—';
     const imgUrl = (prod?.images?.[0] ?? prod?.product_images?.[0])?.url;
-    const unitLabel = prod?.unit_type === 'carton' && prod.pieces_per_carton
+    // Orders since per-unit pricing store the unit; older ones fall back to the product's.
+    const unitLabel = item.unit ? getUnitLabel(item) : prod?.unit_type === 'carton' && prod.pieces_per_carton
       ? `كرتون (${prod.pieces_per_carton} حبة)`
       : prod?.unit_type === 'kg' ? 'كغ' : prod?.unit_type === 'tin' ? 'تنك' : 'حبة';
     const weightHtml = prod?.weight
@@ -389,7 +390,7 @@ export default function OrderDetailScreen() {
             const name = prod
               ? getProductName(prod, locale)
               : (locale === 'ar' ? item.product_name_ar : (item.product_name_en ?? item.product_name_ar)) || '—';
-            const unitLabel =
+            const unitLabel = item.unit ? getUnitLabel(item) :
               prod?.unit_type === 'carton' && prod.pieces_per_carton
                 ? `كرتونة · ${prod.pieces_per_carton} حبة`
                 : prod?.unit_type === 'kg' ? 'كغ' : prod?.unit_type === 'tin' ? 'تنكة' : 'حبة';

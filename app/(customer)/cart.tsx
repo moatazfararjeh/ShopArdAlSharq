@@ -9,7 +9,7 @@ import { useCart } from '@/hooks/useCart';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getProductDescription, getMinOrderQuantity } from '@/types/models';
+import { getProductName, getProductDescription, getMinOrderQuantity, getProductUnits, UNIT_LABELS, SaleUnit } from '@/types/models';
 import { CartItem as CartItemType } from '@/types/models';
 import { Image } from 'expo-image';
 import { getCartItemPrice } from '@/stores/cartStore';
@@ -19,15 +19,10 @@ import { COLORS } from '@/lib/theme';
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 const BRAND = COLORS.brandText;
 
-type UnitKey = 'piece' | 'carton' | 'kg';
-const UNIT_LABELS: Record<UnitKey, string> = { piece: 'حبة', carton: 'كرتون', kg: 'كيلو' };
+type UnitKey = SaleUnit;
 
 function getAvailableUnits(item: CartItemType): UnitKey[] {
-  const units: UnitKey[] = [];
-  if (item.product.price_per_piece != null) units.push('piece');
-  if (item.product.price_per_carton != null) units.push('carton');
-  if (item.product.price_per_kg != null) units.push('kg');
-  return units;
+  return getProductUnits(item.product).map((u) => u.unit);
 }
 
 function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) {
@@ -36,8 +31,8 @@ function CartItemRow({ item, isLast }: { item: CartItemType; isLast: boolean }) 
   const changeUnit = useCartStore((s) => s.changeUnit);
   const effectivePrice = getCartItemPrice(item);
   const availableUnits = getAvailableUnits(item);
-  const currentUnit = item.selected_unit as UnitKey | null;
-  const minQty = getMinOrderQuantity(item.product);
+  const currentUnit = (item.selected_unit ?? availableUnits[0] ?? null) as UnitKey | null;
+  const minQty = getMinOrderQuantity(item.product, item.selected_unit);
   const atMin = item.quantity <= minQty;
 
   return (

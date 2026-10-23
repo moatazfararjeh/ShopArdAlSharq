@@ -3,12 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Activity
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useProductsPage, useUpdateProduct } from '@/hooks/useProducts';
+import { useProductsPage, useUpdateProduct, useSaveProductUnits } from '@/hooks/useProducts';
+import type { ProductUnitInput } from '@/services/productService';
 import { useBrands } from '@/hooks/useBrands';
 import { useCategories } from '@/hooks/useCategories';
 import { useSections } from '@/hooks/useSections';
 import { getCurrentLocale, SupportedLocale } from '@/i18n';
-import { getProductName } from '@/types/models';
+import { getProductName, getProductUnits, SaleUnit, UNIT_LABELS } from '@/types/models';
 import { useQueryClient } from '@tanstack/react-query';
 import { COLORS } from '@/lib/theme';
 import { AdminHeader, AdminButton, AdminSearch, AdminChip } from '@/components/admin/AdminUI';
@@ -347,6 +348,37 @@ function ProductRow({ product, locale, idx, categoryOptions, sectionOptions, bra
     queryClient.invalidateQueries({ queryKey: ['products'] });
   }, [update, queryClient]);
 
+  // Prices live per selling unit: every price cell rewrites the product's unit list.
+  const saveUnits = useSaveProductUnits();
+  const units = getProductUnits(product);
+  const def = units[0];
+  const unitOf = (unit: SaleUnit) => units.find((u) => u.unit === unit);
+
+  async function editUnits(change: (list: ProductUnitInput[]) => ProductUnitInput[]) {
+    const list: ProductUnitInput[] = units.map((u) => ({
+      unit: u.unit, price: u.price, sale_price: u.sale_price, sale_ends_at: u.sale_ends_at,
+      min_qty: u.min_qty, pieces_per_unit: u.pieces_per_unit, is_default: u.is_default,
+    }));
+    const next = change(list);
+    if (!next.length) throw new Error('يجب أن يبقى للمنتج وحدة بيع واحدة على الأقل.');
+    if (!next.some((u) => u.is_default)) next[0].is_default = true;
+    await saveUnits.mutateAsync({ productId: product.id, units: next });
+  }
+
+  /** Set a unit's price; empty removes the unit, a new price adds it. */
+  function setUnitPrice(unit: SaleUnit, price: number | null) {
+    if (price != null && !(price > 0)) throw new Error('السعر يجب أن يكون أكبر من صفر.');
+    return editUnits((list) => {
+      if (price == null) return list.filter((u) => u.unit !== unit);
+      const existing = list.find((u) => u.unit === unit);
+      if (!existing) return [...list, { unit, price, sale_price: null, sale_ends_at: null, min_qty: 1, pieces_per_unit: null, is_default: false }];
+      existing.price = price;
+      // A sale must stay below the price; drop it if the new price is lower.
+      if (existing.sale_price != null && existing.sale_price >= price) { existing.sale_price = null; existing.sale_ends_at = null; }
+      return list;
+    });
+  }
+
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center',
@@ -385,50 +417,56 @@ function ProductRow({ product, locale, idx, categoryOptions, sectionOptions, bra
         allowNone
         noneLabel="بدون ماركة"
       />
+      {/* Default unit: chosen among the units the product already has a price for. */}
       <EditableSelectCell
-        value={product.unit_type ?? null}
-        options={UNIT_TYPE_OPTIONS}
-        onSave={(v) => save({ unit_type: v })}
-        allowNone
-        noneLabel="بدون نوع"
+        value={def?.unit ?? null}
+        options={units.map((u) => ({ id: u.unit, name: UNIT_LABELS[u.unit] }))}
+        onSave={(v) => editUnits((list) => list.map((u) => ({ ...u, is_default: u.unit === v })))}
       />
       <EditableCell
-        value={product.min_order_quantity}
+        value={def?.min_qty ?? null}
         onSave={async (v) => {
           if (v == null || !Number.isInteger(v) || v < 1) {
             throw new Error('أدنى كمية للبيع يجب أن تكون رقمًا صحيحًا 1 أو أكثر');
           }
-          await save({ min_order_quantity: v });
+          await editUnits((list) => list.map((u) => (u.is_default ? { ...u, min_qty: v } : u)));
         }}
         numeric
       />
       <EditableCell
-        value={product.price}
-        onSave={(v) => save({ price: v })}
+        value={def?.price ?? null}
+        onSave={async (v) => {
+          if (v == null) throw new Error('سعر الوحدة الافتراضية مطلوب.');
+          await setUnitPrice(def.unit, v);
+        }}
         suffix=" د.أ"
         numeric
       />
       <EditableCell
-        value={product.price_per_piece}
-        onSave={(v) => save(v != null ? { price_per_piece: v, price: v } : { price_per_piece: v })}
+        value={unitOf('piece')?.price ?? null}
+        onSave={(v) => setUnitPrice('piece', v)}
         suffix=" د.أ"
         numeric
       />
       <EditableCell
-        value={product.price_per_kg}
-        onSave={(v) => save(v != null ? { price_per_kg: v, price: v } : { price_per_kg: v })}
+        value={unitOf('kg')?.price ?? null}
+        onSave={(v) => setUnitPrice('kg', v)}
         suffix=" د.أ"
         numeric
       />
       <EditableCell
-        value={product.price_per_carton}
-        onSave={(v) => save(v != null ? { price_per_carton: v, price: v } : { price_per_carton: v })}
+        value={unitOf('carton')?.price ?? null}
+        onSave={(v) => setUnitPrice('carton', v)}
         suffix=" د.أ"
         numeric
       />
       <EditableCell
-        value={product.pieces_per_carton}
-        onSave={(v) => save({ pieces_per_carton: v })}
+        value={unitOf('carton')?.pieces_per_unit ?? null}
+        onSave={async (v) => {
+          if (!unitOf('carton')) throw new Error('أدخل سعر الكرتون أولاً.');
+          if (v != null && (!Number.isInteger(v) || v < 1)) throw new Error('عدد الحبات يجب أن يكون رقمًا صحيحًا 1 أو أكثر.');
+          await editUnits((list) => list.map((u) => (u.unit === 'carton' ? { ...u, pieces_per_unit: v } : u)));
+        }}
         suffix=" حبة"
         numeric
       />
@@ -653,7 +691,7 @@ export default function ProductsReportScreen() {
       { key: 'category', label: 'الفئة',           flex: 2, value: (p) => nameOf(categoryOptions, p.category_id) },
       { key: 'section',  label: 'القسم',           flex: 2, value: (p) => nameOf(sectionOptions, p.section_id) },
       { key: 'brand',    label: 'الماركة',         flex: 2, value: (p) => nameOf(brandOptions, p.brand_id) },
-      { key: 'unit',     label: 'نوع الوحدة',      flex: 2, value: (p) => nameOf(UNIT_TYPE_OPTIONS, p.unit_type) },
+      { key: 'unit',     label: 'الوحدة الافتراضية', flex: 2, value: (p) => nameOf(UNIT_TYPE_OPTIONS, getProductUnits(p)[0]?.unit) },
       { key: 'minQty',   label: 'أدنى كمية للبيع', flex: 2, value: (p) => num(p.min_order_quantity) },
       { key: 'price',    label: 'سعر المنتج',      flex: 2, value: (p) => num(p.price) },
       { key: 'piece',    label: 'سعر الحبة',       flex: 2, value: (p) => num(p.price_per_piece) },
@@ -723,7 +761,7 @@ export default function ProductsReportScreen() {
       'البراند':              getBrandName(p.brand_id ?? 'no-brand'),
       'الفئة':                getCategoryDisplayName(p.category_id),
       'القسم':                sections?.find((x) => x.id === p.section_id)?.name_ar ?? '—',
-      'نوع الوحدة':          UNIT_TYPE_OPTIONS.find((o) => o.id === p.unit_type)?.name ?? '—',
+      'الوحدة الافتراضية':   UNIT_TYPE_OPTIONS.find((o) => o.id === getProductUnits(p)[0]?.unit)?.name ?? '—',
       'أدنى كمية للبيع':     p.min_order_quantity ?? 1,
       'اسم الصنف':           getProductName(p, locale),
       'كود ERP':             p.erp_code ?? '—',

@@ -2,14 +2,14 @@
 // name / category / section / brand / price / quantity, then import it back
 // with a preview before anything is written.
 //
-// Price rule (same as the admin edit form and sync-price-from-units.mjs): the
-// main `price` always mirrors the product's main unit price, chosen
-// carton > kg > piece. The sheet has one "السعر" column for that main unit;
-// importing it updates both the unit price and `price`, so the cart (which
-// charges by unit price) and the listing stay consistent.
+// Price rule: the sheet has one "السعر" column, the price of the product's
+// default selling unit. Importing it updates that unit (product_units); the
+// database copies it onto the product's summary price columns.
 
 import { supabase } from '@/lib/supabase';
+import { getProductUnits } from '@/types/models';
 import type { Product, Category, Section, Brand } from '@/types/models';
+import { saveProductUnits, type ProductUnitInput } from '@/services/productService';
 
 export const COL = {
   id:       'رقم المنتج (لا تعدّل)',
@@ -23,27 +23,16 @@ export const COL = {
   qty:      'الكمية',
 } as const;
 
-type UnitPriceKey = 'price_per_carton' | 'price_per_kg' | 'price_per_piece';
-
-/** The unit field that the main price mirrors, or null if none is set. */
-function mainUnitKey(p: Product): UnitPriceKey | null {
-  if (p.price_per_carton != null) return 'price_per_carton';
-  if (p.price_per_kg != null) return 'price_per_kg';
-  if (p.price_per_piece != null) return 'price_per_piece';
-  return null;
-}
-
 function unitLabel(p: Product): string {
-  const key = mainUnitKey(p);
-  if (key === 'price_per_carton') return p.pieces_per_carton ? `كرتونة · ${p.pieces_per_carton} حبة` : 'كرتونة';
-  if (key === 'price_per_kg') return 'كيلو';
-  if (key === 'price_per_piece') return 'حبة';
-  return p.unit_type === 'carton' ? 'كرتونة' : p.unit_type === 'kg' ? 'كيلو' : p.unit_type === 'tin' ? 'تنكة' : 'حبة';
+  const u = getProductUnits(p)[0];
+  if (!u) return 'حبة';
+  if (u.unit === 'carton') return u.pieces_per_unit ? `كرتونة · ${u.pieces_per_unit} حبة` : 'كرتونة';
+  return u.unit === 'kg' ? 'كيلو' : u.unit === 'tin' ? 'تنكة' : 'حبة';
 }
 
+/** Price of the default unit (before any sale). */
 function currentPrice(p: Product): number {
-  const key = mainUnitKey(p);
-  return Number(key ? p[key] : p.price);
+  return Number(getProductUnits(p)[0]?.price ?? p.price);
 }
 
 const norm = (s: unknown) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -158,6 +147,8 @@ export interface PlanRow {
   changes: string[];          // human-readable "السعر: 10.000 ← 11.000"
   reason: string | null;
   update: Record<string, unknown> | null;
+  /** Full unit list to save when the default unit's price changed. */
+  units?: ProductUnitInput[];
   /** Section / brand names that don't exist yet — created on apply, then linked */
   newSectionName?: string;
   newBrandName?: string;
@@ -256,18 +247,30 @@ export function buildPlan(
         changes.push(`الماركة: ${norm(p.brands?.name) || '—'} ← ${br?.name ?? '—'}`);
       }
 
-      // Price — main unit price + mirrored main price
+      // Price — the default selling unit's price (3 decimals, fils)
+      let units: ProductUnitInput[] | undefined;
       const price = toNumber(r.price);
       if (price === null) errors.push('السعر فارغ');
-      else if (Number.isNaN(price) || price < 0) errors.push(`سعر غير صحيح: ${String(r.price)}`);
+      else if (Number.isNaN(price) || price <= 0) errors.push(`سعر غير صحيح: ${String(r.price)}`);
       else {
-        // Unit prices keep 3 decimals (fils); the main price column only keeps 2
-        const unitKey = mainUnitKey(p);
-        const rounded = unitKey ? Math.round(price * 1000) / 1000 : Math.round(price * 100) / 100;
+        const rounded = Math.round(price * 1000) / 1000;
         const old = currentPrice(p);
         if (Math.abs(rounded - old) > 0.0005) {
-          if (unitKey) update[unitKey] = rounded;
-          update.price = rounded;
+          const list = getProductUnits(p);
+          units = list.map((u, i) => {
+            const isDefault = i === 0;
+            const newPrice = isDefault ? rounded : u.price;
+            // A sale has to stay below the new price; drop it otherwise.
+            const keepSale = u.sale_price != null && u.sale_price < newPrice;
+            return {
+              unit: u.unit, price: newPrice,
+              sale_price: keepSale ? u.sale_price : null, sale_ends_at: keepSale ? u.sale_ends_at : null,
+              min_qty: u.min_qty, pieces_per_unit: u.pieces_per_unit, is_default: isDefault,
+            };
+          });
+          if (!units.length) {
+            units = [{ unit: 'piece', price: rounded, sale_price: null, sale_ends_at: null, min_qty: 1, pieces_per_unit: null, is_default: true }];
+          }
           changes.push(`السعر: ${old.toFixed(3)} ← ${rounded.toFixed(3)}`);
         }
       }
@@ -283,7 +286,7 @@ export function buildPlan(
 
       if (errors.length) return { ...base, status: 'error', reason: errors.join('، '), changes };
       if (!changes.length) return { ...base, status: 'unchanged', reason: null };
-      return { ...base, status: 'ready', reason: null, changes, update, newSectionName, newBrandName };
+      return { ...base, status: 'ready', reason: null, changes, update, units, newSectionName, newBrandName };
     });
 }
 
@@ -356,9 +359,19 @@ export async function applyPlan(
         result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: `تعذّر إنشاء الماركة "${r.newBrandName}": ${brdErr}` });
         return;
       }
-      const { error } = await (supabase.from('products') as any).update(r.update).eq('id', r.productId);
-      if (error) result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: error.message });
-      else result.updated += 1;
+      if (Object.keys(r.update!).length) {
+        const { error } = await (supabase.from('products') as any).update(r.update).eq('id', r.productId);
+        if (error) { result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: error.message }); return; }
+      }
+      if (r.units) {
+        try {
+          await saveProductUnits(r.productId!, r.units);
+        } catch (e) {
+          result.failed.push({ rowNumber: r.rowNumber, name: r.name, message: `السعر: ${(e as Error).message}` });
+          return;
+        }
+      }
+      result.updated += 1;
     }));
     done += batch.length;
     onProgress?.(done, ready.length);

@@ -17,7 +17,7 @@ import { useUnreadCount } from '@/hooks/useNotifications';
 import { ProductCard } from '@/components/product/ProductCard';
 import { GetProductsParams } from '@/services/productService';
 import { getCurrentLocale } from '@/i18n';
-import { getCategoryName, getBannerButtonText } from '@/types/models';
+import { getCategoryName, getBannerButtonText, getProductUnits, isUnitOnSale } from '@/types/models';
 import { Product, Banner, Category } from '@/types/models';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -342,11 +342,10 @@ function DealsSection({ locale, cardWidth, onSeeAll }: { locale: string; cardWid
     sortBy: 'newest',
     limit: 30,
   });
-  // discount_price < price is a data-integrity sanity check, not the primary
-  // filter — that's now onDeal at the query level, so real deals outside the
-  // cheapest-30-overall aren't silently dropped before this ever sees them.
+  // onDeal already limits to products with a unit on sale; re-check on the
+  // client in case a dated sale ended since the query ran.
   const products = (data?.data ?? [])
-    .filter((p) => p.discount_price != null && p.discount_price > 0 && p.discount_price < p.price)
+    .filter((p) => getProductUnits(p).some(isUnitOnSale))
     .slice(0, 12);
 
   if (!isLoading && products.length === 0) return null;

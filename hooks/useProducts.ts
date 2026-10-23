@@ -6,7 +6,9 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  saveProductUnits,
   GetProductsParams,
+  ProductUnitInput,
 } from '@/services/productService';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
@@ -106,5 +108,16 @@ export function useDeleteProduct() {
   return useMutation({
     mutationFn: deleteProduct,
     onSuccess: () => qc.invalidateQueries({ queryKey: productKeys.lists() }),
+  });
+}
+
+export function useSaveProductUnits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, units }: { productId: string; units: ProductUnitInput[] }) => saveProductUnits(productId, units),
+    onSuccess: (_data, { productId }) => {
+      qc.invalidateQueries({ queryKey: productKeys.lists() });
+      qc.invalidateQueries({ queryKey: productKeys.detail(productId) });
+    },
   });
 }

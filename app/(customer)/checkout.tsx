@@ -21,7 +21,7 @@ import { logError } from '@/lib/errorLogger';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useRecordProductEvent } from '@/hooks/useAnalytics';
-import { getProductName } from '@/types/models';
+import { getProductName, findProductUnit, getUnitLabel } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
 
 const BRAND = COLORS.brandFill;
@@ -129,9 +129,8 @@ function OrderSummarySection({ subtotal, discount, total }: { subtotal: number; 
       {expanded && cartItems.map((item) => {
         const price = getCartItemPrice(item);
         const imgUrl = (item.product.images?.[0] ?? item.product.product_images?.[0])?.url;
-        const unitLabel = item.selected_unit
-          ? ({ piece: 'حبة', carton: 'كرتون', kg: 'كيلو' } as Record<string, string>)[item.selected_unit]
-          : null;
+        const lineUnit = findProductUnit(item.product, item.selected_unit);
+        const unitLabel = lineUnit ? getUnitLabel(lineUnit) : null;
         return (
           <View
             key={`${item.product_id}-${item.selected_unit}`}

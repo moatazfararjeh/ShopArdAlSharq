@@ -61,8 +61,110 @@ export function getSectionName(section: Section, locale: SupportedLocale): strin
   return locale === 'ar' ? section.name_ar : (section.name_en ?? section.name_ar);
 }
 
-export function getMinOrderQuantity(product: { min_order_quantity?: number | null }): number {
-  return Math.max(1, product.min_order_quantity ?? 1);
+// ─── Selling units ───────────────────────────────────────────────────────────
+// Each product is sold in one or more units (product_units table), each with
+// its own price, optional sale price and minimum quantity. One unit is the
+// default: it is what listings show and what a cart line without a unit uses.
+
+export type SaleUnit = 'piece' | 'kg' | 'carton' | 'tin';
+
+export const SALE_UNITS: SaleUnit[] = ['piece', 'kg', 'carton', 'tin'];
+
+export const UNIT_LABELS: Record<SaleUnit, string> = {
+  piece: 'حبة',
+  kg: 'كيلو',
+  carton: 'كرتون',
+  tin: 'تنك',
+};
+
+export interface ProductUnit {
+  id: string;
+  product_id: string;
+  unit: SaleUnit;
+  price: number;
+  sale_price: number | null;
+  /** null = the sale has no end date. */
+  sale_ends_at: string | null;
+  min_qty: number;
+  /** Pieces inside one unit (e.g. 12 per carton). */
+  pieces_per_unit: number | null;
+  is_default: boolean;
+  sort_order: number;
+}
+
+type UnitSource = Pick<Product,
+  'id' | 'price' | 'discount_price' | 'flash_sale_price' | 'flash_sale_ends_at' | 'unit_type' |
+  'price_per_piece' | 'price_per_kg' | 'price_per_carton' | 'pieces_per_carton' | 'min_order_quantity'
+> & Partial<Pick<Product, 'product_units' | 'min_order_quantity_piece' | 'min_order_quantity_kg' | 'min_order_quantity_carton'>>;
+
+/**
+ * The product's units, default first. Falls back to the legacy price columns
+ * when the query didn't include product_units (they are kept in sync).
+ */
+export function getProductUnits(product: UnitSource): ProductUnit[] {
+  if (product.product_units?.length) {
+    return [...product.product_units].sort((a, b) =>
+      Number(b.is_default) - Number(a.is_default) || a.sort_order - b.sort_order);
+  }
+  const legacy: ProductUnit[] = [];
+  const add = (unit: SaleUnit, price: number | null | undefined, minQty: number | null | undefined, pieces: number | null = null) => {
+    if (price == null || price <= 0) return;
+    legacy.push({
+      id: `legacy-${unit}`, product_id: product.id, unit, price, sale_price: null, sale_ends_at: null,
+      min_qty: Math.max(1, minQty ?? product.min_order_quantity ?? 1), pieces_per_unit: pieces,
+      is_default: false, sort_order: legacy.length,
+    });
+  };
+  add('piece', product.price_per_piece, product.min_order_quantity_piece);
+  add('kg', product.price_per_kg, product.min_order_quantity_kg);
+  add('carton', product.price_per_carton, product.min_order_quantity_carton, product.pieces_per_carton);
+  if (!legacy.length) add((product.unit_type as SaleUnit) ?? 'piece', product.price, product.min_order_quantity);
+  const def = legacy.find((u) => u.unit === product.unit_type) ?? legacy[0];
+  if (def) {
+    def.is_default = true;
+    // Old model: one product-level discount, scaled to each unit.
+    const flash = !!product.flash_sale_price && !!product.flash_sale_ends_at && new Date(product.flash_sale_ends_at) > new Date();
+    const disc = flash ? product.flash_sale_price : product.discount_price;
+    if (disc != null && product.price > 0) {
+      legacy.forEach((u) => {
+        const sale = Math.round(u.price * (disc / product.price) * 1000) / 1000;
+        if (sale > 0 && sale < u.price) { u.sale_price = sale; u.sale_ends_at = flash ? product.flash_sale_ends_at : null; }
+      });
+    }
+  }
+  return legacy.sort((a, b) => Number(b.is_default) - Number(a.is_default));
+}
+
+/** The unit for a cart line / selection; null means the default unit. */
+export function findProductUnit(product: UnitSource, unit?: SaleUnit | null): ProductUnit | undefined {
+  const units = getProductUnits(product);
+  return (unit ? units.find((u) => u.unit === unit) : undefined) ?? (unit ? undefined : units[0]);
+}
+
+export function isUnitOnSale(unit: Pick<ProductUnit, 'sale_price' | 'sale_ends_at'>): boolean {
+  return unit.sale_price != null && (!unit.sale_ends_at || new Date(unit.sale_ends_at) > new Date());
+}
+
+/** What the customer pays for one unit right now. */
+export function getUnitPrice(unit: Pick<ProductUnit, 'price' | 'sale_price' | 'sale_ends_at'>): number {
+  return isUnitOnSale(unit) ? unit.sale_price! : unit.price;
+}
+
+/** "كرتون (12 حبة)" */
+export function getUnitLabel(unit: Pick<ProductUnit, 'unit' | 'pieces_per_unit'> | { unit: string | null; pieces_per_unit?: number | null }): string {
+  const base = unit.unit ? (UNIT_LABELS[unit.unit as SaleUnit] ?? unit.unit) : '';
+  return unit.pieces_per_unit && unit.unit !== 'piece' ? `${base} (${unit.pieces_per_unit} حبة)` : base;
+}
+
+/** Minimum order quantity for the chosen unit (default unit when null). */
+export function getMinOrderQuantity(product: UnitSource, unit?: SaleUnit | null): number {
+  return Math.max(1, findProductUnit(product, unit)?.min_qty ?? product.min_order_quantity ?? 1);
+}
+
+/** Price for one of the chosen unit, with its own sale applied. */
+export function getEffectiveUnitPrice(product: UnitSource, unit: SaleUnit | null): number {
+  const u = findProductUnit(product, unit);
+  return u ? getUnitPrice(u) : product.price;
 }
 
 // ─── Banner ──────────────────────────────────────────────────────────────────
@@ -149,6 +251,9 @@ export interface Product {
   pieces_per_carton: number | null;
   erp_code: string | null;
   min_order_quantity: number;
+  min_order_quantity_piece: number | null;
+  min_order_quantity_kg: number | null;
+  min_order_quantity_carton: number | null;
   flash_sale_price: number | null;
   flash_sale_ends_at: string | null;
   created_at: string;
@@ -158,6 +263,7 @@ export interface Product {
   product_images?: ProductImage[];
   categories?: { name_ar: string; name_en: string | null; image_url?: string | null } | null;
   brands?: { name: string } | null;
+  product_units?: ProductUnit[];
 }
 
 export function getProductName(product: Product, locale: SupportedLocale): string {
@@ -168,8 +274,10 @@ export function getProductDescription(product: Product, locale: SupportedLocale)
   return locale === 'ar' ? product.description_ar : (product.description_en ?? product.description_ar);
 }
 
-export function hasDiscount(product: Pick<Product, 'discount_price'>): boolean {
-  return product.discount_price !== null && product.discount_price !== undefined;
+/** Whether the default unit is on sale right now. */
+export function hasDiscount(product: UnitSource): boolean {
+  const u = findProductUnit(product);
+  return !!u && isUnitOnSale(u);
 }
 
 // ─── Cart ────────────────────────────────────────────────────────────────────
@@ -179,7 +287,7 @@ export interface CartItem {
   cart_id: string;
   product_id: string;
   quantity: number;
-  selected_unit: 'piece' | 'kg' | 'carton' | null;
+  selected_unit: SaleUnit | null;
   product: Product;
 }
 
@@ -224,6 +332,9 @@ export interface OrderItem {
   unit_price: number;
   quantity: number;
   total_price: number;
+  /** Unit bought (null for orders placed before per-unit pricing). */
+  unit: SaleUnit | null;
+  pieces_per_unit: number | null;
   created_at: string;
   // Joined relation (optional — present when selected with products(*))
   product?: Product | null;

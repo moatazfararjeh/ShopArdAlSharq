@@ -10,7 +10,7 @@ import { useRecordProductEvent } from '@/hooks/useAnalytics';
 import { useAuthStore } from '@/stores/authStore';
 import { Product } from '@/types/models';
 import { getCurrentLocale } from '@/i18n';
-import { getProductName, getMinOrderQuantity, hasDiscount } from '@/types/models';
+import { getProductName, getProductUnits, getUnitPrice, isUnitOnSale } from '@/types/models';
 import { getDiscountPercent } from '@/utils/formatPrice';
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 import { COLORS } from '@/lib/theme';
@@ -47,41 +47,37 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const liked        = favoriteIds.includes(product.id);
   const name         = getProductName(product, locale);
   const mainImage    = (product.images?.[0] ?? product.product_images?.[0])?.url ?? product.categories?.image_url ?? undefined;
-  const discounted   = hasDiscount(product);
   const outOfStock   = product.stock_quantity === 0;
 
-  // Flash sale wins over regular discount
-  const flashActive  = !!product.flash_sale_price && !!product.flash_sale_ends_at &&
-                       new Date(product.flash_sale_ends_at) > new Date();
-  const salePercent  = flashActive
-    ? getDiscountPercent(product.price, product.flash_sale_price!)
-    : discounted ? getDiscountPercent(product.price, product.discount_price!) : 0;
-  const displayPrice = flashActive
-    ? product.flash_sale_price!
-    : discounted ? product.discount_price! : product.price;
+  // Cards show the default selling unit.
+  const units        = getProductUnits(product);
+  const unit         = units[0];
+  const onSale       = !!unit && isUnitOnSale(unit);
+  // A sale with an end date is shown as a flash offer.
+  const flashActive  = onSale && !!unit.sale_ends_at;
+  const salePercent  = onSale ? getDiscountPercent(unit.price, unit.sale_price!) : 0;
+  const displayPrice = unit ? getUnitPrice(unit) : product.price;
   const priceNum     = Number(displayPrice).toFixed(3);
-
-  const unitCount = [product.price_per_piece, product.price_per_kg, product.price_per_carton].filter(Boolean).length;
+  const unitCount    = units.length;
+  const minQty       = Math.max(1, unit?.min_qty ?? 1);
 
   function handleAddToCart() {
     if (outOfStock) return;
     recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-    addItem({ id: '', cart_id: '', product_id: product.id, quantity: getMinOrderQuantity(product), selected_unit: null, product });
+    addItem({ id: '', cart_id: '', product_id: product.id, quantity: minQty, selected_unit: unit?.unit ?? null, product });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
   // "كرتونة · 24 حبة" / "كغ" / "350 غم" — tells the buyer exactly what one tap adds.
   const unitLine = (() => {
-    if (product.unit_type === 'carton') {
-      return product.pieces_per_carton ? `كرتونة · ${product.pieces_per_carton} حبة` : 'كرتونة';
+    if (unit?.unit === 'carton') {
+      return unit.pieces_per_unit ? `كرتونة · ${unit.pieces_per_unit} حبة` : 'كرتونة';
     }
-    if (product.unit_type === 'kg')  return 'بالكيلو';
-    if (product.unit_type === 'tin') return 'تنكة';
-    if (product.weight != null)      return `${product.weight} ${product.weight_unit ?? 'غم'}`;
-    return product.unit_type === 'piece' ? 'حبة' : null;
+    if (unit?.unit === 'kg')  return 'بالكيلو';
+    if (unit?.unit === 'tin') return 'تنكة';
+    if (product.weight != null) return `${product.weight} ${product.weight_unit ?? 'غم'}`;
+    return unit?.unit === 'piece' ? 'حبة' : null;
   })();
-
-  const minQty = getMinOrderQuantity(product);
 
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }], direction: 'rtl' as any }}>
@@ -165,9 +161,9 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
               <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{priceNum}</Text>
               <Text style={{ fontSize: 11, fontWeight: '500', color: COLORS.ink }}>{CURRENCY_SYMBOL}</Text>
             </View>
-            {(discounted || flashActive) && (
+            {onSale && (
               <Text style={{ fontSize: 11, color: COLORS.faint, textDecorationLine: 'line-through' }}>
-                {Number(product.price).toFixed(3)}
+                {Number(unit.price).toFixed(3)}
               </Text>
             )}
           </View>

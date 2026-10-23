@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { parseSupabaseError } from '@/lib/errors';
-import { CartItem } from '@/types/models';
+import { CartItem, SaleUnit } from '@/types/models';
 
 type CartIdResult = { id: string };
 
@@ -15,7 +15,7 @@ export async function getCartItems(userId: string): Promise<CartItem[]> {
 
   const { data, error } = await supabase
     .from('cart_items')
-    .select('*, products(*, product_images(*))')
+    .select('*, products(*, product_images(*), product_units(*))')
     .eq('cart_id', cart.id);
 
   if (error) throw parseSupabaseError(error as { message: string; code?: string });
@@ -35,7 +35,7 @@ export async function upsertCartItem(
   userId: string,
   productId: string,
   quantity: number,
-  selectedUnit?: 'piece' | 'kg' | 'carton' | null,
+  selectedUnit?: SaleUnit | null,
 ): Promise<void> {
   // Get or create cart
   let cartId: string;
