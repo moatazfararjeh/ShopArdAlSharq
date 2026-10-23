@@ -86,7 +86,7 @@ export function useCart() {
     removeItem: removeMutation.mutate,
     updateQuantity: (productId: string, quantity: number) => {
       const item = items.find((i) => i.product_id === productId);
-      const next = quantity > 0 && item ? Math.max(quantity, getMinOrderQuantity(item.product)) : quantity;
+      const next = quantity > 0 && item ? Math.max(quantity, getMinOrderQuantity(item.product, item.selected_unit)) : quantity;
       updateQuantityMutation.mutate({ productId, quantity: next });
     },
     clearCart: clearMutation.mutate,

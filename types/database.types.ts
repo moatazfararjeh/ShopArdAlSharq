@@ -79,6 +79,9 @@ export interface ProductRow {
   pieces_per_carton: number | null;
   erp_code: string | null;
   min_order_quantity: number;
+  min_order_quantity_piece: number | null;
+  min_order_quantity_kg: number | null;
+  min_order_quantity_carton: number | null;
   created_at: string;
   updated_at: string;
 }
