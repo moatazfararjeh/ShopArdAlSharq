@@ -2,7 +2,7 @@
   "expo": {
     "name": "FoodBox",
     "slug": "ardalsharq",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "ardalsharq",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ardalsharq.foodbox",
-      "buildNumber": "44",
+      "buildNumber": "45",
       "infoPlist": {
         "NSFaceIDUsageDescription": "السماح لتطبيق أرض الشرق باستخدام Face ID لتسجيل الدخول",
         "ITSAppUsesNonExemptEncryption": false,
