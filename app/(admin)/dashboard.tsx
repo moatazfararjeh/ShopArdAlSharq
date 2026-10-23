@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAdminOrders } from '@/hooks/useOrders';
 import { useProductsPage } from '@/hooks/useProducts';
+import { useRecentSignups } from '@/hooks/useUsers';
 import { useAuthStore } from '@/stores/authStore';
 import { formatPrice } from '@/utils/formatPrice';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
@@ -150,35 +151,49 @@ export default function AdminDashboardScreen() {
     </Card>
   );
 
-  // Orders by where they were placed, last 30 days (cancelled ones left out).
+  const { data: signups = [], isLoading: signupsLoading } = useRecentSignups(30);
+
+  // Orders by where they were placed, last 30 days (cancelled ones left out),
+  // next to new accounts by where they signed up.
   const sources = useMemo(() => {
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const recent = orders.filter((o) => o.status !== 'cancelled' && +new Date(o.created_at) >= since);
-    const rows: Array<{ key: OrderSource | 'unknown'; label: string; icon: keyof typeof Ionicons.glyphMap; count: number; revenue: number }> = [
-      { key: 'web',     label: ORDER_SOURCE_LABELS.web,     icon: 'globe-outline',       count: 0, revenue: 0 },
-      { key: 'ios',     label: ORDER_SOURCE_LABELS.ios,     icon: 'logo-apple',          count: 0, revenue: 0 },
-      { key: 'android', label: ORDER_SOURCE_LABELS.android, icon: 'logo-android',        count: 0, revenue: 0 },
-      { key: 'unknown', label: 'غير معروف',                  icon: 'help-circle-outline', count: 0, revenue: 0 },
+    const rows: Array<{ key: OrderSource | 'unknown'; label: string; icon: keyof typeof Ionicons.glyphMap; count: number; revenue: number; signups: number }> = [
+      { key: 'web',     label: ORDER_SOURCE_LABELS.web,     icon: 'globe-outline',       count: 0, revenue: 0, signups: 0 },
+      { key: 'ios',     label: ORDER_SOURCE_LABELS.ios,     icon: 'logo-apple',          count: 0, revenue: 0, signups: 0 },
+      { key: 'android', label: ORDER_SOURCE_LABELS.android, icon: 'logo-android',        count: 0, revenue: 0, signups: 0 },
+      { key: 'unknown', label: 'غير معروف',                  icon: 'help-circle-outline', count: 0, revenue: 0, signups: 0 },
     ];
+    signups.forEach((p) => { rows.find((r) => r.key === (p.signup_source ?? 'unknown'))!.signups += 1; });
     recent.forEach((o) => {
       const row = rows.find((r) => r.key === (o.source ?? 'unknown'))!;
       row.count += 1;
       row.revenue += Number(o.total_amount) || 0;
     });
-    return { total: recent.length, rows: rows.filter((r) => r.key !== 'unknown' || r.count > 0) };
-  }, [orders]);
+    return { total: recent.length, signupTotal: signups.length, rows: rows.filter((r) => r.key !== 'unknown' || r.count > 0 || r.signups > 0) };
+  }, [orders, signups]);
 
   const sourceCard = (
     <Card>
-      <CardTitle title="مصدر الطلبات · آخر 30 يوماً" action="الطلبات" onAction={() => router.push('/(admin)/orders' as any)} />
+      <CardTitle title="المصدر · آخر 30 يوماً" action="الطلبات" onAction={() => router.push('/(admin)/orders' as any)} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ minWidth: 64, textAlign: 'left', fontSize: 11, fontWeight: '700', color: COLORS.faint }}>حسابات جديدة</Text>
+        <Text style={{ minWidth: 64, textAlign: 'left', fontSize: 11, fontWeight: '700', color: COLORS.faint }}>طلبات</Text>
+      </View>
       {sources.rows.map((r) => {
         const pct = sources.total ? Math.round((r.count / sources.total) * 100) : 0;
         return (
           <View key={r.key} style={{ gap: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name={r.icon} size={16} color={COLORS.ink} />
-              <Text style={{ flex: 1, fontSize: 13, color: COLORS.ink }}>{r.label}</Text>
-              <Text style={{ fontSize: 12, color: COLORS.muted }}>{formatPrice(r.revenue)}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: COLORS.ink }}>{r.label}</Text>
+                <Text style={{ fontSize: 11, color: COLORS.muted }}>{formatPrice(r.revenue)}</Text>
+              </View>
+              <Text style={{ minWidth: 64, textAlign: 'left', fontSize: 13, fontWeight: '700', color: COLORS.ink }}>
+                {signupsLoading ? '…' : r.signups}
+              </Text>
               <Text style={{ minWidth: 64, textAlign: 'left', fontSize: 13, fontWeight: '700', color: COLORS.ink }}>
                 {ordersLoading ? '…' : `${r.count} · ${pct}%`}
               </Text>
@@ -190,7 +205,7 @@ export default function AdminDashboardScreen() {
         );
       })}
       {sources.rows.some((r) => r.key === 'unknown') && (
-        <Text style={{ fontSize: 11, color: COLORS.faint }}>غير معروف = طلبات قبل بدء تسجيل المصدر أو من نسخ تطبيق قديمة.</Text>
+        <Text style={{ fontSize: 11, color: COLORS.faint }}>غير معروف = قبل بدء تسجيل المصدر أو من نسخ تطبيق قديمة. الشريط يمثّل نسبة الطلبات.</Text>
       )}
     </Card>
   );

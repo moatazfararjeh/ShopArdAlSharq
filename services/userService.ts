@@ -79,3 +79,16 @@ export async function getUserById(userId: string): Promise<UserWithStats> {
 
   return { ...(profile as Profile), total_orders, total_spent, last_order_at };
 }
+
+/** Accounts created in the last `days` days (newest first), for the dashboard. */
+export async function getRecentSignups(days: number): Promise<Profile[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  // '*' so this also works before migration 059 adds signup_source.
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false });
+  if (error) throw parseSupabaseError(error);
+  return (data ?? []) as Profile[];
+}

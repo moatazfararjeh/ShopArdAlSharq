@@ -19,6 +19,9 @@ export interface Profile {
   commercial_register_url: string | null;
   role: UserRole;
   expo_push_token: string | null;
+  /** Where the account was created; null for accounts before tracking. */
+  signup_source?: 'web' | 'ios' | 'android' | null;
+  signup_app_version?: string | null;
   created_at: string;
   updated_at: string;
 }

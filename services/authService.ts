@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getClientSource } from '@/lib/clientSource';
 import { parseSupabaseError } from '@/lib/errors';
 import { Profile } from '@/types/models';
 import { uploadDocument } from '@/services/storageService';
@@ -23,10 +24,13 @@ export async function signUp(
   commercialRegisterName?: string,
   commercialRegisterMime?: string,
 ) {
+  const { source, appVersion } = getClientSource();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, phone } },
+    // signup_source / signup_app_version are copied onto the profile by the
+    // handle_new_user trigger (migration 059) — where the account was created.
+    options: { data: { full_name: fullName, phone, signup_source: source, signup_app_version: appVersion } },
   });
   if (error) throw parseSupabaseError(error);
 

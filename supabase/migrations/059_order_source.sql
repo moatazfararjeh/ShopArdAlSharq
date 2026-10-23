@@ -1,4 +1,4 @@
--- 059_order_source.sql
+-- 059_order_source.sql  (orders + sign-ups)
 --
 -- Record where each order was placed: the website or the iPhone / Android
 -- app, and which app version. Orders placed before this (and from app
@@ -113,3 +113,27 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION place_order(UUID, payment_method, TEXT, TEXT, TEXT) TO authenticated;
+
+-- ─── Where each customer signed up ───────────────────────────────────────────
+-- The app sends signup_source / signup_app_version in the sign-up metadata;
+-- the profile trigger copies them. Accounts created before this stay NULL.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS signup_source      TEXT CHECK (signup_source IN ('web', 'ios', 'android')),
+  ADD COLUMN IF NOT EXISTS signup_app_version TEXT;
+
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO profiles (id, email, full_name, phone, signup_source, signup_app_version)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    NEW.raw_user_meta_data->>'phone',
+    CASE WHEN NEW.raw_user_meta_data->>'signup_source' IN ('web', 'ios', 'android')
+         THEN NEW.raw_user_meta_data->>'signup_source' END,
+    LEFT(NULLIF(TRIM(NEW.raw_user_meta_data->>'signup_app_version'), ''), 40)
+  );
+  RETURN NEW;
+END;
+$$;

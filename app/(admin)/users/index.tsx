@@ -7,6 +7,30 @@ import { useUsers } from '@/hooks/useUsers';
 import { UserWithStats } from '@/services/userService';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
+import { ORDER_SOURCE_LABELS, OrderSource } from '@/types/models';
+import { AdminChip } from '@/components/admin/AdminUI';
+
+const SOURCE_ICONS: Record<OrderSource, keyof typeof Ionicons.glyphMap> = {
+  web: 'globe-outline',
+  ios: 'logo-apple',
+  android: 'logo-android',
+};
+
+type SourceFilter = OrderSource | 'all' | 'unknown';
+const SOURCE_TABS: Array<{ key: SourceFilter; label: string }> = [
+  { key: 'all', label: 'كل المصادر' },
+  { key: 'web', label: ORDER_SOURCE_LABELS.web },
+  { key: 'ios', label: ORDER_SOURCE_LABELS.ios },
+  { key: 'android', label: ORDER_SOURCE_LABELS.android },
+  { key: 'unknown', label: 'غير معروف' },
+];
+
+/** "سجّل من: آيفون · 1.9.0 (44)" */
+function signupLabel(u: UserWithStats): string {
+  if (!u.signup_source) return 'غير معروف';
+  const version = u.signup_app_version && u.signup_source !== 'web' ? ` · ${u.signup_app_version}` : '';
+  return `${ORDER_SOURCE_LABELS[u.signup_source]}${version}`;
+}
 
 const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
@@ -15,8 +39,8 @@ function csvField(value: string | null | undefined): string {
 }
 
 function exportUsersToCsv(users: UserWithStats[]) {
-  const headers = ['الاسم', 'اسم الشركة', 'رقم الجوال', 'البريد الإلكتروني'];
-  const rows = users.map((u) => [u.full_name, u.company_name, u.phone, u.email]);
+  const headers = ['الاسم', 'اسم الشركة', 'رقم الجوال', 'البريد الإلكتروني', 'تاريخ التسجيل', 'سجّل من'];
+  const rows = users.map((u) => [u.full_name, u.company_name, u.phone, u.email, formatDate(u.created_at), signupLabel(u)]);
   const csv = [headers, ...rows]
     .map((row) => row.map(csvField).join(','))
     .join('\r\n');
@@ -108,6 +132,12 @@ function UserCard({ item }: { item: UserWithStats }) {
         </View>
       </View>
 
+      {/* Where and when the account was created */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, justifyContent: 'flex-end' }}>
+        <Text style={{ fontSize: 11, color: C.muted }}>سجّل {formatDate(item.created_at)} من {signupLabel(item)}</Text>
+        <Ionicons name={item.signup_source ? SOURCE_ICONS[item.signup_source] : 'help-circle-outline'} size={13} color={C.muted} />
+      </View>
+
       {item.commercial_register_url ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' }}>
           <Text style={{ fontSize: 11, color: '#10b981', fontWeight: '600' }}>السجل التجاري مرفق</Text>
@@ -122,18 +152,27 @@ export default function AdminUsersScreen() {
   const router = useRouter();
   const { data: users, isLoading } = useUsers();
   const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+
+  const sourceCounts = useMemo(() => {
+    const c: Record<SourceFilter, number> = { all: users?.length ?? 0, web: 0, ios: 0, android: 0, unknown: 0 };
+    users?.forEach((u) => { c[u.signup_source ?? 'unknown'] += 1; });
+    return c;
+  }, [users]);
 
   const filtered = useMemo(() => {
     if (!users) return [];
-    if (!search.trim()) return users;
+    const bySource = sourceFilter === 'all' ? users
+      : users.filter((u) => (u.signup_source ?? 'unknown') === sourceFilter);
+    if (!search.trim()) return bySource;
     const q = search.toLowerCase();
-    return users.filter(
+    return bySource.filter(
       (u) =>
         (u.full_name ?? '').toLowerCase().includes(q) ||
         (u.email ?? '').toLowerCase().includes(q) ||
         (u.phone ?? '').includes(q),
     );
-  }, [users, search]);
+  }, [users, search, sourceFilter]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
@@ -173,6 +212,15 @@ export default function AdminUsersScreen() {
               <Ionicons name="close-circle" size={16} color="#94a3b8" />
             </TouchableOpacity>
           ) : null}
+        </View>
+
+        {/* Sign-up source */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {SOURCE_TABS.map((t) => {
+            const count = sourceCounts[t.key] ?? 0;
+            if (count === 0 && t.key !== 'all' && sourceFilter !== t.key) return null;
+            return <AdminChip key={t.key} label={t.label} count={count} active={sourceFilter === t.key} onPress={() => setSourceFilter(t.key)} />;
+          })}
         </View>
       </View>
 

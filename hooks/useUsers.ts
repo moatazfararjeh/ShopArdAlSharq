@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getUsers, getUserById } from '@/services/userService';
+import { getUsers, getUserById, getRecentSignups } from '@/services/userService';
 import { useAuthStore } from '@/stores/authStore';
 
 export const userKeys = {
@@ -24,5 +24,14 @@ export function useUserDetail(userId: string) {
     queryFn: () => getUserById(userId),
     enabled: isInitialized && isAdmin && !!userId,
     retry: false,
+  });
+}
+
+export function useRecentSignups(days = 30) {
+  const { isAdmin, isInitialized } = useAuthStore();
+  return useQuery({
+    queryKey: [...userKeys.all, 'recent', days],
+    queryFn: () => getRecentSignups(days),
+    enabled: isInitialized && isAdmin,
   });
 }
