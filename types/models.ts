@@ -340,11 +340,23 @@ export interface OrderItem {
   product?: Product | null;
 }
 
+export type OrderSource = 'web' | 'ios' | 'android';
+
+export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
+  web: 'الموقع',
+  ios: 'آيفون',
+  android: 'أندرويد',
+};
+
 export interface Order {
   id: string;
   user_id: string;
   order_number: string;
   status: OrderStatus;
+  /** Where it was placed; null for orders before tracking (and old app versions). */
+  source?: OrderSource | null;
+  /** "1.9.0 (44)" on phones, "1.9.0" on the web. */
+  app_version?: string | null;
   total_amount: number;
   delivery_fee: number;
   discount_amount: number;

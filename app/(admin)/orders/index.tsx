@@ -9,7 +9,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useAdminOrders, useUpdateOrderStatus } from '@/hooks/useOrders';
 import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
-import { Order } from '@/types/models';
+import { Order, OrderSource, ORDER_SOURCE_LABELS } from '@/types/models';
 import { OrderStatus } from '@/types/database.types';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
 import { COLORS } from '@/lib/theme';
@@ -35,6 +35,35 @@ function OrderProgress({ status }: { status: OrderStatus }) {
     </View>
   );
 }
+
+// ─── Order source ─────────────────────────────────────────────────────────────
+const SOURCE_ICONS: Record<OrderSource, keyof typeof Ionicons.glyphMap> = {
+  web: 'globe-outline',
+  ios: 'logo-apple',
+  android: 'logo-android',
+};
+
+/** "آيفون · 1.9.0 (44)" — or "غير معروف" for orders placed before tracking. */
+function SourceTag({ order }: { order: Order }) {
+  const src = order.source;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Ionicons name={src ? SOURCE_ICONS[src] : 'help-circle-outline'} size={13} color={COLORS.muted} />
+      <Text style={{ fontSize: 12, color: COLORS.muted }} numberOfLines={1}>
+        {src ? ORDER_SOURCE_LABELS[src] : 'غير معروف'}{order.app_version && src !== 'web' ? ` · ${order.app_version}` : ''}
+      </Text>
+    </View>
+  );
+}
+
+type SourceFilter = OrderSource | 'all' | 'unknown';
+const SOURCE_TABS: Array<{ key: SourceFilter; label: string }> = [
+  { key: 'all', label: 'كل المصادر' },
+  { key: 'web', label: ORDER_SOURCE_LABELS.web },
+  { key: 'ios', label: ORDER_SOURCE_LABELS.ios },
+  { key: 'android', label: ORDER_SOURCE_LABELS.android },
+  { key: 'unknown', label: 'غير معروف' },
+];
 
 // ─── Order card ───────────────────────────────────────────────────────────────
 function OrderCard({ item, onCancel }: { item: Order; onCancel: (o: Order) => void }) {
@@ -70,6 +99,9 @@ function OrderCard({ item, onCancel }: { item: Order; onCancel: (o: Order) => vo
         <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }}>{formatPrice(item.total_amount)}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 12, color: COLORS.muted }}>{item.items?.length ?? 0} منتج · {formatDate(item.created_at)}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -4 }}>
+        <SourceTag order={item} />
       </View>
 
       <OrderProgress status={item.status} />
@@ -134,6 +166,7 @@ export default function AdminOrdersScreen() {
   const { confirm, dialog } = useConfirm();
   const updateStatus = useUpdateOrderStatus();
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'all' | 'open'>('open');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [query, setQuery] = useState('');
 
   const { data: allOrders, isLoading } = useAdminOrders();
@@ -151,13 +184,21 @@ export default function AdminOrdersScreen() {
     let list = allOrders ?? [];
     if (activeFilter === 'open') list = list.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
     else if (activeFilter !== 'all') list = list.filter((o) => o.status === activeFilter);
+    if (sourceFilter === 'unknown') list = list.filter((o) => !o.source);
+    else if (sourceFilter !== 'all') list = list.filter((o) => o.source === sourceFilter);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((o) => [o.order_number, o.profile?.full_name, o.profile?.company_name, o.profile?.phone, o.profile?.email]
         .some((v) => (v ?? '').toLowerCase().includes(q)));
     }
     return list;
-  }, [allOrders, activeFilter, query]);
+  }, [allOrders, activeFilter, sourceFilter, query]);
+
+  const sourceCounts = useMemo(() => {
+    const c: Record<SourceFilter, number> = { all: allOrders?.length ?? 0, web: 0, ios: 0, android: 0, unknown: 0 };
+    allOrders?.forEach((o) => { c[o.source ?? 'unknown'] += 1; });
+    return c;
+  }, [allOrders]);
 
   async function cancelOrder(o: Order) {
     const ok = await confirm({
@@ -221,6 +262,33 @@ export default function AdminOrdersScreen() {
               >
                 <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? '#fff' : COLORS.ink }}>{tab.label}</Text>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? '#fff' : COLORS.muted }}>{count}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Source filter — smaller chips under the status ones */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
+          {SOURCE_TABS.map((tab) => {
+            const isActive = sourceFilter === tab.key;
+            const count = sourceCounts[tab.key] ?? 0;
+            if (count === 0 && tab.key !== 'all' && !isActive) return null;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setSourceFilter(tab.key)}
+                activeOpacity={0.8}
+                accessibilityState={{ selected: isActive }}
+                style={{
+                  height: 30, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, borderRadius: 15,
+                  backgroundColor: isActive ? COLORS.brandTint : '#fff', borderWidth: 1, borderColor: isActive ? COLORS.brand : COLORS.line,
+                }}
+              >
+                {tab.key !== 'all' && (
+                  <Ionicons name={tab.key === 'unknown' ? 'help-circle-outline' : SOURCE_ICONS[tab.key]} size={13} color={isActive ? COLORS.brandText : COLORS.muted} />
+                )}
+                <Text style={{ fontSize: 12, fontWeight: isActive ? '700' : '500', color: isActive ? COLORS.brandText : COLORS.ink }}>{tab.label}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? COLORS.brandText : COLORS.muted }}>{count}</Text>
               </TouchableOpacity>
             );
           })}

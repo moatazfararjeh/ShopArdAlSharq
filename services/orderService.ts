@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 import { AppError, parseSupabaseError } from '@/lib/errors';
 import { Order, SaleUnit } from '@/types/models';
@@ -99,13 +101,37 @@ export async function adminUpdateOrderItems(
 
 export async function placeOrder(payload: CheckoutPayload): Promise<PlaceOrderResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc('place_order', {
+  const base = {
     p_address_id: payload.address_id,
     p_payment_method: payload.payment_method,
     p_notes: payload.notes ?? null,
-  });
+  };
+  const { source, appVersion } = orderSource();
+  let { data, error } = await (supabase as any).rpc('place_order', { ...base, p_source: source, p_app_version: appVersion });
+  // Database without migration 059 yet: place_order has no source parameters.
+  if (error?.code === 'PGRST202') {
+    ({ data, error } = await (supabase as any).rpc('place_order', base));
+  }
   if (error) throw placeOrderError(error);
   return data as PlaceOrderResult;
+}
+
+/**
+ * Where the order is placed from, and the app version: "1.9.0 (44)" on phones
+ * (running JS version, which OTA updates change, then the store build number),
+ * "1.9.0" on the web.
+ */
+function orderSource(): { source: 'web' | 'ios' | 'android'; appVersion: string | null } {
+  const version = Constants.expoConfig?.version ?? null;
+  if (Platform.OS === 'ios') {
+    const build = Constants.platform?.ios?.buildNumber;
+    return { source: 'ios', appVersion: version && build ? `${version} (${build})` : version };
+  }
+  if (Platform.OS === 'android') {
+    const build = Constants.platform?.android?.versionCode;
+    return { source: 'android', appVersion: version && build ? `${version} (${build})` : version };
+  }
+  return { source: 'web', appVersion: version };
 }
 
 /** place_order raises "CODE:detail"; turn the ones a customer can act on into Arabic messages. */
