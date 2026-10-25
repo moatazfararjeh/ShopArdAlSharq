@@ -272,6 +272,8 @@ export default function CheckoutScreen() {
     if (submitting) return; // guard against double-tap re-entrancy
     setSubmitError(null);
     setSubmitting(true);
+    // Which part of checkout failed, for the error log.
+    let step: 'auth' | 'sync_cart' | 'address' | 'place_order' = 'auth';
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSubmitError('يرجى تسجيل الدخول أولاً'); return; }
@@ -282,12 +284,14 @@ export default function CheckoutScreen() {
         showToast(msg, 'error');
         return;
       }
+      step = 'sync_cart';
       await Promise.all(
         cartItems.map((item) =>
           upsertCartItem(user.id, item.product_id, item.quantity, cartLineUnit(item)),
         ),
       );
 
+      step = 'address';
       let finalAddressId: string;
       let tempAddressId: string | null = null;
 
@@ -340,6 +344,7 @@ export default function CheckoutScreen() {
       }
 
       let result;
+      step = 'place_order';
       try {
         result = await placeOrder.mutateAsync({
           address_id: finalAddressId,
@@ -378,7 +383,12 @@ export default function CheckoutScreen() {
       const msg = err instanceof Error ? err.message : 'حدث خطأ، يرجى المحاولة مجددًا';
       logError(err, 'checkout.placeOrder', {
         userId: session?.user?.id,
-        metadata: { cartItemCount: cartItems.length, paymentMethod: values.payment_method },
+        metadata: {
+          step,
+          cartItemCount: cartItems.length,
+          paymentMethod: values.payment_method,
+          cart: cartItems.map((i) => ({ product_id: i.product_id, unit: cartLineUnit(i), quantity: i.quantity })),
+        },
       });
       setSubmitError(msg);
       showToast(msg, 'error');

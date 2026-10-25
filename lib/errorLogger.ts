@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import { getClientSource } from '@/lib/clientSource';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -14,6 +14,8 @@ export function logError(
 ): void {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? (error.stack ?? null) : null;
+  // The friendly message hides what the database said; log that too.
+  const sourceError = (error as { sourceError?: unknown } | null)?.sourceError;
 
   // supabase-js's query builder is only "thenable" (implements .then, not a
   // real Promise), so .catch() isn't guaranteed to exist on it directly —
@@ -27,8 +29,8 @@ export function logError(
       stack,
       context,
       platform: Platform.OS,
-      app_version: Constants.expoConfig?.version ?? null,
-      metadata: options?.metadata ?? {},
+      app_version: getClientSource().appVersion,
+      metadata: { ...(options?.metadata ?? {}), ...(sourceError ? { db_error: sourceError } : {}) },
     }),
   ).catch(() => {});
 }

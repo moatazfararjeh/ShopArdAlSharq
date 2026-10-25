@@ -1,4 +1,15 @@
+/** The raw database / API error behind an AppError — logged, never shown to customers. */
+export interface SourceError {
+  code?: string;
+  message?: string;
+  details?: string | null;
+  hint?: string | null;
+}
+
 export class AppError extends Error {
+  /** Set by parseSupabaseError: what the server actually said. */
+  public sourceError?: SourceError;
+
   constructor(
     public readonly code: string,
     message: string,
@@ -13,7 +24,14 @@ export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }
 
-export function parseSupabaseError(error: { message: string; code?: string }): AppError {
+export function parseSupabaseError(error: { message: string; code?: string; details?: string | null; hint?: string | null }): AppError {
+  const appError = toAppError(error);
+  // Keep the server's own words for the error log; customers only see appError.message.
+  appError.sourceError = { code: error.code, message: error.message, details: error.details ?? null, hint: error.hint ?? null };
+  return appError;
+}
+
+function toAppError(error: { message: string; code?: string }): AppError {
   // PostgREST / DB error codes
   switch (error.code) {
     case 'PGRST116':
