@@ -19,6 +19,7 @@ import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService'
 import { logError } from '@/lib/errorLogger';
 import { useToastStore } from '@/stores/toastStore';
 import { useBiometric } from '@/hooks/useBiometric';
+import { AppVersionLine } from '@/components/ui/AppVersionLine';
 
 const BRAND = '#e36523';
 const BG    = '#f8f7f5';
@@ -702,6 +703,11 @@ export default function ProfileScreen() {
             </Text>
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
           </TouchableOpacity>
+        </View>
+
+        {/* Which code this device runs (store build + OTA update) */}
+        <View style={{ paddingHorizontal: 16, marginTop: 16, marginBottom: 8 }}>
+          <AppVersionLine />
         </View>
 
       </ScrollView>
