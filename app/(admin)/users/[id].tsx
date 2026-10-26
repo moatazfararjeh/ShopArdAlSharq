@@ -14,6 +14,7 @@ import { formatPrice } from '@/utils/formatPrice';
 import { formatDate } from '@/utils/formatDate';
 import { Order } from '@/types/models';
 import { ORDER_STATUS_LABELS } from '@/lib/constants';
+import { CopyCallMenu } from '@/components/ui/CopyCallMenu';
 
 const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
 
@@ -184,7 +185,11 @@ export default function AdminUserDetailScreen() {
         <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.hairline }}>
           <InfoRow icon="person-outline"   label="الاسم الكامل"      value={user.full_name} />
           <InfoRow icon="mail-outline"     label="البريد الإلكتروني" value={user.email} />
-          <InfoRow icon="call-outline"     label="الجوال"            value={user.phone} />
+          {user.phone ? (
+            <CopyCallMenu value={user.phone} phone>
+              <InfoRow icon="call-outline"   label="الجوال"            value={user.phone} />
+            </CopyCallMenu>
+          ) : null}
           <InfoRow icon="calendar-outline" label="تاريخ التسجيل"     value={formatDate(user.created_at)} />
           <InfoRow icon="time-outline"     label="آخر طلب"           value={user.last_order_at ? formatDate(user.last_order_at) : null} />
         </View>

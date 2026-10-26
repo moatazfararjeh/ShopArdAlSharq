@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/lib/theme';
 import { mapsUrl } from '@/components/address/LocationPicker';
 import { Linking } from 'react-native';
+import { CopyCallMenu } from '@/components/ui/CopyCallMenu';
 
 const PLACEHOLDER_HASH = 'L9Q9mH00?bRi~WIUM{j[00t6xu%L';
 
@@ -323,6 +324,14 @@ export default function OrderDetailScreen() {
   const cancelled = order.status === 'cancelled';
   const addr = (order.delivery_address ?? {}) as Record<string, string | null>;
   const hasAddr = Object.keys(addr).length > 0;
+  // What "نسخ" copies from the address card: one line a driver can paste.
+  const addressText = [
+    [addr.city, addr.district].filter(Boolean).join(' — '),
+    addr.street,
+    addr.building_number ? `مبنى ${addr.building_number}` : null,
+    addr.floor_number ? `طابق ${addr.floor_number}` : null,
+    addr.apartment_number ? `شقة ${addr.apartment_number}` : null,
+  ].filter(Boolean).join('، ');
   const itemsCount = order.items?.length ?? 0;
 
   return (
@@ -445,15 +454,23 @@ export default function OrderDetailScreen() {
           <Card title="عنوان التوصيل">
             {addr.label ? <InfoRow icon="bookmark-outline" label="التسمية" value={addr.label} /> : null}
             {addr.recipient_name ? <InfoRow icon="person-outline" label="المستلم" value={addr.recipient_name} /> : null}
-            {addr.phone ? <InfoRow icon="call-outline" label="الهاتف" value={addr.phone} /> : null}
-            {addr.city ? <InfoRow icon="location-outline" label="المدينة" value={[addr.city, addr.district].filter(Boolean).join(' — ')} /> : null}
-            {addr.street ? <InfoRow icon="navigate-outline" label="الشارع" value={addr.street} /> : null}
-            {(addr.building_number || addr.floor_number || addr.apartment_number) ? (
-              <InfoRow icon="business-outline" label="التفاصيل" value={[
-                addr.building_number ? `مبنى ${addr.building_number}` : null,
-                addr.floor_number ? `طابق ${addr.floor_number}` : null,
-                addr.apartment_number ? `شقة ${addr.apartment_number}` : null,
-              ].filter(Boolean).join(' — ')} />
+            {addr.phone ? (
+              <CopyCallMenu value={addr.phone} phone>
+                <InfoRow icon="call-outline" label="الهاتف" value={addr.phone} />
+              </CopyCallMenu>
+            ) : null}
+            {addressText ? (
+              <CopyCallMenu value={addressText}>
+                {addr.city ? <InfoRow icon="location-outline" label="المدينة" value={[addr.city, addr.district].filter(Boolean).join(' — ')} /> : null}
+                {addr.street ? <InfoRow icon="navigate-outline" label="الشارع" value={addr.street} /> : null}
+                {(addr.building_number || addr.floor_number || addr.apartment_number) ? (
+                  <InfoRow icon="business-outline" label="التفاصيل" value={[
+                    addr.building_number ? `مبنى ${addr.building_number}` : null,
+                    addr.floor_number ? `طابق ${addr.floor_number}` : null,
+                    addr.apartment_number ? `شقة ${addr.apartment_number}` : null,
+                  ].filter(Boolean).join(' — ')} />
+                ) : null}
+              </CopyCallMenu>
             ) : null}
             {addr.notes ? <InfoRow icon="document-text-outline" label="ملاحظات" value={addr.notes} /> : null}
             {addr.latitude != null && addr.longitude != null && (
@@ -480,7 +497,11 @@ export default function OrderDetailScreen() {
             {order.profile.email ? <InfoRow icon="mail-outline" label="البريد" value={order.profile.email} /> : null}
             {(() => {
               const phone = order.profile?.phone ?? addr.phone;
-              return phone ? <InfoRow icon="call-outline" label="هاتف الشركة" value={phone} /> : null;
+              return phone ? (
+                <CopyCallMenu value={phone} phone>
+                  <InfoRow icon="call-outline" label="هاتف الشركة" value={phone} />
+                </CopyCallMenu>
+              ) : null;
             })()}
           </Card>
         )}
