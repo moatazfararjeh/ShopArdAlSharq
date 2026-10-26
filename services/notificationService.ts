@@ -42,10 +42,10 @@ export async function insertNotification(params: {
   bodyEn: string;
   type: NotificationType;
   data?: Record<string, unknown>;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('notifications').insert({
+    const { data } = await (supabase as any).from('notifications').insert({
       user_id:   params.userId,
       title_ar:  params.titleAr,
       title_en:  params.titleEn,
@@ -54,8 +54,10 @@ export async function insertNotification(params: {
       type:      params.type,
       is_read:   false,
       data:      params.data ?? null,
-    });
+    }).select('id').single();
+    return data?.id ?? null;   // for push delivery tracking
   } catch {
     // Best-effort — never let notification failures surface to the user
+    return null;
   }
 }

@@ -1,180 +1,190 @@
-import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Modal,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { getPromoCampaigns, getCampaignReaders, CampaignSummary, CampaignReader } from '@/services/campaignService';
+import {
+  getPromoCampaigns, getCampaignRecipients, getDeliverySummary, pushErrorLabel,
+  CampaignSummary, CampaignRecipient, PushStatus,
+} from '@/services/campaignService';
+import { checkPushReceipts } from '@/services/pushNotificationService';
 import { formatDateTime } from '@/utils/formatDate';
+import { COLORS } from '@/lib/theme';
+import { AdminHeader, AdminButton, AdminChip, StatusPill } from '@/components/admin/AdminUI';
 
-const C = { surface: '#f0f4f8', card: '#ffffff', brand: '#e36523', text: '#1e293b', muted: '#64748b', hairline: '#e2e8f0' };
+// Delivery wording, shared by the summary, campaign cards and the recipients list.
+const STATUS_INFO: Record<PushStatus | 'untracked', { label: string; tone: 'green' | 'muted' | 'danger' | 'brand' }> = {
+  delivered: { label: 'وصل',            tone: 'green' },
+  sent:      { label: 'بانتظار التأكيد', tone: 'brand' },
+  failed:    { label: 'فشل',            tone: 'danger' },
+  no_token:  { label: 'بدون جهاز',       tone: 'muted' },
+  untracked: { label: 'قبل التتبع',      tone: 'muted' },
+};
 
-// ─── Open-rate ring ───────────────────────────────────────────────────────────
-function OpenRateBadge({ sent, read }: { sent: number; read: number }) {
-  const pct = sent > 0 ? Math.round((read / sent) * 100) : 0;
-  const color = pct >= 50 ? '#16a34a' : pct >= 20 ? '#d97706' : '#dc2626';
+function Stat({ value, label, color }: { value: number | string; label: string; color: string }) {
   return (
-    <View style={{
-      width: 52, height: 52, borderRadius: 26,
-      borderWidth: 3, borderColor: color,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: C.card,
-    }}>
-      <Text style={{ fontSize: 14, fontWeight: '900', color }}>{pct}%</Text>
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <Text style={{ fontSize: 17, fontWeight: '700', color }}>{value}</Text>
+      <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── All notifications, last 7 days ──────────────────────────────────────────
+function DeliveryCard() {
+  const { data, isLoading } = useQuery({ queryKey: ['push-delivery', 7], queryFn: () => getDeliverySummary(7) });
+  if (isLoading || !data) return null;
+  const { counts, failures, total } = data;
+  const tracked = total - counts.untracked;
+  const rate = tracked > 0 ? Math.round((counts.delivered / tracked) * 100) : 0;
+
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink }}>وصول كل الإشعارات · آخر 7 أيام</Text>
+          <Text style={{ fontSize: 12, color: COLORS.muted }}>طلبات، توفّر منتجات وعروض — {total} إشعار</Text>
+        </View>
+        {tracked > 0 && <Text style={{ fontSize: 20, fontWeight: '700', color: rate >= 80 ? COLORS.green : COLORS.brandText }}>{rate}%</Text>}
+      </View>
+      <View style={{ flexDirection: 'row' }}>
+        <Stat value={counts.delivered} label="وصل" color={COLORS.green} />
+        <Stat value={counts.sent} label="بانتظار التأكيد" color={COLORS.brandText} />
+        <Stat value={counts.failed} label="فشل" color={COLORS.danger} />
+        <Stat value={counts.no_token} label="بدون جهاز" color={COLORS.muted} />
+      </View>
+      {failures.length > 0 && (
+        <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: COLORS.line, paddingTop: 10 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.muted }}>أسباب الفشل</Text>
+          {failures.slice(0, 4).map((f) => (
+            <View key={f.error} style={{ flexDirection: 'row', gap: 8 }}>
+              <Text style={{ flex: 1, fontSize: 12, color: COLORS.ink }}>{pushErrorLabel(f.error)}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.danger }}>{f.count}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {counts.untracked > 0 && (
+        <Text style={{ fontSize: 11, color: COLORS.faint }}>
+          {counts.untracked} إشعار بدون حالة: أُرسلت قبل بدء التتبع أو من الخادم مباشرة (طلب جديد للمشرفين، تعديل طلب).
+        </Text>
+      )}
     </View>
   );
 }
 
 // ─── Campaign card ────────────────────────────────────────────────────────────
 function CampaignCard({ campaign, onPress }: { campaign: CampaignSummary; onPress: () => void }) {
-  const openRate = campaign.sent_count > 0
-    ? Math.round((campaign.read_count / campaign.sent_count) * 100)
-    : 0;
+  const openRate = campaign.sent_count > 0 ? Math.round((campaign.read_count / campaign.sent_count) * 100) : 0;
+  const tracked = campaign.untracked_count < campaign.sent_count;
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={{
-        backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 12,
-        shadowColor: '#1e293b', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <OpenRateBadge sent={campaign.sent_count} read={campaign.read_count} />
-
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: C.text, textAlign: 'right' }} numberOfLines={1}>
-            {campaign.title_ar}
-          </Text>
-          <Text style={{ fontSize: 12, color: C.muted, marginTop: 2, textAlign: 'right' }} numberOfLines={1}>
-            {campaign.body_ar}
-          </Text>
-          <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textAlign: 'right' }}>
-            {formatDateTime(campaign.sent_at)}
-          </Text>
-        </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 10, gap: 12 }}>
+      <View style={{ gap: 2 }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink }} numberOfLines={1}>{campaign.title_ar}</Text>
+        <Text style={{ fontSize: 12, color: COLORS.muted }} numberOfLines={1}>{campaign.body_ar}</Text>
+        <Text style={{ fontSize: 11, color: COLORS.faint }}>{formatDateTime(campaign.sent_at)}</Text>
       </View>
 
-      {/* Stats row */}
-      <View style={{
-        flexDirection: 'row', gap: 0, marginTop: 14,
-        borderTopWidth: 1, borderTopColor: C.hairline, paddingTop: 12,
-      }}>
-        {[
-          { label: 'أُرسل',    value: campaign.sent_count,                        color: C.muted },
-          { label: 'فتح',      value: campaign.read_count,                        color: '#2563eb' },
-          { label: 'لم يفتح',  value: campaign.sent_count - campaign.read_count,  color: '#dc2626' },
-          { label: 'معدل الفتح', value: `${openRate}%`,                           color: openRate >= 30 ? '#16a34a' : '#d97706' },
-        ].map((stat, i) => (
-          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: stat.color }}>{stat.value}</Text>
-            <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{stat.label}</Text>
-          </View>
-        ))}
+      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.line, paddingTop: 12 }}>
+        <Stat value={campaign.sent_count} label="المستلمون" color={COLORS.ink} />
+        {tracked ? (
+          <>
+            <Stat value={campaign.delivered_count} label="وصل" color={COLORS.green} />
+            <Stat value={campaign.failed_count} label="فشل" color={COLORS.danger} />
+            <Stat value={campaign.no_token_count} label="بدون جهاز" color={COLORS.muted} />
+          </>
+        ) : (
+          <Stat value="—" label="الوصول (قبل التتبع)" color={COLORS.faint} />
+        )}
+        <Stat value={`${campaign.read_count} · ${openRate}%`} label="فتح" color={COLORS.brandText} />
       </View>
+      {campaign.pending_count > 0 && (
+        <Text style={{ fontSize: 11, color: COLORS.brandText }}>{campaign.pending_count} بانتظار تأكيد الوصول من Apple/Google</Text>
+      )}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10, gap: 4 }}>
-        <Text style={{ fontSize: 12, color: C.brand, fontWeight: '700' }}>من فتح الإشعار؟</Text>
-        <Ionicons name="chevron-back" size={14} color={C.brand} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Text style={{ fontSize: 12, color: COLORS.brandText, fontWeight: '700' }}>تفاصيل المستلمين</Text>
+        <Ionicons name="chevron-back" size={14} color={COLORS.brandText} />
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─── Readers modal ────────────────────────────────────────────────────────────
-function ReadersModal({
-  campaign, visible, onClose,
-}: {
-  campaign: CampaignSummary | null;
-  visible: boolean;
-  onClose: () => void;
-}) {
-  const { data: readers = [], isLoading } = useQuery({
-    queryKey: ['campaign-readers', campaign?.campaign_id],
-    queryFn: () => getCampaignReaders(campaign!.campaign_id),
-    enabled: !!campaign?.campaign_id && visible,
+// ─── Recipients of one campaign ───────────────────────────────────────────────
+type RecipientFilter = 'all' | 'opened' | PushStatus | 'untracked';
+
+function RecipientsModal({ campaign, onClose }: { campaign: CampaignSummary | null; onClose: () => void }) {
+  const [filter, setFilter] = useState<RecipientFilter>('all');
+  const { data: recipients = [], isLoading } = useQuery({
+    queryKey: ['campaign-recipients', campaign?.campaign_id],
+    queryFn: () => getCampaignRecipients(campaign!.campaign_id),
+    enabled: !!campaign?.campaign_id,
   });
 
+  const test = (r: CampaignRecipient, f: RecipientFilter) =>
+    f === 'all' ? true : f === 'opened' ? !!r.read_at : f === 'untracked' ? !r.push_status : r.push_status === f;
+  const chips: Array<{ key: RecipientFilter; label: string }> = [
+    { key: 'all', label: 'الكل' },
+    { key: 'opened', label: 'فتح' },
+    { key: 'delivered', label: STATUS_INFO.delivered.label },
+    { key: 'sent', label: STATUS_INFO.sent.label },
+    { key: 'failed', label: STATUS_INFO.failed.label },
+    { key: 'no_token', label: STATUS_INFO.no_token.label },
+    { key: 'untracked', label: STATUS_INFO.untracked.label },
+  ];
+  const visible = useMemo(() => recipients.filter((r) => test(r, filter)), [recipients, filter]);
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        {/* Header */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 10,
-          padding: 16, backgroundColor: C.card,
-          borderBottomWidth: 1, borderBottomColor: C.hairline,
-        }}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name="close" size={18} color={C.muted} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: C.text }} numberOfLines={1}>
-              {campaign?.title_ar}
-            </Text>
-            <Text style={{ fontSize: 12, color: C.muted }}>
-              فتح الإشعار: {readers.length} من {campaign?.sent_count ?? 0}
-            </Text>
+    <Modal visible={!!campaign} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+        <View style={{ backgroundColor: '#fff', padding: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: COLORS.line }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="إغلاق" style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="close" size={20} color={COLORS.ink} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.ink }} numberOfLines={1}>{campaign?.title_ar}</Text>
+              <Text style={{ fontSize: 12, color: COLORS.muted }}>{visible.length} من {recipients.length}</Text>
+            </View>
           </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {chips.map((c) => {
+              const count = recipients.filter((r) => test(r, c.key)).length;
+              if (count === 0 && c.key !== 'all' && filter !== c.key) return null;
+              return <AdminChip key={c.key} label={c.label} count={count} active={filter === c.key} onPress={() => setFilter(c.key)} />;
+            })}
+          </ScrollView>
         </View>
 
         {isLoading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={C.brand} size="large" />
-          </View>
-        ) : readers.length === 0 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <Text style={{ fontSize: 40 }}>📭</Text>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>لا أحد فتح الإشعار بعد</Text>
-            <Text style={{ fontSize: 13, color: C.muted }}>سيظهر هنا المستخدمون الذين يفتحون الإشعار</Text>
-          </View>
+          <ActivityIndicator color={COLORS.brand} size="large" style={{ marginTop: 40 }} />
         ) : (
           <FlatList
-            data={readers}
+            data={visible}
             keyExtractor={(item) => item.user_id}
-            contentContainerStyle={{ padding: 16, gap: 10 }}
-            renderItem={({ item }: { item: CampaignReader }) => (
-              <View style={{
-                backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-                flexDirection: 'row', alignItems: 'center', gap: 12,
-                shadowColor: '#1e293b', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
-              }}>
-                <View style={{
-                  width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.brand }}>
-                    {(item.full_name ?? item.email)[0].toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, textAlign: 'right' }}>
-                    {item.full_name ?? item.email}
-                  </Text>
-                  {item.full_name ? (
-                    <Text style={{ fontSize: 12, color: C.muted, textAlign: 'right' }}>{item.email}</Text>
-                  ) : null}
-                  {item.phone ? (
-                    <Text style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right' }}>{item.phone}</Text>
-                  ) : null}
-                </View>
-
-                {item.read_at ? (
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 10, color: '#94a3b8' }}>فتح في</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: C.muted }}>
-                      {formatDateTime(item.read_at)}
-                    </Text>
+            contentContainerStyle={{ padding: 16, gap: 8 }}
+            ListEmptyComponent={<Text style={{ textAlign: 'center', color: COLORS.muted, marginTop: 40 }}>لا يوجد مستلمون هنا</Text>}
+            renderItem={({ item }) => {
+              const info = STATUS_INFO[item.push_status ?? 'untracked'];
+              return (
+                <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 12, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.ink }} numberOfLines={1}>{item.full_name ?? item.email}</Text>
+                      <Text style={{ fontSize: 12, color: COLORS.muted }} numberOfLines={1}>{item.phone ?? item.email}</Text>
+                    </View>
+                    <StatusPill label={info.label} tone={info.tone} />
+                    {item.read_at && <StatusPill label="فتح" tone="brand" />}
                   </View>
-                ) : null}
-              </View>
-            )}
+                  {item.push_status === 'failed' && (
+                    <Text style={{ fontSize: 12, color: COLORS.danger }}>{pushErrorLabel(item.push_error)}</Text>
+                  )}
+                  {item.read_at && <Text style={{ fontSize: 11, color: COLORS.faint }}>فتح في {formatDateTime(item.read_at)}</Text>}
+                </View>
+              );
+            }}
           />
         )}
       </SafeAreaView>
@@ -182,101 +192,51 @@ function ReadersModal({
   );
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function NotificationStatsScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<CampaignSummary | null>(null);
 
-  const { data: campaigns = [], isLoading, refetch } = useQuery({
+  // Fetch Expo receipts first, so "sent" pushes show as delivered / failed.
+  const { data: campaigns = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['promo-campaigns'],
-    queryFn: getPromoCampaigns,
+    queryFn: async () => {
+      await checkPushReceipts().catch(() => 0);
+      return getPromoCampaigns();
+    },
   });
 
-  const totalSent = campaigns.reduce((s, c) => s + c.sent_count, 0);
-  const totalRead = campaigns.reduce((s, c) => s + c.read_count, 0);
-  const avgOpen   = totalSent > 0 ? Math.round((totalRead / totalSent) * 100) : 0;
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-      {/* ── Header ── */}
-      <View style={{
-        backgroundColor: C.card, paddingHorizontal: 16, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: C.hairline,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <TouchableOpacity
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard' as any)}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="home-outline" size={18} color={C.muted} />
-        </TouchableOpacity>
-
-        <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>إحصائيات الإشعارات</Text>
-          <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{campaigns.length} حملة ترويجية</Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => refetch()}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="refresh-outline" size={18} color={C.muted} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface, direction: 'rtl' as any }}>
+      <AdminHeader
+        title="إحصائيات الإشعارات"
+        subtitle={`${campaigns.length} حملة ترويجية`}
+        actions={<AdminButton icon="refresh-outline" accessibilityLabel="تحديث" loading={isFetching} onPress={() => refetch()} />}
+      />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <DeliveryCard />
 
-        {/* Summary KPIs */}
-        {campaigns.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-            {[
-              { label: 'إجمالي الإرسال', value: totalSent, color: '#2563eb', bg: '#eff6ff' },
-              { label: 'إجمالي الفتح',   value: totalRead, color: '#16a34a', bg: '#f0fdf4' },
-              { label: 'متوسط الفتح',    value: `${avgOpen}%`, color: '#d97706', bg: '#fffbeb' },
-            ].map((k) => (
-              <View key={k.label} style={{
-                flex: 1, backgroundColor: k.bg, borderRadius: 16, padding: 14, alignItems: 'center',
-                shadowColor: '#1e293b', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
-              }}>
-                <Text style={{ fontSize: 22, fontWeight: '900', color: k.color }}>{k.value}</Text>
-                <Text style={{ fontSize: 10, color: C.muted, marginTop: 4, textAlign: 'center' }}>{k.label}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Campaign list */}
+        <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.muted, marginBottom: 8 }}>الحملات الترويجية</Text>
         {isLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <ActivityIndicator color={C.brand} size="large" />
-          </View>
+          <ActivityIndicator color={COLORS.brand} size="large" style={{ marginTop: 30 }} />
         ) : campaigns.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
-            <Text style={{ fontSize: 48 }}>📭</Text>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>لا توجد حملات بعد</Text>
-            <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center' }}>
-              أرسل إشعارات ترويجية وستظهر إحصائياتها هنا
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(admin)/send-notification' as any)}
-              style={{ backgroundColor: C.brand, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>إرسال أول إشعار 📢</Text>
-            </TouchableOpacity>
+          <View style={{ alignItems: 'center', paddingVertical: 50, gap: 12 }}>
+            <Ionicons name="megaphone-outline" size={44} color={COLORS.faint} />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.ink }}>لا توجد حملات بعد</Text>
+            <AdminButton primary label="إرسال أول إشعار" icon="send-outline" onPress={() => router.push('/(admin)/send-notification' as any)} />
           </View>
         ) : (
-          campaigns.map((c) => (
-            <CampaignCard key={c.campaign_id} campaign={c} onPress={() => setSelected(c)} />
-          ))
+          campaigns.map((c) => <CampaignCard key={c.campaign_id} campaign={c} onPress={() => setSelected(c)} />)
         )}
 
+        <Text style={{ fontSize: 11, color: COLORS.faint, marginTop: 8, lineHeight: 17 }}>
+          "وصل" = سلّمته Apple أو Google لجهاز العميل. "بدون جهاز" = العميل لم يفعّل الإشعارات أو يستخدم الموقع فقط.
+          "فتح" = فتح الإشعار داخل التطبيق.
+        </Text>
       </ScrollView>
 
-      <ReadersModal
-        campaign={selected}
-        visible={!!selected}
-        onClose={() => setSelected(null)}
-      />
+      <RecipientsModal campaign={selected} onClose={() => setSelected(null)} />
     </SafeAreaView>
   );
 }

@@ -12,10 +12,16 @@ interface PushMessage {
   sound?: 'default';
 }
 
-async function sendExpoPushNotification(messages: PushMessage[]) {
-  if (messages.length === 0) return;
+const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
+
+/** Expo's answer for one message: accepted (with a ticket id) or refused. */
+type PushTicket = { status: 'ok'; id: string } | { status: 'error'; message?: string; details?: { error?: string } };
+
+/** Sends a batch (≤100) and returns one ticket per message, in order. Never throws. */
+async function sendExpoPushNotification(messages: PushMessage[]): Promise<PushTicket[]> {
+  if (messages.length === 0) return [];
   try {
-    await fetch(EXPO_PUSH_URL, {
+    const res = await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -24,9 +30,59 @@ async function sendExpoPushNotification(messages: PushMessage[]) {
       },
       body: JSON.stringify(messages),
     });
+    const json = await res.json().catch(() => null);
+    const tickets: PushTicket[] | undefined = json?.data;
+    if (Array.isArray(tickets) && tickets.length === messages.length) return tickets;
+    const reason = json?.errors?.[0]?.code ?? `HTTP ${res.status}`;
+    return messages.map(() => ({ status: 'error', message: reason, details: { error: reason } }));
   } catch {
     // Best-effort — don't crash the app if push delivery fails
+    return messages.map(() => ({ status: 'error', message: 'NetworkError', details: { error: 'NetworkError' } }));
   }
+}
+
+/** One notification row to push: its id, and the customer's token (null = none). */
+interface PushTarget {
+  notificationId: string;
+  token: string | null | undefined;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Send the pushes for these notification rows through the database
+ * (send_push_notifications, migration 062), which records each one as
+ * no_token / sent / failed. Expo's API has no CORS headers, so a browser can't
+ * call it — the web admin's pushes only go out this way. Falls back to calling
+ * Expo directly (works in the phone app, untracked) if the function is missing.
+ */
+async function deliverPushes(targets: PushTarget[]): Promise<void> {
+  if (!targets.length) return;
+  const ids = targets.map((t) => t.notificationId);
+  let ok = true;
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await (supabase as any).rpc('send_push_notifications', { p_ids: ids.slice(i, i + 500) });
+    if (error) { ok = false; break; }
+  }
+  if (ok) return;
+
+  const withToken = targets.filter((t) => !!t.token && EXPO_TOKEN_RE.test(t.token));
+  for (let i = 0; i < withToken.length; i += 100) {
+    await sendExpoPushNotification(withToken.slice(i, i + 100).map((t) => ({
+      to: t.token as string, title: t.title, body: t.body, sound: 'default' as const,
+      data: { ...(t.data ?? {}), notificationId: t.notificationId },
+    })));
+  }
+}
+
+/**
+ * Turn "sent" pushes into delivered / failed from Expo's receipts (kept about
+ * a day), done by the database. Call when looking at the stats.
+ */
+export async function checkPushReceipts(): Promise<number> {
+  const { data, error } = await (supabase as any).rpc('check_push_receipts');
+  return error ? 0 : Number(data ?? 0);
 }
 
 const ORDER_STATUS_MESSAGES: Partial<Record<OrderStatus, { titleAr: string; titleEn: string; bodyAr: string; bodyEn: string; type: NotificationType }>> = {
@@ -51,14 +107,14 @@ export async function sendStockAvailableNotifications(
 
   if (!rows || rows.length === 0) return 0;
 
-  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
   const titleAr = `✅ ${productName} أصبح متاحاً!`;
   const bodyAr  = 'المنتج الذي طلبت إشعاراً عنه أصبح متوفراً في المخزون.';
 
-  // Batch insert in-app notifications
+  // Batch insert in-app notifications (ids come back for delivery tracking)
   const userIds: string[] = rows.map((r: any) => r.user_id);
+  let inserted: Array<{ id: string; user_id: string }> = [];
   try {
-    await (supabase as any).from('notifications').insert(
+    const { data } = await (supabase as any).from('notifications').insert(
       userIds.map((uid) => ({
         user_id:  uid,
         title_ar: titleAr,
@@ -69,26 +125,14 @@ export async function sendStockAvailableNotifications(
         is_read:  false,
         data:     { productId },
       }))
-    );
+    ).select('id, user_id');
+    inserted = data ?? [];
   } catch { /* best-effort */ }
 
-  // Send push messages in batches of 100
-  const messages: PushMessage[] = rows
-    .filter((r: any) => {
-      const token = r.profiles?.expo_push_token;
-      return token && EXPO_TOKEN_RE.test(token);
-    })
-    .map((r: any) => ({
-      to:    r.profiles.expo_push_token as string,
-      title: titleAr,
-      body:  bodyAr,
-      sound: 'default' as const,
-      data:  { productId },
-    }));
-
-  for (let i = 0; i < messages.length; i += 100) {
-    await sendExpoPushNotification(messages.slice(i, i + 100));
-  }
+  const tokenOf = new Map<string, string | null>(rows.map((r: any) => [r.user_id, r.profiles?.expo_push_token ?? null]));
+  await deliverPushes(inserted.map((n) => ({
+    notificationId: n.id, token: tokenOf.get(n.user_id), title: titleAr, body: bodyAr, data: { productId },
+  })));
 
   // Mark alerts as notified
   await (supabase as any)
@@ -112,14 +156,13 @@ export async function sendBroadcastNotification(
 
   if (!profiles || profiles.length === 0) return { sentCount: 0, campaignId: '' };
 
-  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
-
   // Generate a campaign UUID to group all these notifications
   const campaignId = generateUUID();
 
-  // Batch insert in-app notifications for all users
+  // Batch insert in-app notifications for all users (ids come back for delivery tracking)
+  let inserted: Array<{ id: string; user_id: string }> = [];
   try {
-    await (supabase as any).from('notifications').insert(
+    const { data } = await (supabase as any).from('notifications').insert(
       (profiles as Array<{ id: string }>).map((p) => ({
         user_id:     p.id,
         title_ar:    titleAr,
@@ -131,21 +174,14 @@ export async function sendBroadcastNotification(
         campaign_id: campaignId,
         data:        {},
       }))
-    );
+    ).select('id, user_id');
+    inserted = data ?? [];
   } catch { /* best-effort */ }
 
-  const messages: PushMessage[] = (profiles as Array<{ id: string; expo_push_token: string | null }>)
-    .filter((p) => p.expo_push_token && EXPO_TOKEN_RE.test(p.expo_push_token))
-    .map((p) => ({
-      to:    p.expo_push_token as string,
-      title: titleAr,
-      body:  bodyAr,
-      sound: 'default' as const,
-    }));
-
-  for (let i = 0; i < messages.length; i += 100) {
-    await sendExpoPushNotification(messages.slice(i, i + 100));
-  }
+  const tokenOf = new Map((profiles as Array<{ id: string; expo_push_token: string | null }>).map((p) => [p.id, p.expo_push_token]));
+  await deliverPushes(inserted.map((n) => ({
+    notificationId: n.id, token: tokenOf.get(n.user_id), title: titleAr, body: bodyAr,
+  })));
 
   return { sentCount: profiles.length, campaignId };
 }
@@ -175,7 +211,7 @@ export async function sendOrderStatusNotification(
   const titleEn = `${msg.titleEn} #${orderNumber}`;
 
   // 1. Always save to notifications table (visible in-app)
-  await insertNotification({
+  const notificationId = await insertNotification({
     userId,
     titleAr,
     titleEn,
@@ -192,19 +228,9 @@ export async function sendOrderStatusNotification(
     .eq('id', userId)
     .single();
 
+  // deliverPushes validates the token format (ExponentPushToken[...]) so
+  // arbitrary strings stored by a user never reach the Expo push API.
   const token = (profile as { expo_push_token?: string | null } | null)?.expo_push_token;
-  // Validate token format — Expo push tokens must match ExponentPushToken[...]
-  // This prevents forwarding arbitrary strings stored by a user to the Expo push API.
-  const EXPO_TOKEN_RE = /^ExponentPushToken\[.+\]$/;
-  if (!token || !EXPO_TOKEN_RE.test(token)) return;
-
-  await sendExpoPushNotification([
-    {
-      to: token,
-      title: titleAr,
-      body: msg.bodyAr,
-      sound: 'default',
-      data: { orderId },
-    },
-  ]);
+  if (!notificationId) return;
+  await deliverPushes([{ notificationId, token, title: titleAr, body: msg.bodyAr, data: { orderId } }]);
 }
