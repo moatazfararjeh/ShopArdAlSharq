@@ -3,7 +3,16 @@ import { useEffect } from 'react';
 import { useCartStore, cartLineUnit, matches } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import * as cartService from '@/services/cartService';
-import { CartItem, getMinOrderQuantity } from '@/types/models';
+import { useToastStore } from '@/stores/toastStore';
+import { CartItem, getMinOrderQuantity, UNIT_LABELS } from '@/types/models';
+
+/**
+ * TEMPORARY (migration 060): while app versions from before per-unit carts are
+ * still in use, the database allows only one line per product. Turn off — and
+ * drop cart_items_one_line_per_product — once most phones run iOS build 46 /
+ * the matching Android update.
+ */
+const ONE_LINE_PER_PRODUCT = true;
 
 type Unit = CartItem['selected_unit'];
 
@@ -41,6 +50,7 @@ export function useCart() {
   const { items, summary, addItem, removeItem, updateQuantity, changeUnit, clearCart } = useCartStore();
   const { session } = useAuthStore();
   const qc = useQueryClient();
+  const showToast = useToastStore((s) => s.show);
   const refresh = () => { if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) }); };
 
   const addMutation = useMutation({
@@ -53,6 +63,11 @@ export function useCart() {
     },
     onMutate: (item) => addItem(item),
     onSuccess: refresh,
+    // e.g. the database refused a second unit of the same product: reload the real cart.
+    onError: () => {
+      refresh();
+      showToast('تعذّر تحديث السلة. حاول مجدداً.', 'error');
+    },
   });
 
   const removeMutation = useMutation({
@@ -97,7 +112,19 @@ export function useCart() {
   return {
     items,
     summary,
-    addItem: addMutation.mutate,
+    /** Add to the cart; returns false (and explains why) when it wasn't added. */
+    addItem: (item: CartItem): boolean => {
+      if (ONE_LINE_PER_PRODUCT) {
+        const other = items.find((i) => i.product_id === item.product_id && cartLineUnit(i) !== cartLineUnit(item));
+        if (other) {
+          const inCart = cartLineUnit(other);
+          showToast(`المنتج موجود في السلة بوحدة ${inCart ? UNIT_LABELS[inCart] : 'أخرى'}. غيّر الوحدة أو الكمية من السلة.`, 'error');
+          return false;
+        }
+      }
+      addMutation.mutate(item);
+      return true;
+    },
     /** Remove one unit's line; without a unit, every line of the product. */
     removeItem: (productId: string, unit?: Unit) => {
       const line = unit === undefined ? undefined : items.find((i) => matches(i, productId, unit));

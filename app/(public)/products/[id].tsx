@@ -371,8 +371,7 @@ export default function ProductDetailScreen() {
 
   function handleAddToCart() {
     if (outOfStock) return;
-    recordEvent.mutate({ productId: product!.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-    addItem({
+    const added = addItem({
       id: '',
       cart_id: '',
       product_id: product!.id,
@@ -380,6 +379,8 @@ export default function ProductDetailScreen() {
       selected_unit: unit?.unit ?? null,
       product: product!,
     });
+    if (!added) return;
+    recordEvent.mutate({ productId: product!.id, eventType: 'add_to_cart', userId: userId ?? undefined });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 

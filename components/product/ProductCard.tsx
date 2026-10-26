@@ -64,8 +64,8 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
   function handleAddToCart() {
     if (outOfStock) return;
+    if (!addItem({ id: '', cart_id: '', product_id: product.id, quantity: minQty, selected_unit: unit?.unit ?? null, product })) return;
     recordEvent.mutate({ productId: product.id, eventType: 'add_to_cart', userId: userId ?? undefined });
-    addItem({ id: '', cart_id: '', product_id: product.id, quantity: minQty, selected_unit: unit?.unit ?? null, product });
     showToast(`تمت إضافة ${name} إلى السلة`);
   }
 
