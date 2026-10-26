@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { useCartStore, cartLineUnit, matches } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import * as cartService from '@/services/cartService';
@@ -21,6 +22,9 @@ const cartKeys = {
   user: (userId: string) => [...cartKeys.all, userId] as const,
 };
 
+// Account whose guest items were already saved (once per sign-in).
+let guestItemsSavedFor: string | null = null;
+
 /** Loads the server cart and hydrates the Zustand store. Call once on app mount when authenticated. */
 export function useCartSync() {
   const { session } = useAuthStore();
@@ -28,7 +32,18 @@ export function useCartSync() {
 
   const query = useQuery({
     queryKey: cartKeys.user(session?.user.id ?? ''),
-    queryFn: () => cartService.getCartItems(session!.user.id),
+    queryFn: async () => {
+      const userId = session!.user.id;
+      // Items added while logged out live only in the store; save them to the
+      // account once, right after sign-in, so loading the server cart doesn't drop them.
+      if (guestItemsSavedFor !== userId) {
+        guestItemsSavedFor = userId;
+        await Promise.all(useCartStore.getState().items.map((i) =>
+          cartService.upsertCartItem(userId, i.product_id, i.quantity, cartLineUnit(i)).catch(() => {}),
+        ));
+      }
+      return cartService.getCartItems(userId);
+    },
     enabled: !!session,
   });
 
@@ -50,6 +65,7 @@ export function useCart() {
   const { items, summary, addItem, removeItem, updateQuantity, changeUnit, clearCart } = useCartStore();
   const { session } = useAuthStore();
   const qc = useQueryClient();
+  const router = useRouter();
   const showToast = useToastStore((s) => s.show);
   const refresh = () => { if (session) qc.invalidateQueries({ queryKey: cartKeys.user(session.user.id) }); };
 
@@ -123,6 +139,13 @@ export function useCart() {
         }
       }
       addMutation.mutate(item);
+      if (!session) {
+        // Guests can fill a cart but must sign in to order: keep the item
+        // (it's saved to the account after sign-in) and come back to the cart.
+        showToast('سجّل الدخول لإكمال الطلب — المنتج محفوظ في سلتك', 'success');
+        router.push({ pathname: '/(public)/login', params: { next: '/cart' } } as any);
+        return false;
+      }
       return true;
     },
     /** Remove one unit's line; without a unit, every line of the product. */

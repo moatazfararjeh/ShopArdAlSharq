@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { safeNext } from '@/lib/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -104,6 +105,10 @@ export default function RegisterScreen() {
     }
   };
 
+  // Carried over from login ("log in to continue" → create account instead).
+  const { next: nextParam } = useLocalSearchParams<{ next?: string }>();
+  const next = safeNext(nextParam);
+
   async function onSubmit(values: RegisterFormValues) {
     try {
       const result = await registerMutation.mutateAsync({
@@ -116,10 +121,10 @@ export default function RegisterScreen() {
         showAlert(
           'تم إنشاء الحساب',
           'تم إرسال رابط التفعيل إلى بريدك الإلكتروني. يرجى تأكيد بريدك قبل تسجيل الدخول.',
-          () => router.replace('/(public)/login?confirmed=1' as any),
+          () => router.replace((next ? `/(public)/login?confirmed=1&next=${encodeURIComponent(next)}` : '/(public)/login?confirmed=1') as any),
         );
       } else {
-        router.replace('/(customer)/home');
+        router.replace((next ?? '/(customer)/home') as any);
       }
     } catch {
       // Error displayed via mutation state

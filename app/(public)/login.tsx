@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { safeNext } from '@/lib/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +23,10 @@ export default function LoginScreen() {
   const router = useRouter();
   const loginMutation = useLogin();
   const resendMutation = useResendConfirmation();
-  const params = useLocalSearchParams<{ confirmed?: string }>();
+  const params = useLocalSearchParams<{ confirmed?: string; next?: string }>();
   const showConfirmNotice = params.confirmed === '1';
+  // Where to go after signing in, e.g. back to the cart after adding as a guest.
+  const afterLogin = safeNext(params.next) ?? '/(customer)/home';
   const { isAvailable, isEnabled, saveCredentials, getCredentials, getBiometricLabel, getBiometricIcon } = useBiometric();
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -68,7 +71,7 @@ export default function LoginScreen() {
           await AsyncStorage.removeItem(REMEMBER_ME_KEY);
         }
       }
-      router.push('/(customer)/home');
+      router.replace(afterLogin as any);
     } catch (err: unknown) {
       // Error displayed via mutation state
     }
@@ -80,7 +83,7 @@ export default function LoginScreen() {
       const credentials = await getCredentials();
       if (credentials) {
         await loginMutation.mutateAsync(credentials);
-        router.push('/(customer)/home');
+        router.replace(afterLogin as any);
       }
     } catch {
       // Error displayed via mutation state
@@ -265,7 +268,7 @@ export default function LoginScreen() {
               title={t('auth.register')}
               variant="outline"
               size="sm"
-              onPress={() => router.push('/(public)/register')}
+              onPress={() => router.push({ pathname: '/(public)/register', params: params.next ? { next: params.next } : {} } as any)}
             />
           </View>
 
@@ -317,4 +320,3 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
