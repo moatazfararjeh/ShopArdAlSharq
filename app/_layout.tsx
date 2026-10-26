@@ -70,6 +70,9 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
   // ErrorUtils (above) doesn't exist on web, so uncaught errors there were
   // never logged anywhere — not even to the console suppression above.
   window.addEventListener('error', (e: ErrorEvent) => {
+    // Instagram / Facebook in-app browsers inject a script that throws on
+    // window._META.IABInnerFrame — their bug, not ours; don't log it.
+    if (String(e.message ?? e.error ?? '').includes('IABInnerFrame')) return;
     logError(e.error ?? e.message, 'window.onerror');
   });
   window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
@@ -154,7 +157,7 @@ function PushInitializer() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsReady, fontError] = useFonts({
     'NotoSansArabic-Regular': require('../assets/fonts/NotoSansArabic-Regular.ttf'),
     'NotoSansArabic-SemiBold': require('../assets/fonts/NotoSansArabic-SemiBold.ttf'),
     'NotoSansArabic-Bold': require('../assets/fonts/NotoSansArabic-Bold.ttf'),
@@ -194,6 +197,10 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, []);
+
+  // A font that fails to load (on the web it gives up after 12s on a slow
+  // connection) must not keep the app blank: carry on with the system font.
+  const fontsLoaded = fontsReady || !!fontError;
 
   // Hide the splash screen as soon as fonts are ready.
   useEffect(() => {
