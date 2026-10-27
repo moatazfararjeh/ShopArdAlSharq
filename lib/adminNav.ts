@@ -39,6 +39,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { label: 'الماركات', icon: 'ribbon-outline', path: '/brands' },
       { label: 'المنتجات عبر Excel', icon: 'document-attach-outline', path: '/products/excel' },
       { label: 'تقرير المنتجات', icon: 'document-text-outline', path: '/products/report' },
+      { label: 'كتالوج PDF', icon: 'book-outline', path: '/products/catalog-pdf' },
     ],
   },
   {

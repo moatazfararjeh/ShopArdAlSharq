@@ -271,50 +271,6 @@ export default function LoginScreen() {
               onPress={() => router.push({ pathname: '/(public)/register', params: params.next ? { next: params.next } : {} } as any)}
             />
           </View>
-
-          {/* Browse catalog without login */}
-          <TouchableOpacity
-            onPress={() => router.push('/(public)/catalog')}
-            style={{
-              marginTop: 20,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1.5,
-              borderColor: '#e3652340',
-              backgroundColor: '#fff7ed',
-            }}
-          >
-            <Text style={{ fontSize: 16 }}>📖</Text>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#e36523' }}>
-              تصفح الكتالوج بدون تسجيل
-            </Text>
-          </TouchableOpacity>
-
-          {/* Browse catalog by category without login */}
-          <TouchableOpacity
-            onPress={() => router.push('/(public)/catalog-by-category')}
-            style={{
-              marginTop: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1.5,
-              borderColor: '#e3652340',
-              backgroundColor: '#fff7ed',
-            }}
-          >
-            <Text style={{ fontSize: 16 }}>🗂️</Text>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#e36523' }}>
-              تصفح الكتالوج حسب الفئة
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
