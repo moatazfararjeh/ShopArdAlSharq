@@ -42,6 +42,21 @@ export function getPublicUrl(bucket: string, filePath: string): string {
 
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+/** Web only: re-encode an image the browser can decode as JPEG. Null if it can't. */
+async function heicToJpeg(blob: Blob): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  } catch {
+    return null;
+  }
+}
+
 /** Upload a document (PDF or image) to the private `documents` bucket. */
 export async function uploadDocument(
   userId: string,
@@ -56,17 +71,30 @@ export async function uploadDocument(
   // content:// URIs on Android (the picker can return either depending on
   // Android version/picker UI). Web keeps fetch/blob since its URI is a
   // browser-native blob: URL, not a local path.
-  const body: Blob | ArrayBuffer =
+  let body: Blob | ArrayBuffer =
     Platform.OS === 'web'
       ? await (await fetch(fileUri)).blob()
       : decodeBase64(await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' }));
+
+  // iPhone photos are HEIC, which most browsers can't show — the admin
+  // couldn't open the document. Convert to JPEG where this browser can decode
+  // it (Safari); otherwise upload the HEIC as is (the bucket accepts it, 064).
+  let ext = fileName.split('.').pop() ?? 'jpg';
+  if (body instanceof Blob && /^image\/hei[cf]$/i.test(mimeType)) {
+    const jpeg = await heicToJpeg(body);
+    if (jpeg) {
+      body = jpeg;
+      mimeType = 'image/jpeg';
+      ext = 'jpg';
+    }
+  }
+
   const size = body instanceof ArrayBuffer ? body.byteLength : body.size;
 
   if (size > MAX_DOCUMENT_SIZE_BYTES) {
     throw new Error('حجم الملف يتجاوز الحد المسموح به (5 ميجابايت)');
   }
 
-  const ext = fileName.split('.').pop() ?? 'jpg';
   const path = `${userId}/commercial_register_${Date.now()}.${ext}`;
 
   const { data, error } = await supabase.storage.from('documents').upload(path, body, {
