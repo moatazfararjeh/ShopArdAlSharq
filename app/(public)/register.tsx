@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { documentTooLarge, DOCUMENT_TOO_LARGE } from '@/services/storageService';
 import { safeNext } from '@/lib/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +26,17 @@ export default function RegisterScreen() {
   const [docName, setDocName] = useState<string>('');
   const [docMime, setDocMime] = useState<string>('image/jpeg');
 
+  // Refuse a file that's too big now, not silently after the account exists.
+  function acceptDocument(uri: string, name: string, mime: string, size?: number | null) {
+    if (documentTooLarge(size, mime)) {
+      showAlert('الملف كبير', `${DOCUMENT_TOO_LARGE}. اختر ملفاً أصغر أو صورة للسجل.`);
+      return;
+    }
+    setDocUri(uri);
+    setDocName(name);
+    setDocMime(mime);
+  }
+
   async function pickDocument() {
     // On web, Alert.alert is a no-op — go straight to file picker
     if (Platform.OS === 'web') {
@@ -34,9 +46,7 @@ export default function RegisterScreen() {
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        setDocUri(asset.uri);
-        setDocName(asset.name);
-        setDocMime(asset.mimeType ?? 'application/pdf');
+        acceptDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf', asset.size);
       }
       return;
     }
@@ -60,9 +70,7 @@ export default function RegisterScreen() {
             });
             if (!result.canceled && result.assets[0]) {
               const asset = result.assets[0];
-              setDocUri(asset.uri);
-              setDocName(asset.fileName ?? 'commercial_register.jpg');
-              setDocMime(asset.mimeType ?? 'image/jpeg');
+              acceptDocument(asset.uri, asset.fileName ?? 'commercial_register.jpg', asset.mimeType ?? 'image/jpeg', asset.fileSize);
             }
           },
         },
@@ -75,9 +83,7 @@ export default function RegisterScreen() {
             });
             if (!result.canceled && result.assets[0]) {
               const asset = result.assets[0];
-              setDocUri(asset.uri);
-              setDocName(asset.name);
-              setDocMime(asset.mimeType ?? 'application/pdf');
+              acceptDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf', asset.size);
             }
           },
         },
@@ -117,6 +123,16 @@ export default function RegisterScreen() {
         commercialRegisterName: docName || undefined,
         commercialRegisterMime: docMime || undefined,
       });
+      // The account was created but the document didn't upload: say so, and
+      // where to add it (checkout needs it).
+      const documentError: string | null = (result as any)?.documentError ?? null;
+      if (documentError) {
+        await new Promise<void>((resolve) => showAlert(
+          'لم يتم رفع السجل التجاري',
+          `تم إنشاء حسابك، لكن تعذر رفع السجل التجاري (${documentError}). يمكنك رفعه لاحقاً من صفحة حسابي.`,
+          resolve,
+        ));
+      }
       if ((result as any)?.needsConfirmation) {
         showAlert(
           'تم إنشاء الحساب',

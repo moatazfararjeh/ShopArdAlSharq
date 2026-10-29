@@ -41,15 +41,25 @@ export function getPublicUrl(bucket: string, filePath: string): string {
 }
 
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const DOCUMENT_TOO_LARGE = 'حجم الملف يتجاوز الحد المسموح به (5 ميجابايت)';
 
-/** Web only: re-encode an image the browser can decode as JPEG. Null if it can't. */
-async function heicToJpeg(blob: Blob): Promise<Blob | null> {
+/** Whether a picked file is too big to upload. Images on the web are shrunk
+ * before upload (uploadDocument), so only PDFs and phone files count there. */
+export function documentTooLarge(size: number | null | undefined, mimeType: string): boolean {
+  if (!size || size <= MAX_DOCUMENT_SIZE_BYTES) return false;
+  return !(Platform.OS === 'web' && mimeType.startsWith('image/'));
+}
+
+/** Web only: re-encode an image the browser can decode as a JPEG no larger
+ * than maxSide px on its long side. Null if the browser can't decode it. */
+async function toJpeg(blob: Blob, maxSide = 2000): Promise<Blob | null> {
   try {
     const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     return await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
   } catch {
@@ -76,13 +86,15 @@ export async function uploadDocument(
       ? await (await fetch(fileUri)).blob()
       : decodeBase64(await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' }));
 
-  // iPhone photos are HEIC, which most browsers can't show — the admin
-  // couldn't open the document. Convert to JPEG where this browser can decode
-  // it (Safari); otherwise upload the HEIC as is (the bucket accepts it, 064).
+  // iPhone photos are HEIC (most browsers can't show it — the admin couldn't
+  // open the document) and often over the 5 MB limit. Re-encode as a smaller
+  // JPEG where this browser can decode it; otherwise upload as is (the bucket
+  // accepts HEIC, 064).
   let ext = fileName.split('.').pop() ?? 'jpg';
-  if (body instanceof Blob && /^image\/hei[cf]$/i.test(mimeType)) {
-    const jpeg = await heicToJpeg(body);
-    if (jpeg) {
+  const isHeic = /^image\/hei[cf]$/i.test(mimeType);
+  if (body instanceof Blob && mimeType.startsWith('image/') && (isHeic || body.size > 1.5 * 1024 * 1024)) {
+    const jpeg = await toJpeg(body);
+    if (jpeg && (isHeic || jpeg.size < body.size)) {
       body = jpeg;
       mimeType = 'image/jpeg';
       ext = 'jpg';
@@ -92,7 +104,7 @@ export async function uploadDocument(
   const size = body instanceof ArrayBuffer ? body.byteLength : body.size;
 
   if (size > MAX_DOCUMENT_SIZE_BYTES) {
-    throw new Error('حجم الملف يتجاوز الحد المسموح به (5 ميجابايت)');
+    throw new Error(DOCUMENT_TOO_LARGE);
   }
 
   const path = `${userId}/commercial_register_${Date.now()}.${ext}`;

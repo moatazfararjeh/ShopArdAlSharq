@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useSignOut } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { uploadDocument, getSignedDocumentUrl } from '@/services/storageService';
+import { uploadDocument, getSignedDocumentUrl, documentTooLarge, DOCUMENT_TOO_LARGE } from '@/services/storageService';
 import { logError } from '@/lib/errorLogger';
 import { useToastStore } from '@/stores/toastStore';
 import { useBiometric } from '@/hooks/useBiometric';
@@ -296,7 +296,7 @@ export default function ProfileScreen() {
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        await saveDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf');
+        await saveDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf', asset.size);
       }
       return;
     }
@@ -315,7 +315,7 @@ export default function ProfileScreen() {
           });
           if (!result.canceled && result.assets[0]) {
             const asset = result.assets[0];
-            await saveDocument(asset.uri, asset.fileName ?? 'commercial_register.jpg', asset.mimeType ?? 'image/jpeg');
+            await saveDocument(asset.uri, asset.fileName ?? 'commercial_register.jpg', asset.mimeType ?? 'image/jpeg', asset.fileSize);
           }
         },
       },
@@ -328,7 +328,7 @@ export default function ProfileScreen() {
           });
           if (!result.canceled && result.assets[0]) {
             const asset = result.assets[0];
-            await saveDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf');
+            await saveDocument(asset.uri, asset.name, asset.mimeType ?? 'application/pdf', asset.size);
           }
         },
       },
@@ -336,8 +336,15 @@ export default function ProfileScreen() {
     ]);
   }
 
-  async function saveDocument(uri: string, name: string, mime: string) {
+  async function saveDocument(uri: string, name: string, mime: string, size?: number | null) {
     if (!session?.user?.id) return;
+    // Alert.alert does nothing on web.
+    const notify = (title: string, message: string) =>
+      Platform.OS === 'web' ? window.alert(`${title}\n${message}`) : Alert.alert(title, message);
+    if (documentTooLarge(size, mime)) {
+      notify('الملف كبير', `${DOCUMENT_TOO_LARGE}. اختر ملفاً أصغر.`);
+      return;
+    }
     setUploadingDoc(true);
     try {
       const url = await uploadDocument(session.user.id, uri, name, mime);
@@ -346,10 +353,10 @@ export default function ProfileScreen() {
         .eq('id', session.user.id);
       const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       if (data) setProfile(data as any);
-      Alert.alert('✓ تم الرفع', 'تم رفع السجل التجاري بنجاح');
+      notify('✓ تم الرفع', 'تم رفع السجل التجاري بنجاح');
     } catch (e: any) {
       logError(e, 'profile.saveDocument', { userId: session?.user?.id });
-      Alert.alert('خطأ', e?.message ?? 'فشل رفع المستند');
+      notify('خطأ', e?.message ?? 'فشل رفع المستند');
     } finally {
       setUploadingDoc(false);
     }

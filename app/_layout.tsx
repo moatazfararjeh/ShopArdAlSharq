@@ -73,6 +73,10 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     // Instagram / Facebook in-app browsers inject a script that throws on
     // window._META.IABInnerFrame — their bug, not ours; don't log it.
     if (String(e.message ?? e.error ?? '').includes('IABInnerFrame')) return;
+    // "Script error." with no error object: the browser hides the details of
+    // an error in a script from another origin (extensions, in-app browsers).
+    // Nothing to act on.
+    if (!e.error && e.message === 'Script error.') return;
     logError(e.error ?? e.message, 'window.onerror');
   });
   window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {

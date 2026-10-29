@@ -34,6 +34,9 @@ export async function signUp(
   });
   if (error) throw parseSupabaseError(error);
 
+  // The account exists even if the document upload fails; the screen tells
+  // the customer to upload it again from their profile.
+  let documentError: string | null = null;
   if (data.user) {
     const profileUpdates: Record<string, any> = {};
     if (companyName) profileUpdates.company_name = companyName;
@@ -50,6 +53,7 @@ export async function signUp(
         );
         profileUpdates.commercial_register_url = docUrl;
       } catch (e) {
+        documentError = e instanceof Error ? e.message : 'تعذر رفع المستند';
         // Non-blocking — but still worth knowing it failed, since checkout
         // later hard-requires this document.
         logError(e, 'authService.signUp.uploadDocument', { userId: data.user.id });
@@ -66,8 +70,8 @@ export async function signUp(
 
   // Email verification is now required. If Supabase returns no session it means
   // the user must click the confirmation link sent to their email first.
-  if (data.session) return { ...data, needsConfirmation: false };
-  return { ...data, needsConfirmation: true };
+  if (data.session) return { ...data, needsConfirmation: false, documentError };
+  return { ...data, needsConfirmation: true, documentError };
 }
 
 export async function signOut() {
