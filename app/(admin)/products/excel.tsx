@@ -166,7 +166,7 @@ export default function ProductsExcelScreen() {
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 10 }}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: C.text, textAlign: 'right' }}>1. تنزيل قالب المنتجات</Text>
           <Text style={{ fontSize: 13, color: C.muted, textAlign: 'right', lineHeight: 20 }}>
-            ملف فيه كل المنتجات ({loading ? '…' : products.length}) مع الاسم والفئة والقسم والماركة والسعر والكمية، وورقة "القوائم" بالأسماء الصحيحة.
+            ملف فيه كل المنتجات ({loading ? '…' : products.length}) مع الاسم والفئة والقسم والماركة وأسعار الحبة والكيلو والكرتونة والتنكة والكمية، وورقة "القوائم" بالأسماء الصحيحة.
             أرسله للعميل ليعبّئه، ثم ارفعه في الخطوة 2.
           </Text>
           <TouchableOpacity

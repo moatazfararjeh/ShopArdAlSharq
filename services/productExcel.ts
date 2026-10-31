@@ -2,13 +2,15 @@
 // name / category / section / brand / price / quantity, then import it back
 // with a preview before anything is written.
 //
-// Price rule: the sheet has one "السعر" column, the price of the product's
-// default selling unit. Importing it updates that unit (product_units); the
-// database copies it onto the product's summary price columns.
+// Price rule: one price column per selling unit (piece / kg / carton / tin)
+// plus which unit is the main one. A blank price = not sold in that unit.
+// Importing saves the whole unit list (product_units); the database copies
+// the main unit onto the product's summary price columns. Sheets exported
+// before this had a single "السعر" column for the main unit — still accepted.
 
 import { supabase } from '@/lib/supabase';
 import { getProductUnits } from '@/types/models';
-import type { Product, Category, Section, Brand } from '@/types/models';
+import type { Product, Category, Section, Brand, SaleUnit, ProductUnit } from '@/types/models';
 import { saveProductUnits, type ProductUnitInput } from '@/services/productService';
 
 export const COL = {
@@ -18,21 +20,46 @@ export const COL = {
   category: 'الفئة',
   section:  'القسم',
   brand:    'الماركة',
-  unit:     'الوحدة',
-  price:    'السعر (د.أ)',
+  mainUnit: 'الوحدة الأساسية',
+  piece:    'سعر الحبة (د.أ)',
+  kg:       'سعر الكيلو (د.أ)',
+  carton:   'سعر الكرتونة (د.أ)',
+  cartonPieces: 'حبات الكرتونة',
+  tin:      'سعر التنكة (د.أ)',
   qty:      'الكمية',
 } as const;
 
-function unitLabel(p: Product): string {
-  const u = getProductUnits(p)[0];
-  if (!u) return 'حبة';
-  if (u.unit === 'carton') return u.pieces_per_unit ? `كرتونة · ${u.pieces_per_unit} حبة` : 'كرتونة';
-  return u.unit === 'kg' ? 'كيلو' : u.unit === 'tin' ? 'تنكة' : 'حبة';
+/** The single price column of sheets exported before per-unit prices. */
+const LEGACY_PRICE = 'السعر (د.أ)';
+
+const UNIT_ORDER: SaleUnit[] = ['piece', 'kg', 'carton', 'tin'];
+const UNIT_NAME: Record<SaleUnit, string> = { piece: 'حبة', kg: 'كيلو', carton: 'كرتونة', tin: 'تنكة' };
+
+/** "كرتونة" / "كرتون" / "carton"… → unit; null when not recognised. */
+function parseUnit(v: string): SaleUnit | null {
+  const t = key(v).replace(/[ةه]$/, '');
+  if (!t) return null;
+  if (['حب', 'piece', 'pc'].includes(t)) return 'piece';
+  if (['كيلو', 'كغ', 'kg'].includes(t)) return 'kg';
+  if (['كرتون', 'carton'].includes(t)) return 'carton';
+  if (['تنك', 'tin'].includes(t)) return 'tin';
+  return null;
 }
 
-/** Price of the default unit (before any sale). */
-function currentPrice(p: Product): number {
-  return Number(getProductUnits(p)[0]?.price ?? p.price);
+const fmt = (n: number) => n.toFixed(3);
+
+/** Main unit + one price per unit (blank when not sold in it), for export. */
+function unitColumns(p: Product) {
+  const units = getProductUnits(p);
+  const price = (u: SaleUnit) => units.find((x) => x.unit === u)?.price ?? '';
+  return {
+    [COL.mainUnit]: units[0] ? UNIT_NAME[units[0].unit] : '',
+    [COL.piece]: price('piece'),
+    [COL.kg]: price('kg'),
+    [COL.carton]: price('carton'),
+    [COL.cartonPieces]: units.find((x) => x.unit === 'carton')?.pieces_per_unit ?? '',
+    [COL.tin]: price('tin'),
+  };
 }
 
 const norm = (s: unknown) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -60,13 +87,15 @@ export async function exportProductsExcel(
       [COL.category]: norm(p.categories?.name_ar),
       [COL.section]: p.section_id ? sectionName.get(p.section_id) ?? '' : '',
       [COL.brand]: norm(p.brands?.name),
-      [COL.unit]: unitLabel(p),
-      [COL.price]: currentPrice(p),
+      ...unitColumns(p),
       [COL.qty]: p.stock_quantity ?? 0,
     }));
 
   const ws = XLSX.utils.json_to_sheet(rows, { header: Object.values(COL) });
-  ws['!cols'] = [{ wch: 38 }, { wch: 12 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 10 }];
+  ws['!cols'] = [
+    { wch: 38 }, { wch: 12 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 18 },
+    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 13 }, { wch: 14 }, { wch: 10 },
+  ];
   (ws as any)['!views'] = [{ RTL: true }];
 
   // Reference lists so the client types names that already exist
@@ -86,7 +115,11 @@ export async function exportProductsExcel(
     ['• لا تغيّر عمود "رقم المنتج" — يُستخدم لمطابقة المنتج عند الرفع.'],
     ['• اكتب أسماء الفئات والأقسام والماركات كما هي في ورقة "القوائم".'],
     ['• القسم والماركة يمكن تركهما فارغين. الفئة مطلوبة.'],
-    ['• السعر بالدينار لوحدة البيع في عمود "الوحدة". الكمية رقم صحيح.'],
+    ['• الأسعار بالدينار لكل وحدة: الحبة، الكيلو، الكرتونة، التنكة. اترك السعر فارغاً إذا لا يُباع المنتج بهذه الوحدة.'],
+    ['• "الوحدة الأساسية": حبة أو كيلو أو كرتونة أو تنكة — تظهر أولاً للزبون، ويجب أن يكون لها سعر.'],
+    ['• "حبات الكرتونة": عدد الحبات داخل الكرتونة (اختياري).'],
+    ['• مسح سعر وحدة موجودة يوقف بيع المنتج بهذه الوحدة. الخصومات الحالية تبقى ما دامت أقل من السعر الجديد.'],
+    ['• الكمية رقم صحيح.'],
     ['• الصفوف الجديدة بدون رقم منتج لا تُضاف — أضف المنتجات الجديدة من التطبيق.'],
   ];
   const wsNotes = XLSX.utils.aoa_to_sheet(notes);
@@ -111,7 +144,12 @@ export interface SheetRow {
   category: string;
   section: string;
   brand: string;
-  price: unknown;
+  mainUnit: string;
+  /** Per-unit prices; `undefined` = the sheet has no column for it (old sheet). */
+  prices: Partial<Record<SaleUnit, unknown>>;
+  cartonPieces: unknown;
+  /** Old sheets: the main unit's price. */
+  legacyPrice?: unknown;
   qty: unknown;
 }
 
@@ -123,6 +161,10 @@ export async function parseProductsFile(buffer: ArrayBuffer): Promise<SheetRow[]
   if (!raw.length || !(COL.id in raw[0]) || !(COL.name in raw[0])) {
     throw new Error('الملف لا يطابق قالب المنتجات. صدّر القالب من التطبيق واملأه ثم ارفعه.');
   }
+  const perUnit = UNIT_ORDER.some((u) => COL[u] in raw[0]);
+  if (!perUnit && !(LEGACY_PRICE in raw[0])) {
+    throw new Error('الملف لا يحتوي أعمدة الأسعار. صدّر القالب من التطبيق واملأه ثم ارفعه.');
+  }
   return raw.map((r, i) => ({
     rowNumber: i + 2,
     id: norm(r[COL.id]),
@@ -130,7 +172,12 @@ export async function parseProductsFile(buffer: ArrayBuffer): Promise<SheetRow[]
     category: norm(r[COL.category]),
     section: norm(r[COL.section]),
     brand: norm(r[COL.brand]),
-    price: r[COL.price],
+    mainUnit: norm(r[COL.mainUnit]),
+    prices: perUnit
+      ? Object.fromEntries(UNIT_ORDER.filter((u) => COL[u] in r).map((u) => [u, r[COL[u]]]))
+      : {},
+    cartonPieces: COL.cartonPieces in r ? r[COL.cartonPieces] : undefined,
+    legacyPrice: perUnit ? undefined : r[LEGACY_PRICE],
     qty: r[COL.qty],
   }));
 }
@@ -247,33 +294,10 @@ export function buildPlan(
         changes.push(`الماركة: ${norm(p.brands?.name) || '—'} ← ${br?.name ?? '—'}`);
       }
 
-      // Price — the default selling unit's price (3 decimals, fils)
-      let units: ProductUnitInput[] | undefined;
-      const price = toNumber(r.price);
-      if (price === null) errors.push('السعر فارغ');
-      else if (Number.isNaN(price) || price <= 0) errors.push(`سعر غير صحيح: ${String(r.price)}`);
-      else {
-        const rounded = Math.round(price * 1000) / 1000;
-        const old = currentPrice(p);
-        if (Math.abs(rounded - old) > 0.0005) {
-          const list = getProductUnits(p);
-          units = list.map((u, i) => {
-            const isDefault = i === 0;
-            const newPrice = isDefault ? rounded : u.price;
-            // A sale has to stay below the new price; drop it otherwise.
-            const keepSale = u.sale_price != null && u.sale_price < newPrice;
-            return {
-              unit: u.unit, price: newPrice,
-              sale_price: keepSale ? u.sale_price : null, sale_ends_at: keepSale ? u.sale_ends_at : null,
-              min_qty: u.min_qty, pieces_per_unit: u.pieces_per_unit, is_default: isDefault,
-            };
-          });
-          if (!units.length) {
-            units = [{ unit: 'piece', price: rounded, sale_price: null, sale_ends_at: null, min_qty: 1, pieces_per_unit: null, is_default: true }];
-          }
-          changes.push(`السعر: ${old.toFixed(3)} ← ${rounded.toFixed(3)}`);
-        }
-      }
+      // Prices per unit
+      const priced = planUnits(r, p, errors);
+      const units = priced?.units;
+      if (priced) changes.push(...priced.changes);
 
       // Quantity
       const qty = toNumber(r.qty);
@@ -288,6 +312,90 @@ export function buildPlan(
       if (!changes.length) return { ...base, status: 'unchanged', reason: null };
       return { ...base, status: 'ready', reason: null, changes, update, units, newSectionName, newBrandName };
     });
+}
+
+/** The product's unit list after this row, or null when prices didn't change
+ * (or had errors, pushed onto `errors`). */
+function planUnits(r: SheetRow, p: Product, errors: string[]): { units: ProductUnitInput[]; changes: string[] } | null {
+  const current = getProductUnits(p);                    // main unit first
+  const byUnit = new Map(current.map((u) => [u.unit, u]));
+  const wanted = new Map<SaleUnit, number>();            // unit → new price
+
+  if (r.legacyPrice !== undefined) {
+    // Old sheet: one price, for the main unit; other units stay as they are.
+    const price = toNumber(r.legacyPrice);
+    if (price === null) { errors.push('السعر فارغ'); return null; }
+    if (Number.isNaN(price) || price <= 0) { errors.push(`سعر غير صحيح: ${String(r.legacyPrice)}`); return null; }
+    current.forEach((u, i) => wanted.set(u.unit, i === 0 ? price : u.price));
+    if (!current.length) wanted.set('piece', price);
+  } else {
+    for (const u of UNIT_ORDER) {
+      if (!(u in r.prices)) {                             // no column: leave as is
+        const old = byUnit.get(u);
+        if (old) wanted.set(u, old.price);
+        continue;
+      }
+      const price = toNumber(r.prices[u]);
+      if (price === null) continue;                       // blank: not sold in this unit
+      if (Number.isNaN(price) || price <= 0) errors.push(`سعر ${UNIT_NAME[u]} غير صحيح: ${String(r.prices[u])}`);
+      else wanted.set(u, price);
+    }
+    if (!wanted.size && !errors.length) errors.push('لا يوجد أي سعر — أدخل سعر وحدة واحدة على الأقل');
+  }
+  for (const [u, price] of wanted) wanted.set(u, Math.round(price * 1000) / 1000);
+
+  // Pieces per carton
+  let cartonPieces = byUnit.get('carton')?.pieces_per_unit ?? null;
+  if (r.cartonPieces !== undefined) {
+    const n = toNumber(r.cartonPieces);
+    if (n === null) cartonPieces = null;
+    else if (Number.isNaN(n) || n <= 0 || !Number.isInteger(n)) errors.push(`حبات الكرتونة غير صحيحة: ${String(r.cartonPieces)}`);
+    else cartonPieces = n;
+  }
+
+  // Main unit: the sheet's choice, else the current one if still sold, else the first sold.
+  let main: SaleUnit | undefined;
+  if (r.mainUnit) {
+    const u = parseUnit(r.mainUnit);
+    if (!u) errors.push(`وحدة أساسية غير معروفة: ${r.mainUnit} (حبة / كيلو / كرتونة / تنكة)`);
+    else if (!wanted.has(u)) errors.push(`الوحدة الأساسية "${r.mainUnit}" بدون سعر`);
+    else main = u;
+  }
+  main ??= current[0] && wanted.has(current[0].unit) ? current[0].unit : UNIT_ORDER.find((u) => wanted.has(u));
+  if (errors.length || !main) return null;
+
+  // Changes, for the preview
+  const changes: string[] = [];
+  for (const u of UNIT_ORDER) {
+    const before = byUnit.get(u)?.price;
+    const after = wanted.get(u);
+    if (before == null && after == null) continue;
+    if (before == null) changes.push(`سعر ${UNIT_NAME[u]}: — ← ${fmt(after!)} (وحدة جديدة)`);
+    else if (after == null) changes.push(`سعر ${UNIT_NAME[u]}: ${fmt(before)} ← — (إيقاف البيع بها)`);
+    else if (Math.abs(after - before) > 0.0005) changes.push(`سعر ${UNIT_NAME[u]}: ${fmt(before)} ← ${fmt(after)}`);
+  }
+  if (wanted.has('carton') && cartonPieces !== (byUnit.get('carton')?.pieces_per_unit ?? null)) {
+    changes.push(`حبات الكرتونة: ${byUnit.get('carton')?.pieces_per_unit ?? '—'} ← ${cartonPieces ?? '—'}`);
+  }
+  if (current[0] && main !== current[0].unit) changes.push(`الوحدة الأساسية: ${UNIT_NAME[current[0].unit]} ← ${UNIT_NAME[main]}`);
+  if (!changes.length) return null;
+
+  // Main unit first, the rest in their current order, new ones after.
+  const order = [main, ...current.map((u) => u.unit), ...UNIT_ORDER].filter((u, i, a) => wanted.has(u) && a.indexOf(u) === i);
+  const units = order.map((u): ProductUnitInput => {
+    const old: ProductUnit | undefined = byUnit.get(u);
+    const price = wanted.get(u)!;
+    // A sale has to stay below the new price; drop it otherwise.
+    const keepSale = old?.sale_price != null && old.sale_price < price;
+    return {
+      unit: u, price,
+      sale_price: keepSale ? old!.sale_price : null, sale_ends_at: keepSale ? old!.sale_ends_at : null,
+      min_qty: old?.min_qty ?? 1,
+      pieces_per_unit: u === 'carton' ? cartonPieces : old?.pieces_per_unit ?? null,
+      is_default: u === main,
+    };
+  });
+  return { units, changes };
 }
 
 // ─── Import: apply ────────────────────────────────────────────────────────────
